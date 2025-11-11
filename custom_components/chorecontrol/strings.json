@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ChoreControl Setup",
+        "description": "Set up ChoreControl integration to connect to your ChoreControl add-on.",
+        "data": {
+          "addon_url": "Add-on URL",
+          "scan_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "addon_url": "The URL where the ChoreControl add-on is running (e.g., http://chorecontrol or http://addon_slug)",
+          "scan_interval": "How often to poll the add-on for updates (10-300 seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the ChoreControl add-on. Please check the URL and ensure the add-on is running.",
+      "unknown": "Unexpected error occurred. Please check the logs."
+    },
+    "abort": {
+      "already_configured": "ChoreControl is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ChoreControl Options",
+        "description": "Configure ChoreControl integration options.",
+        "data": {
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  }
+}

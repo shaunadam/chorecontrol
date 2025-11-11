@@ -1,0 +1,137 @@
+# Service definitions for ChoreControl integration
+
+claim_chore:
+  name: Claim chore
+  description: Mark a chore instance as completed (claimed) by a user.
+  fields:
+    chore_instance_id:
+      name: Chore instance ID
+      description: The ID of the chore instance to claim.
+      required: true
+      example: 123
+      selector:
+        number:
+          min: 1
+          mode: box
+    user_id:
+      name: User ID
+      description: The ID of the user claiming the chore.
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 1
+          mode: box
+
+approve_chore:
+  name: Approve chore
+  description: Approve a claimed chore and award points to the user.
+  fields:
+    chore_instance_id:
+      name: Chore instance ID
+      description: The ID of the chore instance to approve.
+      required: true
+      example: 123
+      selector:
+        number:
+          min: 1
+          mode: box
+    approver_user_id:
+      name: Approver user ID
+      description: The ID of the parent/approver.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+
+reject_chore:
+  name: Reject chore
+  description: Reject a claimed chore with a reason.
+  fields:
+    chore_instance_id:
+      name: Chore instance ID
+      description: The ID of the chore instance to reject.
+      required: true
+      example: 123
+      selector:
+        number:
+          min: 1
+          mode: box
+    approver_user_id:
+      name: Approver user ID
+      description: The ID of the parent/approver.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+    reason:
+      name: Reason
+      description: The reason for rejecting the chore.
+      required: true
+      example: "Trash bins not fully emptied"
+      selector:
+        text:
+          multiline: false
+
+adjust_points:
+  name: Adjust points
+  description: Manually adjust a user's points balance.
+  fields:
+    user_id:
+      name: User ID
+      description: The ID of the user whose points to adjust.
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 1
+          mode: box
+    points_delta:
+      name: Points delta
+      description: The amount to add (positive) or subtract (negative) from the user's points.
+      required: true
+      example: 10
+      selector:
+        number:
+          min: -1000
+          max: 1000
+          mode: box
+    reason:
+      name: Reason
+      description: The reason for the points adjustment.
+      required: true
+      example: "Bonus for helping sibling"
+      selector:
+        text:
+          multiline: false
+
+claim_reward:
+  name: Claim reward
+  description: Allow a user to claim a reward using their points.
+  fields:
+    reward_id:
+      name: Reward ID
+      description: The ID of the reward to claim.
+      required: true
+      example: 7
+      selector:
+        number:
+          min: 1
+          mode: box
+    user_id:
+      name: User ID
+      description: The ID of the user claiming the reward.
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 1
+          mode: box
+
+refresh_data:
+  name: Refresh data
+  description: Force refresh all ChoreControl data from the add-on.
