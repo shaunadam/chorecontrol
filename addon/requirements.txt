@@ -1,0 +1,21 @@
+# Flask web framework
+Flask>=2.3.0
+
+# Database ORM and migrations
+Flask-SQLAlchemy>=3.0.0
+Flask-Migrate>=4.0.0
+
+# Background task scheduler
+APScheduler>=3.10.0
+
+# Calendar feed generation
+ics>=0.7
+
+# JSON schema validation for recurrence patterns
+jsonschema>=4.17.0
+
+# HTTP client for HA API integration
+requests>=2.31.0
+
+# Production WSGI server
+gunicorn>=21.2.0
