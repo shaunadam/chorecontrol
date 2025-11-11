@@ -1,179 +1,120 @@
-# ChoreControl Add-on - Database Layer
+# ChoreControl Add-on
 
-This directory contains the SQLAlchemy models and database layer for ChoreControl.
+## About
 
-## Structure
+ChoreControl is a Home Assistant add-on that provides a comprehensive chore management system for families. It helps manage kids' chores, track points, handle rewards, and provide approval workflows for parents.
 
-```
-addon/
-├── __init__.py          # Package initialization
-├── app.py              # Flask application factory
-├── models.py           # SQLAlchemy models (7 models)
-├── schemas.py          # JSON validation and recurrence patterns
-└── requirements.txt    # Python dependencies
-```
+## Features
 
-## Models
+- **Chore Management**: Create and manage recurring and one-time chores
+- **User Roles**: Support for parents (admin) and kids (users)
+- **Points System**: Award points for completed chores
+- **Rewards**: Kids can claim rewards by spending earned points
+- **Approval Workflow**: Parents review and approve completed chores
+- **Calendar Integration**: ICS feed for calendar apps
+- **Home Assistant Integration**: Full HA integration via custom component
+- **Web UI**: Mobile-friendly admin interface accessible via HA sidebar
 
-The database layer includes 7 SQLAlchemy models:
+## Installation
 
-### 1. **User** (`users` table)
-- Represents both parents and kids
-- Fields: `ha_user_id`, `username`, `role`, `points`
-- Role: 'parent' or 'kid'
-- Methods:
-  - `calculate_current_points()` - Calculate points from history
-  - `verify_points_balance()` - Verify denormalized points match history
-  - `adjust_points()` - Adjust points and create history entry
+1. Add this repository to your Home Assistant add-on store
+2. Install the ChoreControl add-on
+3. Start the add-on
+4. Access ChoreControl from the Home Assistant sidebar
 
-### 2. **Chore** (`chores` table)
-- Chore template (recurring or one-off)
-- Fields: `name`, `description`, `points`, `recurrence_type`, `recurrence_pattern` (JSON), `assignment_type`, `requires_approval`
-- Recurrence types: 'none', 'simple', 'complex'
-- Assignment types: 'individual', 'shared'
-- Methods:
-  - `is_due()` - Check if chore is due on a date
-  - `generate_next_instance()` - Generate next chore instance
+## Configuration
 
-### 3. **ChoreAssignment** (`chore_assignments` table)
-- Links chores to users
-- Fields: `chore_id`, `user_id`, `due_date`
-- Unique constraint on (chore_id, user_id, due_date)
+### Options
 
-### 4. **ChoreInstance** (`chore_instances` table)
-- Tracks individual chore completions
-- Fields: `chore_id`, `due_date`, `status`, `claimed_by`, `approved_by`, `points_awarded`
-- Status workflow: 'assigned' → 'claimed' → 'approved'/'rejected'
-- Methods:
-  - `can_claim()` - Check if user can claim
-  - `can_approve()` - Check if user can approve
-  - `award_points()` - Approve and award points
+- `timezone`: Set your timezone (default: UTC)
+- `debug`: Enable debug logging (default: false)
 
-### 5. **Reward** (`rewards` table)
-- Rewards that can be claimed with points
-- Fields: `name`, `description`, `points_cost`, `cooldown_days`, `max_claims_total`, `max_claims_per_kid`
-- Methods:
-  - `can_claim()` - Check if user can claim (returns tuple: bool, reason)
-  - `is_on_cooldown()` - Check cooldown status for user
+Example configuration:
 
-### 6. **RewardClaim** (`reward_claims` table)
-- Records of reward claims
-- Fields: `reward_id`, `user_id`, `points_spent`, `status`, `approved_by`
-- Status: 'pending', 'approved', 'rejected'
-
-### 7. **PointsHistory** (`points_history` table)
-- Audit log of all point changes
-- Fields: `user_id`, `points_delta`, `reason`, `chore_instance_id`, `reward_claim_id`, `created_by`
-- Used to verify denormalized points balance
-
-## Relationships
-
-All models have proper relationships defined:
-- Users → ChoreAssignments, ChoreInstances (claimed/approved/rejected), RewardClaims, PointsHistory
-- Chores → ChoreAssignments, ChoreInstances
-- Rewards → RewardClaims
-- All relationships use proper `foreign_keys` parameter to avoid ambiguity
-
-## JSON Schema (schemas.py)
-
-### Recurrence Patterns
-
-**Simple Patterns:**
-```json
-{
-  "type": "simple",
-  "interval": "daily|weekly|monthly",
-  "every_n": 1,
-  "time": "18:00"
-}
+```yaml
+timezone: "America/New_York"
+debug: false
 ```
 
-**Complex Patterns:**
-```json
-{
-  "type": "complex",
-  "days_of_week": [0, 2, 4],  // Mon, Wed, Fri (0=Monday)
-  "weeks_of_month": [1, 3],   // 1st and 3rd week
-  "days_of_month": [1, 15],   // 1st and 15th
-  "time": "18:00"
-}
-```
+## How to Use
 
-### Validation Functions
-- `validate_recurrence_pattern()` - Validate pattern against JSON schema
-- `calculate_next_due_date()` - Calculate next occurrence
-- `generate_instances_for_date_range()` - Generate all instances in range
-- `format_recurrence_pattern()` - Human-readable description
+1. **Access the Web UI**: Click on ChoreControl in the Home Assistant sidebar
+2. **Set Up Users**: Map your Home Assistant users to parent/kid roles
+3. **Create Chores**: Define chores with points, schedules, and assignments
+4. **Create Rewards**: Set up rewards kids can claim with their points
+5. **Install Integration**: Install the ChoreControl custom component for HA entities and dashboards
 
-### Example Patterns
-See `EXAMPLE_PATTERNS` dict in `schemas.py` for ready-to-use patterns:
-- `daily`, `every_other_day`, `weekly`, `bi_weekly`, `monthly`
-- `weekdays` (Mon-Fri), `monday_wednesday_friday`
-- `first_and_fifteenth`, `first_monday`
+## Architecture
 
-## Database Migrations
+This add-on provides:
 
-### Setup
-```bash
-# Install dependencies
-pip install -r addon/requirements.txt
+- **Flask web application** for the admin interface
+- **REST API** for integration with Home Assistant
+- **SQLite database** for persistent storage
+- **APScheduler** for background tasks (chore generation, auto-approval)
+- **ICS feed generation** for calendar integration
 
-# Initialize Flask-Migrate (already done)
-FLASK_APP=manage.py flask db init
+## Data Storage
 
-# Create migration
-FLASK_APP=manage.py flask db migrate -m "Description"
+All data is stored in `/data/chorecontrol.db` (SQLite database). This directory is persisted across add-on updates and restarts.
 
-# Apply migration
-FLASK_APP=manage.py flask db upgrade
+## API Endpoints
 
-# Rollback migration
-FLASK_APP=manage.py flask db downgrade
-```
+The add-on exposes a REST API at `http://homeassistant.local:8099/api/`:
 
-### Migration Files
-- Migrations stored in `/migrations/versions/`
-- Initial migration: `fe05e7ce7c54_initial_migration_with_all_7_models.py`
+- `/health` - Health check endpoint
+- `/api/user` - Current user information
+- `/api/chores` - Chore management (CRUD)
+- `/api/rewards` - Reward management (CRUD)
+- `/api/calendar/{user_id}.ics` - Calendar feed
 
-## Testing
+See the [API documentation](https://github.com/shaunadam/chorecontrol) for complete endpoint reference.
 
-Run the test script to verify all models work:
+## Home Assistant Integration
+
+This add-on is designed to work with the ChoreControl custom integration:
+
+1. Install the ChoreControl add-on (this)
+2. Install the ChoreControl custom component in `/config/custom_components/`
+3. Configure the integration via HA UI
+4. Use the provided entities in your dashboards
+
+## Development
+
+### Local Development
 
 ```bash
-python test_models.py
+cd addon
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+export FLASK_ENV=development
+export DATA_DIR=./data
+flask run
 ```
 
-This will:
-1. Create sample users (parent and kids)
-2. Create chores with recurrence patterns
-3. Assign chores to kids
-4. Test claim/approve workflow
-5. Test points calculation and history
-6. Test reward claims with validation
-7. Verify all relationships work
+### Building the Docker Image
 
-## Success Criteria
+```bash
+docker build -t chorecontrol-addon .
+docker run -p 8099:8099 -v $(pwd)/data:/data chorecontrol-addon
+```
 
-✅ All 7 models defined with proper types
-✅ Relationships work (can navigate user.chores, etc.)
-✅ Initial migration created and tested
-✅ Can create and query all models in Python shell
-✅ JSON schema validates recurrence patterns
-✅ Migration up/down works correctly
-✅ All model methods tested and working
+## Support
 
-## Next Steps
+For issues, feature requests, or contributions, please visit:
+https://github.com/shaunadam/chorecontrol
 
-This database layer is ready for integration with:
-1. Flask REST API (Stream 3)
-2. Flask Web UI (Stream 4)
-3. Background scheduler for chore generation (Stream 5)
+## License
 
-## Notes
+See [LICENSE](../LICENSE) file in the repository root.
 
-- Database file location: `instance/chorecontrol.db` (Flask default)
-- SQLite is used for simplicity and portability
-- All models use soft delete pattern (`is_active` flag) where appropriate
-- Points are stored denormalized in `User.points` but verified against `PointsHistory`
-- Foreign keys properly defined with cascade deletes
-- Indexes added for common query patterns
+## Changelog
+
+### 0.1.0 (Initial Release)
+
+- Flask web application with SQLAlchemy ORM
+- Basic project structure and configuration
+- Health check and authentication endpoints
+- Home Assistant ingress support
+- Ready for model and API implementation
