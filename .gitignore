@@ -65,6 +65,9 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+# ChoreControl data directory (contains SQLite database)
+addon/data/
+
 # Scrapy stuff:
 .scrapy
 
@@ -182,9 +185,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
@@ -205,3 +208,84 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ========================================
+# ChoreControl Specific
+# ========================================
+
+# Database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Flask migrations (keep the migrations folder structure but ignore generated content)
+# migrations/versions/*.py will be tracked - this is intentional
+
+# Flask session files
+flask_session/
+
+# Development data directory
+addon/data/
+data/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Home Assistant test configuration
+.homeassistant/
+homeassistant_test/
+
+# Local configuration overrides
+.env.local
+.env.*.local
+config.local.json
+
+# APScheduler job store
+jobs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Pre-commit
+.pre-commit-config.yaml.backup
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# pytest-cov HTML reports directory
+htmlcov/
+
+# Testing artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+*.cover
+
+# Docker volumes and build artifacts
+docker-compose.override.yml
+.dockerignore
+
+# Backup files
+*.bak
+*.backup
+
+# Logs
+logs/
+*.log
