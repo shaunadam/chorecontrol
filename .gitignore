@@ -65,6 +65,9 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+# ChoreControl data directory (contains SQLite database)
+addon/data/
+
 # Scrapy stuff:
 .scrapy
 
