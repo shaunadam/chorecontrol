@@ -20,6 +20,11 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copy application files
 COPY app.py .
 COPY config.py .
+COPY models.py .
+COPY schemas.py .
+COPY seed.py .
+COPY seed_helpers.py .
+COPY __init__.py .
 COPY run.sh .
 
 # Make run script executable
