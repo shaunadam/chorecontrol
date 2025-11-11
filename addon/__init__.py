@@ -1,0 +1,1 @@
+"""ChoreControl add-on package."""
