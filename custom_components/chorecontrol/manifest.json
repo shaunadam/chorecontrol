@@ -1,0 +1,13 @@
+{
+  "domain": "chorecontrol",
+  "name": "ChoreControl",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/shaunadam/chorecontrol",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/shaunadam/chorecontrol/issues",
+  "requirements": ["aiohttp>=3.8.0"],
+  "version": "0.1.0"
+}
