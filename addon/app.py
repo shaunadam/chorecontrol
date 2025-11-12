@@ -8,7 +8,7 @@ from flask_migrate import Migrate
 from sqlalchemy import text
 
 # Import db from models (models.py creates the SQLAlchemy instance)
-from models import db
+from .models import db
 
 # Initialize Flask-Migrate
 migrate = Migrate()
@@ -22,7 +22,7 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'production')
 
-    from config import config
+    from .config import config
     app.config.from_object(config[config_name])
 
     # Ensure data directory exists
