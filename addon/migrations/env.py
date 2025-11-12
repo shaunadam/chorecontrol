@@ -94,6 +94,13 @@ def run_migrations_online():
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
+    # Ensure data directory exists before connecting to database
+    from pathlib import Path
+    data_dir = Path(current_app.config.get('DATA_DIR', './data'))
+    data_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f'Data directory: {data_dir.absolute()}')
+    logger.info(f'Database URI: {current_app.config.get("SQLALCHEMY_DATABASE_URI")}')
+
     connectable = get_engine()
 
     with connectable.connect() as connection:
