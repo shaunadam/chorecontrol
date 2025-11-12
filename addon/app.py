@@ -20,7 +20,12 @@ def create_app(config_name=None):
 
     # Load configuration
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'production')
+        # Default to development if running locally, production if in container/HA
+        # Check if we're in a production environment (Home Assistant addon)
+        if os.path.exists('/data') or os.environ.get('SUPERVISOR_TOKEN'):
+            config_name = os.environ.get('FLASK_ENV', 'production')
+        else:
+            config_name = os.environ.get('FLASK_ENV', 'development')
 
     from .config import config
     app.config.from_object(config[config_name])
