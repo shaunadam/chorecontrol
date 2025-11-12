@@ -1,278 +1,235 @@
-# Next Steps - Implementation Roadmap
+# Next Steps - Post Stream Integration
 
-All technology decisions are complete! Ready to begin coding.
+## ✅ Completed (Streams 1-5)
+
+All parallel stream work is complete and integrated:
+
+- **Stream 1**: Add-on project structure (Flask, Docker, config)
+- **Stream 2**: Database models and schemas (7 tables, relationships, validation)
+- **Stream 3**: HA integration structure (manifest, config flow, services)
+- **Stream 4**: Development tooling (pytest, ruff, black, mypy, pre-commit)
+- **Stream 5**: Seed data scripts (realistic test data generation)
+
+**Integration fixes applied:**
+- Fixed duplicate imports in requirements.txt
+- Fixed SQLAlchemy db instance sharing between app.py and models.py
+- Added missing files to Dockerfile (models, schemas, seed scripts)
+- Fixed relative import in models.py
 
 ---
 
-## Immediate Next Steps (Can Run in Parallel)
+## 📋 For You: Local Environment Setup & Testing
 
-These tasks are **independent** and can be worked on concurrently by multiple sessions:
+Before we continue with API development, you should set up a local environment and verify everything works:
 
-### 🔧 Stream 1: Add-on Project Setup
-**Goal**: Set up the Flask add-on project structure
+### 1. Set Up Local Development Environment
 
-**Tasks**:
-- [ ] Create `addon/` directory structure
-- [ ] Create `addon/requirements.txt` with dependencies
-- [ ] Create `addon/Dockerfile` for HA add-on
-- [ ] Create `addon/config.json` (HA add-on metadata)
-- [ ] Create `addon/run.sh` (startup script)
-- [ ] Set up basic Flask app skeleton (`addon/app.py`)
-- [ ] Configure Flask-SQLAlchemy connection
-- [ ] Set up development virtual environment
+```bash
+cd /home/user/chorecontrol
 
-**Dependencies to include**:
+# Create virtual environment
+python3.11 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r addon/requirements.txt
+
+# Install dev dependencies
+pip install pytest pytest-cov pytest-flask ruff black mypy pre-commit
 ```
-Flask>=2.3.0
-Flask-SQLAlchemy>=3.0.0
-Flask-Migrate>=4.0.0
-APScheduler>=3.10.0
-ics>=0.7
-jsonschema>=4.17.0
-requests>=2.31.0
-```
 
-**Why parallel-safe**: No dependencies on other work
+### 2. Initialize Database
 
----
-
-### 📊 Stream 2: Database Schema & Models
-**Goal**: Design and implement the database layer
-
-**Tasks**:
-- [ ] Create `addon/models.py` with SQLAlchemy models
-- [ ] Define User model (ha_user_id, username, role, points)
-- [ ] Define Chore model (with recurrence_pattern JSON)
-- [ ] Define ChoreAssignment model
-- [ ] Define ChoreInstance model (status workflow)
-- [ ] Define Reward model (cooldown, limits)
-- [ ] Define RewardClaim model
-- [ ] Define PointsHistory model
-- [ ] Add model relationships (foreign keys, backrefs)
-- [ ] Create JSON schema for recurrence patterns
-- [ ] Write helper functions for recurrence parsing
-- [ ] Initialize Flask-Migrate and create initial migration
-
-**Reference**: PROJECT_PLAN.md data model section
-
-**Why parallel-safe**: Models are self-contained, don't depend on API or UI
-
----
-
-### 🏠 Stream 3: Integration Project Setup
-**Goal**: Set up the Home Assistant custom integration structure
-
-**Tasks**:
-- [ ] Create `custom_components/chorecontrol/` directory structure
-- [ ] Create `manifest.json` with metadata and dependencies
-- [ ] Create `__init__.py` with integration setup
-- [ ] Create `const.py` with constants (domain, default scan interval, etc.)
-- [ ] Create `config_flow.py` skeleton (UI configuration)
-- [ ] Create `strings.json` for translations
-- [ ] Set up integration development environment
-- [ ] Create `hacs.json` for HACS compatibility (future)
-
-**Why parallel-safe**: Integration structure is independent of add-on implementation
-
----
-
-### 📝 Stream 4: Documentation & Tooling
-**Goal**: Set up documentation and development tools
-
-**Tasks**:
-- [ ] Create `docs/` directory structure
-- [ ] Set up `.pre-commit-config.yaml` with ruff, black, mypy
-- [ ] Create `pyproject.toml` for tool configuration
-- [ ] Set up pytest structure (`tests/` directory)
-- [ ] Create API documentation template (OpenAPI/Swagger)
-- [ ] Write installation guide skeleton
-- [ ] Write user guide skeleton
-- [ ] Create contributing guide
-- [ ] Set up GitHub Actions workflows (future)
-
-**Why parallel-safe**: Documentation doesn't depend on implementation
-
----
-
-### 🧪 Stream 5: Test Data & Seed Scripts
-**Goal**: Create seed data for development and testing
-
-**Tasks**:
-- [ ] Create `addon/seed.py` script
-- [ ] Generate sample users (2 parents, 3 kids)
-- [ ] Generate sample chores (daily, weekly, one-off)
-- [ ] Generate sample rewards
-- [ ] Generate sample chore instances (various states)
-- [ ] Generate sample points history
-- [ ] Make seed script idempotent (can run multiple times)
-- [ ] Document how to seed development database
-
-**Why parallel-safe**: Seed data is independent, uses models once they exist
-
----
-
-## Phase 2: Sequential Work (After Parallel Streams)
-
-These tasks have dependencies and should be done sequentially:
-
-### Week 1: Core Backend
-1. **API Endpoints** (depends on Stream 1 & 2)
-   - Implement user CRUD endpoints
-   - Implement chore CRUD endpoints
-   - Implement instance claim/approve/reject endpoints
-   - Implement reward endpoints
-   - Implement points adjustment endpoint
-
-2. **Business Logic** (depends on models)
-   - Chore scheduler (generate instances from patterns)
-   - Points calculator
-   - Reward claim validator
-   - HA event bus integration (notifications)
-
-3. **Web UI - Basic Pages** (depends on Flask setup)
-   - Base template with navigation
-   - Chores list page
-   - Create/edit chore form
-   - Kids management page
-   - Parent dashboard
-
-### Week 2: Integration & Calendar
-4. **Integration Components** (depends on API)
-   - REST API client (`api_client.py`)
-   - Data update coordinator (`coordinator.py`)
-   - Sensor platform (points, counts)
-   - Button platform (claim buttons)
-   - Services (claim, approve, reject)
-
-5. **Calendar Integration** (depends on API)
-   - ICS generation endpoint
-   - Calendar caching logic
-   - Test with HA calendar
-
-### Week 3: Polish & Testing
-6. **Dashboard Examples**
-   - Kid dashboard YAML
-   - Parent dashboard YAML
-   - Documentation
-
-7. **Testing & Bug Fixes**
-   - Unit tests
-   - Integration tests
-   - End-to-end testing
-   - Bug fixes
-
----
-
-## Recommended Parallel Execution Strategy
-
-If you have **5 concurrent sessions** available:
-
-**Session 1**: Stream 1 (Add-on Setup)
-**Session 2**: Stream 2 (Database Models)
-**Session 3**: Stream 3 (Integration Setup)
-**Session 4**: Stream 4 (Docs & Tooling)
-**Session 5**: Stream 5 (Seed Data)
-
-**Estimated Time**: 2-4 hours for all parallel streams
-
-If you have **2-3 concurrent sessions**:
-
-**Batch A** (Most critical):
-- Session 1: Stream 1 + Stream 2 (Add-on + Database)
-- Session 2: Stream 3 (Integration Setup)
-
-**Batch B** (After Batch A):
-- Session 1: Stream 4 (Docs)
-- Session 2: Stream 5 (Seed Data)
-
----
-
-## Completion Criteria for Parallel Streams
-
-**Stream 1 Complete When**:
-- [ ] Flask app runs without errors
-- [ ] Database connection works
-- [ ] Dockerfile builds successfully
-- [ ] Add-on installs in HA (even if non-functional)
-
-**Stream 2 Complete When**:
-- [ ] All 7 models defined with relationships
-- [ ] Initial migration created
-- [ ] Can create/query all models in Python shell
-- [ ] Seed script creates sample data
-
-**Stream 3 Complete When**:
-- [ ] Integration loads in HA without errors
-- [ ] Config flow appears in HA UI
-- [ ] Manifest is valid
-- [ ] Directory structure matches HA requirements
-
-**Stream 4 Complete When**:
-- [ ] Pre-commit hooks run successfully
-- [ ] Test framework executes (even with no tests)
-- [ ] Documentation structure exists with placeholders
-- [ ] Linting passes on existing code
-
-**Stream 5 Complete When**:
-- [ ] Seed script creates full dataset
-- [ ] Script is idempotent (no errors on re-run)
-- [ ] Data includes all edge cases (claimed, approved, rejected chores)
-
----
-
-## Quick Start Commands
-
-Once parallel work is complete, you'll be able to:
-
-**Start Add-on Development**:
 ```bash
 cd addon
-python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
-pip install -r requirements.txt
+
+# Initialize Flask-Migrate
+export FLASK_APP=app.py
+export FLASK_ENV=development
+flask db init
+
+# Create initial migration from models
+flask db migrate -m "Initial database schema"
+
+# Apply migration
 flask db upgrade
-python seed.py
-flask run
+
+# Verify database was created
+ls -la data/
 ```
 
-**Start Integration Development**:
+### 3. Seed Test Data
+
 ```bash
-# Copy to HA config directory
-cp -r custom_components/chorecontrol /path/to/ha/config/custom_components/
-# Restart HA
-# Configure integration via UI
+# Run seed script to populate database with test data
+python seed.py --reset --verbose
+
+# This creates:
+# - 2 parent users
+# - 3 kid users (Alex, Bailey, Charlie)
+# - ~15 chores (various recurrence patterns)
+# - ~20 chore instances (assigned, claimed, approved, rejected)
+# - 5-7 rewards
+# - Points history
 ```
 
-**Run Tests**:
+### 4. Test Flask Application
+
 ```bash
-pytest
+# Start Flask development server
+python app.py
+
+# In another terminal, test endpoints:
+curl http://localhost:8099/health
+curl http://localhost:8099/
+curl -H "X-Ingress-User: test-parent-1" http://localhost:8099/api/user
+```
+
+**Expected results:**
+- `/health` returns `{"status": "healthy", "database": "healthy"}`
+- `/` returns app info with version 0.1.0
+- `/api/user` returns authenticated user info
+
+### 5. Run Tests
+
+```bash
+# Run linting
 pre-commit run --all-files
+
+# Run tests (will mostly be skeletons for now)
+pytest tests/ -v
+
+# Check test coverage
+pytest --cov=addon tests/
+```
+
+### 6. Test Docker Build (Optional)
+
+```bash
+cd addon
+docker build -t chorecontrol-test .
+
+# If build succeeds, the container is ready for HA
 ```
 
 ---
 
-## After Parallel Work: Integration Point
+## 🎯 What to Look For / Test
 
-Once all 5 streams are complete, you'll have:
+### Database Tests
+- [ ] SQLite database created in `addon/data/chorecontrol.db`
+- [ ] All 7 tables exist (users, chores, chore_assignments, chore_instances, rewards, reward_claims, points_history)
+- [ ] Seed data populated (query with `sqlite3 data/chorecontrol.db "SELECT * FROM users;"`)
+- [ ] Foreign keys working (no constraint violations)
 
-1. ✅ Working Flask app structure with database
-2. ✅ Complete data models with migrations
-3. ✅ Integration skeleton that loads in HA
-4. ✅ Linting and testing infrastructure
-5. ✅ Seed data for development
+### Application Tests
+- [ ] Flask app starts without errors
+- [ ] Health endpoint accessible
+- [ ] Database connectivity working
+- [ ] HA user authentication (via X-Ingress-User header) working
 
-**Next step**: Begin sequential work on API endpoints, business logic, and UI.
+### Code Quality Tests
+- [ ] Pre-commit hooks run successfully
+- [ ] Ruff linting passes
+- [ ] Black formatting passes
+- [ ] Mypy type checking passes (with --ignore-missing-imports)
+
+### Issues to Report
+- Any import errors
+- Database schema issues
+- Migration failures
+- Docker build failures
+- Linting errors you can't resolve
 
 ---
 
-## Questions?
+## 🚀 Next Phase: API & Business Logic Implementation
 
-- Which streams do you want to tackle first?
-- How many parallel sessions can you run?
-- Any specific stream you want to start with?
+Once you've verified the local setup works, we'll proceed with:
 
-**Recommendation**: Start with Streams 1 & 2 together (they're the most critical foundation).
+### Week 1: Core API Endpoints
+1. **User endpoints** (CRUD operations)
+   - GET /api/users
+   - POST /api/users
+   - GET /api/users/{id}
+   - PUT /api/users/{id}
+
+2. **Chore endpoints** (CRUD operations)
+   - GET /api/chores
+   - POST /api/chores
+   - GET /api/chores/{id}
+   - PUT /api/chores/{id}
+   - DELETE /api/chores/{id} (soft delete)
+
+3. **Chore instance endpoints** (workflow)
+   - GET /api/instances
+   - POST /api/instances/{id}/claim
+   - POST /api/instances/{id}/approve
+   - POST /api/instances/{id}/reject
+
+4. **Reward endpoints**
+   - GET /api/rewards
+   - POST /api/rewards/{id}/claim
+
+5. **Points endpoint**
+   - POST /api/points/adjust
+
+### Week 2: Business Logic
+- Chore scheduler (generate instances from recurrence patterns)
+- Points calculation and awarding
+- Reward claim validation
+- Background task runner (APScheduler)
+- Event notifications to HA
+
+### Week 3: Integration Implementation
+- REST API client for integration
+- Data coordinator
+- Sensor platform (points, counts)
+- Button platform (claim buttons)
+- Service implementations
+
+### Week 4: Web UI (Basic)
+- Base template and navigation
+- Chores list and management
+- Kids management
+- Parent dashboard (pending approvals)
+
+---
+
+## 📊 Current Stats
+
+**Lines of Code Written:**
+- Models: ~520 lines
+- Schemas: ~480 lines
+- Seed scripts: ~350 lines
+- Integration: ~600 lines
+- Tests/Config: ~300 lines
+- **Total: ~2,250 lines**
+
+**Files Created:**
+- 14 Python files
+- 4 YAML/JSON configs
+- 7 documentation files
+- 5 test files
+
+**Dependencies:**
+- 8 production packages
+- 7 development packages
+
+---
+
+## 💡 Questions?
+
+If you encounter any issues during local setup:
+1. Check Python version (`python --version` should be 3.11+)
+2. Verify virtual environment is activated
+3. Check migrations directory exists (`addon/migrations/`)
+4. Review error messages in Flask logs
+5. Report issues with full error traces
+
+**Ready to start API implementation when you are!**
 
 ---
 
 **Last Updated**: 2025-11-11
+**Phase**: Foundation Complete → API Implementation Next

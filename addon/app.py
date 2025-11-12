@@ -4,12 +4,13 @@ import os
 from pathlib import Path
 from functools import wraps
 from flask import Flask, jsonify, request, g
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy import text
 
-# Initialize extensions
-db = SQLAlchemy()
+# Import db from models (models.py creates the SQLAlchemy instance)
+from models import db
+
+# Initialize Flask-Migrate
 migrate = Migrate()
 
 

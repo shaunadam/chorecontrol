@@ -186,7 +186,7 @@ class Chore(db.Model):
             return None
 
         # Determine next due date based on recurrence pattern
-        from .schemas import calculate_next_due_date
+        from schemas import calculate_next_due_date
         next_date = calculate_next_due_date(self.recurrence_pattern, after_date)
 
         if next_date is None:
