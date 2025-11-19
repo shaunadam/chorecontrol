@@ -221,8 +221,10 @@ __marimo__/
 *.sqlite
 *.sqlite3
 
-# Flask migrations (keep the migrations folder structure but ignore generated content)
-# migrations/versions/*.py will be tracked - this is intentional
+# Flask migrations - ignore version files (auto-generated)
+# Keep the migration infrastructure files (alembic.ini, env.py, etc.) but ignore generated versions
+**/migrations/versions/*.py
+**/migrations/versions/__pycache__/
 
 # Flask session files
 flask_session/

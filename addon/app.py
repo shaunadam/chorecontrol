@@ -2,13 +2,13 @@
 
 import os
 from pathlib import Path
-from functools import wraps
 from flask import Flask, jsonify, request, g
 from flask_migrate import Migrate
 from sqlalchemy import text
 
 # Import db from models (models.py creates the SQLAlchemy instance)
-from .models import db
+from models import db
+from auth import ha_auth_required
 
 # Initialize Flask-Migrate
 migrate = Migrate()
@@ -27,12 +27,13 @@ def create_app(config_name=None):
         else:
             config_name = os.environ.get('FLASK_ENV', 'development')
 
-    from .config import config
+    from config import config
     app.config.from_object(config[config_name])
 
-    # Ensure data directory exists
-    data_dir = Path(app.config['DATA_DIR'])
-    data_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure data directory exists (skip for in-memory database)
+    if app.config['SQLALCHEMY_DATABASE_URI'] != "sqlite:///:memory:":
+        data_dir = Path(app.config['DATA_DIR'])
+        data_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize extensions with app
     db.init_app(app)
@@ -62,21 +63,20 @@ def register_middleware(app):
             g.ha_user = request.headers.get('X-Ingress-User', 'dev-user')
 
 
-def ha_auth_required(f):
-    """Decorator to ensure user is authenticated via HA ingress."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not hasattr(g, 'ha_user') or g.ha_user is None:
-            return jsonify({
-                'error': 'Unauthorized',
-                'message': 'Home Assistant authentication required'
-            }), 401
-        return f(*args, **kwargs)
-    return decorated_function
-
-
 def register_routes(app):
     """Register all application routes."""
+
+    # Register blueprints
+    from routes import users_bp, chores_bp
+    from routes.instances import instances_bp
+    from routes.rewards import rewards_bp
+    from routes.points import points_bp
+
+    app.register_blueprint(users_bp)
+    app.register_blueprint(chores_bp)
+    app.register_blueprint(instances_bp)
+    app.register_blueprint(rewards_bp)
+    app.register_blueprint(points_bp)
 
     @app.route('/')
     def index():
@@ -108,30 +108,28 @@ def register_routes(app):
     @ha_auth_required
     def current_user():
         """Get current authenticated user information."""
-        return jsonify({
-            'ha_user': g.ha_user,
-            'message': 'User authentication working! Models will be added in Stream 2.'
-        })
+        from models import User
+        user = User.query.filter_by(ha_user_id=g.ha_user).first()
 
-    # Placeholder for future API routes
-    # These will be implemented after models are created in Stream 2
-    @app.route('/api/chores')
-    @ha_auth_required
-    def list_chores():
-        """List all chores - placeholder."""
-        return jsonify({
-            'message': 'Chores endpoint - to be implemented with models',
-            'chores': []
-        })
+        if user:
+            return jsonify({
+                'ha_user': g.ha_user,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'role': user.role,
+                    'points': user.points if user.role == 'kid' else None
+                },
+                'message': 'User authentication working!'
+            })
+        else:
+            return jsonify({
+                'ha_user': g.ha_user,
+                'user': None,
+                'message': 'Authenticated but no user record found. Create a user via POST /api/users'
+            })
 
-    @app.route('/api/rewards')
-    @ha_auth_required
-    def list_rewards():
-        """List all rewards - placeholder."""
-        return jsonify({
-            'message': 'Rewards endpoint - to be implemented with models',
-            'rewards': []
-        })
+    # Note: Rewards and Points endpoints are now handled by blueprints
 
 
 # Create application instance for development server

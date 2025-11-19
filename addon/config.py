@@ -31,7 +31,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    DATA_DIR = Path('./data')
+    DATA_DIR = Path(__file__).parent / 'data'
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATA_DIR / 'chorecontrol.db'}"
 
 

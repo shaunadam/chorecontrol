@@ -35,18 +35,18 @@ ChoreControl consists of two main components:
 
 ## Project Status
 
-**Current Phase**: Foundation Complete - API Implementation Next
+**Current Phase**: Flask App Setup → API Implementation
 
-Foundation work complete (Streams 1-5):
-- ✅ Add-on project structure with Flask, SQLAlchemy, and Docker
-- ✅ Complete data models with 7 tables and relationships
-- ✅ HA custom integration structure with config flow
-- ✅ Development tooling (pre-commit, pytest, ruff, mypy)
-- ✅ Seed data scripts for testing
+**Completed:**
+- ✅ Flask app structure, config management
+- ✅ Database models (7 tables, relationships)
+- ✅ HA integration framework
+- ✅ Development tooling
+- ✅ Seed data generator
 
-**Next steps**: Implement REST API endpoints, business logic, and web UI.
+**Next:** Initialize database, implement REST API (28 endpoints), business logic
 
-See the documentation below for detailed plans:
+See [NEXT_STEPS.md](NEXT_STEPS.md) for current tasks.
 
 - **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Comprehensive project plan with architecture, data model, and roadmap
 - **[BACKLOG.md](BACKLOG.md)** - Task backlog organized by phase
