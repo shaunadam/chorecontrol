@@ -586,3 +586,23 @@ class TestAuthenticationMiddleware:
             headers={'X-Ingress-User': parent_user.ha_user_id}
         )
         assert response.status_code == 201
+
+
+# Phase 1 Feature Tests: System User Role
+
+
+def test_system_user_role_allowed(db_session):
+    """Test that a user with role='system' can be created."""
+    system_user = User(
+        ha_user_id='test_system',
+        username='System User',
+        role='system',
+        points=0
+    )
+    db_session.add(system_user)
+    db_session.commit()
+
+    # Verify it was saved correctly
+    saved_user = User.query.filter_by(ha_user_id='test_system').first()
+    assert saved_user is not None
+    assert saved_user.role == 'system'

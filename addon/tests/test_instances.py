@@ -756,3 +756,465 @@ def test_points_history_tracking(client, parent_headers, kid_headers, parent_use
     assert history_entries[0].points_delta == 5
     assert history_entries[0].created_by == parent_user.id
     assert 'Take out trash' in history_entries[0].reason
+
+
+# Phase 1 Feature Tests: Late Claims and Missed Status
+
+
+def test_missed_status_allowed(db_session, sample_chore, parent_user, kid_user):
+    """Test that 'missed' is a valid status in the database."""
+    # Create instance with missed status
+    instance = ChoreInstance(
+        chore_id=sample_chore.id,
+        due_date=date.today() - timedelta(days=2),
+        assigned_to=kid_user.id,
+        status='missed'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Verify it was saved correctly
+    saved_instance = ChoreInstance.query.get(instance.id)
+    assert saved_instance.status == 'missed'
+
+
+def test_can_claim_checks_assigned_to_field(db_session, parent_user):
+    """Test that can_claim() validates assigned_to for individual chores."""
+    from models import Chore, User
+
+    # Create two kids
+    kid1 = User(ha_user_id='test_kid1', username='Kid 1', role='kid')
+    kid2 = User(ha_user_id='test_kid2', username='Kid 2', role='kid')
+    db_session.add_all([kid1, kid2])
+    db_session.flush()
+
+    chore = Chore(
+        name='Individual Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create assignment for kid1
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid1.id)
+    db_session.add(assignment)
+
+    # Create instance assigned to kid1
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid1.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Kid1 should be able to claim
+    assert instance.can_claim(kid1.id) is True
+
+    # Kid2 should NOT be able to claim
+    assert instance.can_claim(kid2.id) is False
+
+
+def test_can_claim_prevents_late_claim_when_not_allowed(db_session, parent_user, kid_user):
+    """Test that can_claim() prevents late claims when allow_late_claims=False."""
+    from models import Chore
+
+    chore = Chore(
+        name='Strict Deadline Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        allow_late_claims=False,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create assignment
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Create instance due yesterday
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today() - timedelta(days=1),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Should not be able to claim
+    assert instance.can_claim(kid_user.id) is False
+
+
+def test_can_claim_allows_late_claim_when_allowed(db_session, parent_user, kid_user):
+    """Test that can_claim() allows late claims when allow_late_claims=True."""
+    from models import Chore
+
+    chore = Chore(
+        name='Flexible Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        allow_late_claims=True,
+        late_points=5,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create assignment
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Create instance due yesterday
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today() - timedelta(days=1),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Should be able to claim
+    assert instance.can_claim(kid_user.id) is True
+
+
+def test_award_points_uses_late_points_when_claimed_late(db_session, parent_user, kid_user):
+    """Test that award_points() uses late_points when claimed_late=True."""
+    from models import Chore
+
+    chore = Chore(
+        name='Chore with Late Points',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        allow_late_claims=True,
+        late_points=5,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create instance that was claimed late
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today() - timedelta(days=1),
+        assigned_to=kid_user.id,
+        status='claimed',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow(),
+        claimed_late=True
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Award points
+    instance.award_points(parent_user.id)
+
+    # Should award late_points, not regular points
+    assert instance.points_awarded == 5
+
+
+def test_award_points_uses_regular_points_when_not_late(db_session, parent_user, kid_user):
+    """Test that award_points() uses regular points when claimed_late=False."""
+    from models import Chore
+
+    chore = Chore(
+        name='Chore with Late Points',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        allow_late_claims=True,
+        late_points=5,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create instance that was claimed on time
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='claimed',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow(),
+        claimed_late=False
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Award points
+    instance.award_points(parent_user.id)
+
+    # Should award regular points
+    assert instance.points_awarded == 10
+
+
+def test_award_points_respects_parent_override(db_session, parent_user, kid_user):
+    """Test that award_points() respects parent override even for late claims."""
+    from models import Chore
+
+    chore = Chore(
+        name='Chore with Late Points',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        allow_late_claims=True,
+        late_points=5,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create instance that was claimed late
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today() - timedelta(days=1),
+        assigned_to=kid_user.id,
+        status='claimed',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow(),
+        claimed_late=True
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Award points with parent override
+    instance.award_points(parent_user.id, points=8)
+
+    # Should award override points, not late_points
+    assert instance.points_awarded == 8
+
+
+# Phase 2 Tests: Unclaim and Reassign Endpoints
+
+def test_unclaim_instance_success(client, db_session, kid_user, parent_user):
+    """Test successfully unclaiming a chore."""
+    from models import Chore, ChoreInstance, ChoreAssignment
+
+    # Create chore and instance
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='claimed',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow()
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Unclaim
+    response = client.post(
+        f'/api/instances/{instance.id}/unclaim',
+        json={'user_id': kid_user.id},
+        headers={'X-Ingress-User': 'kid1'}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['data']['status'] == 'assigned'
+    assert data['data']['claimed_by'] is None
+    assert data['data']['claimed_late'] is False
+
+
+def test_unclaim_instance_not_your_claim(client, db_session, parent_user):
+    """Test that users can't unclaim others' chores."""
+    from models import Chore, ChoreInstance, User
+
+    kid1 = User(ha_user_id='unclaim_kid1', username='Kid 1', role='kid')
+    kid2 = User(ha_user_id='unclaim_kid2', username='Kid 2', role='kid')
+    db_session.add_all([kid1, kid2])
+    db_session.flush()
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid1.id,
+        status='claimed',
+        claimed_by=kid1.id,
+        claimed_at=datetime.utcnow()
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Kid2 tries to unclaim kid1's chore
+    response = client.post(
+        f'/api/instances/{instance.id}/unclaim',
+        json={'user_id': kid2.id},
+        headers={'X-Ingress-User': 'unclaim_kid2'}
+    )
+
+    assert response.status_code == 403
+    assert 'Not your claim' in response.get_json()['message']
+
+
+def test_reassign_instance_success(client, db_session, parent_user):
+    """Test successfully reassigning a chore."""
+    from models import Chore, ChoreInstance, ChoreAssignment, User
+
+    kid1 = User(ha_user_id='reassign_kid1', username='Kid 1', role='kid')
+    kid2 = User(ha_user_id='reassign_kid2', username='Kid 2', role='kid')
+    db_session.add_all([kid1, kid2])
+    db_session.flush()
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Assign to kid1
+    assignment1 = ChoreAssignment(chore_id=chore.id, user_id=kid1.id)
+    db_session.add(assignment1)
+
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid1.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Reassign to kid2
+    response = client.post(
+        f'/api/instances/{instance.id}/reassign',
+        json={'new_user_id': kid2.id, 'reassigned_by': parent_user.id},
+        headers={'X-Ingress-User': 'parent1'}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['data']['assigned_to'] == kid2.id
+
+    # Verify ChoreAssignment created
+    assignment2 = ChoreAssignment.query.filter_by(
+        chore_id=chore.id,
+        user_id=kid2.id
+    ).first()
+    assert assignment2 is not None
+
+
+def test_reassign_instance_only_parents(client, db_session, parent_user):
+    """Test that only parents can reassign chores."""
+    from models import Chore, ChoreInstance, User
+
+    kid1 = User(ha_user_id='reassign_only_kid1', username='Kid 1', role='kid')
+    kid2 = User(ha_user_id='reassign_only_kid2', username='Kid 2', role='kid')
+    db_session.add_all([kid1, kid2])
+    db_session.flush()
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid1.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Kid tries to reassign
+    response = client.post(
+        f'/api/instances/{instance.id}/reassign',
+        json={'new_user_id': kid2.id, 'reassigned_by': kid1.id},
+        headers={'X-Ingress-User': 'reassign_only_kid1'}
+    )
+
+    assert response.status_code == 403
+    assert 'Only parents' in response.get_json()['message']
+
+
+def test_reassign_instance_only_individual_chores(client, db_session, parent_user):
+    """Test that only individual chores can be reassigned."""
+    from models import Chore, ChoreInstance, User
+
+    kid1 = User(ha_user_id='reassign_ind_kid1', username='Kid 1', role='kid')
+    db_session.add(kid1)
+    db_session.flush()
+
+    # Create shared chore
+    chore = Chore(
+        name='Shared Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='shared',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=None,  # Shared chore
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Try to reassign
+    response = client.post(
+        f'/api/instances/{instance.id}/reassign',
+        json={'new_user_id': kid1.id, 'reassigned_by': parent_user.id},
+        headers={'X-Ingress-User': 'parent1'}
+    )
+
+    assert response.status_code == 400
+    assert 'individual chores' in response.get_json()['message']

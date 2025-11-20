@@ -14,16 +14,18 @@ Future enhancements and Phase 2+ features (out of scope for current MVP)
 
 ### Workflow Enhancements
 - [ ] **WORK-1**: Photo proof of completion (upload image)
-- [ ] **WORK-2**: Auto-approval after X hours
-- [ ] **WORK-3**: Partial completion (kid worked on it but didn't finish)
-- [ ] **WORK-4**: Chore templates/presets (common chores library)
+- [ ] **WORK-2**: Partial completion (kid worked on it but didn't finish)
+- [ ] **WORK-3**: Chore templates/presets (common chores library)
+- [ ] **WORK-4**: Cleanup old instances (archive/delete very old data)
+- [ ] **WORK-5**: Early claim allowance (claim chores X days before due date)
 
 ### Points & Rewards
 - [ ] **POINTS-1**: Bonus points for streaks (7 days in a row)
-- [ ] **POINTS-2**: Allowance integration (weekly point grants)
-- [ ] **POINTS-3**: Point expiration (use it or lose it)
-- [ ] **POINTS-4**: Shared rewards (multiple kids pool points)
-- [ ] **POINTS-5**: Penalty system (negative points for behavior)
+- [ ] **POINTS-2**: Point multipliers (weekend/holiday bonuses)
+- [ ] **POINTS-3**: Allowance integration (weekly point grants)
+- [ ] **POINTS-4**: Point expiration (use it or lose it)
+- [ ] **POINTS-5**: Shared rewards (multiple kids pool points)
+- [ ] **POINTS-6**: Penalty system (negative points for behavior)
 
 ### Achievements & Gamification
 - [ ] **ACHIEVE-1**: Milestone tracking (100 chores completed)
@@ -36,10 +38,11 @@ Future enhancements and Phase 2+ features (out of scope for current MVP)
 ## Phase 3: Advanced Features
 
 ### Calendar & UI
-- [ ] **CAL-UI-1**: Custom Lovelace card with calendar view
-- [ ] **CAL-UI-2**: Drag-and-drop chore scheduling
-- [ ] **CAL-UI-3**: Color-coding by kid or chore type
-- [ ] **CAL-UI-4**: Integration with Google Calendar, Apple Calendar
+- [ ] **CAL-UI-1**: ICS calendar feed (GET /api/calendar/{user_id}.ics)
+- [ ] **CAL-UI-2**: Custom Lovelace card with calendar view
+- [ ] **CAL-UI-3**: Drag-and-drop chore scheduling
+- [ ] **CAL-UI-4**: Color-coding by kid or chore type
+- [ ] **CAL-UI-5**: Integration with Google Calendar, Apple Calendar
 
 ### Analytics
 - [ ] **ANALYTICS-1**: Completion rate graphs (per kid, per chore)
@@ -90,4 +93,4 @@ Track bugs here as they're discovered during development.
 
 ---
 
-**Last Updated**: 2025-11-11
+**Last Updated**: 2025-11-18

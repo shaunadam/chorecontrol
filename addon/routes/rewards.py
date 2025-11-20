@@ -97,6 +97,7 @@ def create_reward():
         cooldown_days=data.get('cooldown_days'),
         max_claims_total=data.get('max_claims_total'),
         max_claims_per_kid=data.get('max_claims_per_kid'),
+        requires_approval=data.get('requires_approval', False),
         is_active=data.get('is_active', True)
     )
 
@@ -235,6 +236,8 @@ def update_reward(reward_id):
         reward.max_claims_total = data['max_claims_total']
     if 'max_claims_per_kid' in data:
         reward.max_claims_per_kid = data['max_claims_per_kid']
+    if 'requires_approval' in data:
+        reward.requires_approval = data['requires_approval']
     if 'is_active' in data:
         reward.is_active = data['is_active']
 
@@ -326,17 +329,22 @@ def claim_reward(reward_id):
         }), 400
 
     # Create reward claim
+    from datetime import timedelta
     claim = RewardClaim(
         reward_id=reward.id,
         user_id=user.id,
         points_spent=reward.points_cost,
-        status='approved'  # Auto-approve reward claims
+        status='pending' if reward.requires_approval else 'approved'
     )
+
+    # Set expiration for pending claims (7 days)
+    if reward.requires_approval:
+        claim.expires_at = datetime.utcnow() + timedelta(days=7)
 
     db.session.add(claim)
     db.session.flush()  # Flush to get claim.id before using it
 
-    # Deduct points from user
+    # Deduct points from user (optimistic)
     old_balance = user.points
     user.adjust_points(
         delta=-reward.points_cost,
@@ -346,6 +354,12 @@ def claim_reward(reward_id):
     )
 
     db.session.commit()
+
+    message = 'Reward claimed successfully'
+    if reward.requires_approval:
+        message = f'Reward claim pending approval. Will expire in 7 days. {reward.points_cost} points reserved.'
+    else:
+        message = f'Reward claimed! {reward.points_cost} points spent.'
 
     return jsonify({
         'data': {
@@ -357,7 +371,165 @@ def claim_reward(reward_id):
             'old_balance': old_balance,
             'new_balance': user.points,
             'claimed_at': claim.claimed_at.isoformat(),
-            'status': claim.status
+            'status': claim.status,
+            'expires_at': claim.expires_at.isoformat() if claim.expires_at else None
         },
-        'message': f'Reward claimed! {reward.points_cost} points spent.'
-    })
+        'message': message
+    }), 201
+
+
+@rewards_bp.route('/claims/<int:claim_id>/unclaim', methods=['POST'])
+@ha_auth_required
+def unclaim_reward(claim_id):
+    """Unclaim a pending reward and refund points."""
+    claim = RewardClaim.query.get(claim_id)
+
+    if not claim:
+        return jsonify({
+            'error': 'NotFound',
+            'message': f'Reward claim {claim_id} not found'
+        }), 404
+
+    user = get_current_user()
+    if not user:
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'User not found'
+        }), 401
+
+    # Validate ownership
+    if claim.user_id != user.id:
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Not your claim'
+        }), 403
+
+    if claim.status != 'pending':
+        return jsonify({
+            'error': 'BadRequest',
+            'message': 'Can only unclaim pending rewards'
+        }), 400
+
+    # Refund points
+    reward = claim.reward
+    user.adjust_points(
+        delta=claim.points_spent,
+        reason=f"Unclaimed reward: {reward.name}",
+        created_by_id=user.id,
+        reward_claim_id=claim.id
+    )
+
+    # Delete claim
+    db.session.delete(claim)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Reward unclaimed, points refunded',
+        'points_refunded': claim.points_spent,
+        'new_balance': user.points
+    }), 200
+
+
+@rewards_bp.route('/claims/<int:claim_id>/approve', methods=['POST'])
+@ha_auth_required
+def approve_reward_claim(claim_id):
+    """Approve a pending reward claim (parents only)."""
+    claim = RewardClaim.query.get(claim_id)
+
+    if not claim:
+        return jsonify({
+            'error': 'NotFound',
+            'message': f'Reward claim {claim_id} not found'
+        }), 404
+
+    user = get_current_user()
+    if not user or user.role != 'parent':
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Only parents can approve rewards'
+        }), 403
+
+    if claim.status != 'pending':
+        return jsonify({
+            'error': 'BadRequest',
+            'message': 'Claim is not pending'
+        }), 400
+
+    # Approve
+    claim.status = 'approved'
+    claim.approved_by = user.id
+    claim.approved_at = datetime.utcnow()
+    claim.expires_at = None
+
+    db.session.commit()
+
+    return jsonify({
+        'data': {
+            'id': claim.id,
+            'reward_id': claim.reward_id,
+            'reward_name': claim.reward.name,
+            'user_id': claim.user_id,
+            'status': claim.status,
+            'approved_by': claim.approved_by,
+            'approved_at': claim.approved_at.isoformat()
+        },
+        'message': 'Reward claim approved'
+    }), 200
+
+
+@rewards_bp.route('/claims/<int:claim_id>/reject', methods=['POST'])
+@ha_auth_required
+def reject_reward_claim(claim_id):
+    """Reject a pending reward claim and refund points (parents only)."""
+    claim = RewardClaim.query.get(claim_id)
+
+    if not claim:
+        return jsonify({
+            'error': 'NotFound',
+            'message': f'Reward claim {claim_id} not found'
+        }), 404
+
+    user = get_current_user()
+    if not user or user.role != 'parent':
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Only parents can reject rewards'
+        }), 403
+
+    if claim.status != 'pending':
+        return jsonify({
+            'error': 'BadRequest',
+            'message': 'Claim is not pending'
+        }), 400
+
+    # Reject and refund
+    claim.status = 'rejected'
+    claim.approved_by = user.id
+    claim.approved_at = datetime.utcnow()
+    claim.expires_at = None
+
+    # Refund points
+    claimer = User.query.get(claim.user_id)
+    reward = claim.reward
+    claimer.adjust_points(
+        delta=claim.points_spent,
+        reason=f"Reward claim rejected: {reward.name}",
+        created_by_id=user.id,
+        reward_claim_id=claim.id
+    )
+
+    db.session.commit()
+
+    return jsonify({
+        'data': {
+            'id': claim.id,
+            'reward_id': claim.reward_id,
+            'reward_name': reward.name,
+            'user_id': claim.user_id,
+            'status': claim.status,
+            'approved_by': claim.approved_by,
+            'approved_at': claim.approved_at.isoformat(),
+            'points_refunded': claim.points_spent
+        },
+        'message': 'Reward claim rejected, points refunded'
+    }), 200

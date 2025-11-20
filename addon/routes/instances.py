@@ -39,8 +39,10 @@ def serialize_instance(instance: ChoreInstance, include_details: bool = False) -
         'chore_id': instance.chore_id,
         'due_date': instance.due_date.isoformat() if instance.due_date else None,
         'status': instance.status,
+        'assigned_to': instance.assigned_to,
         'claimed_by': instance.claimed_by,
         'claimed_at': instance.claimed_at.isoformat() if instance.claimed_at else None,
+        'claimed_late': instance.claimed_late if hasattr(instance, 'claimed_late') else False,
         'approved_by': instance.approved_by,
         'approved_at': instance.approved_at.isoformat() if instance.approved_at else None,
         'rejected_by': instance.rejected_by,
@@ -254,6 +256,12 @@ def claim_instance(instance_id: int):
     instance.claimed_by = user_id
     instance.claimed_at = datetime.utcnow()
 
+    # Check if late (claimed after due_date)
+    if instance.due_date and datetime.utcnow().date() > instance.due_date:
+        instance.claimed_late = True
+    else:
+        instance.claimed_late = False
+
     try:
         db.session.commit()
     except Exception as e:
@@ -442,4 +450,181 @@ def reject_instance(instance_id: int):
     return jsonify({
         'data': serialize_instance(instance, include_details=True),
         'message': 'Chore rejected. Status set back to "assigned" to allow re-claim.'
+    }), 200
+
+
+@instances_bp.route('/<int:instance_id>/unclaim', methods=['POST'])
+@ha_auth_required
+def unclaim_instance(instance_id: int):
+    """Unclaim a chore instance (before approval).
+
+    State transition: claimed → assigned
+
+    Request body:
+        {
+            "user_id": int (optional, uses current authenticated user if not provided)
+        }
+
+    Args:
+        instance_id: ID of the chore instance to unclaim
+
+    Returns:
+        JSON: {data: updated_instance, message: str}
+    """
+    instance = ChoreInstance.query.get(instance_id)
+
+    if not instance:
+        return jsonify({
+            'error': 'Not Found',
+            'message': f'Chore instance {instance_id} not found'
+        }), 404
+
+    # Get user_id from request body or use current authenticated user
+    data = request.get_json() or {}
+    user_id = data.get('user_id')
+
+    if not user_id:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'Could not identify current user'
+            }), 401
+        user_id = current_user.id
+
+    # Validate ownership
+    if instance.claimed_by != user_id:
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Not your claim'
+        }), 403
+
+    if instance.status != 'claimed':
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Can only unclaim pending instances'
+        }), 400
+
+    # Unclaim
+    instance.status = 'assigned'
+    instance.claimed_by = None
+    instance.claimed_at = None
+    instance.claimed_late = False
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to unclaim chore',
+            'details': str(e)
+        }), 500
+
+    return jsonify({
+        'data': serialize_instance(instance, include_details=True),
+        'message': 'Chore unclaimed successfully'
+    }), 200
+
+
+@instances_bp.route('/<int:instance_id>/reassign', methods=['POST'])
+@ha_auth_required
+def reassign_instance(instance_id: int):
+    """Reassign a chore instance to a different kid (parents only).
+
+    Request body:
+        {
+            "new_user_id": int (required),
+            "reassigned_by": int (optional, uses current authenticated user if not provided)
+        }
+
+    Args:
+        instance_id: ID of the chore instance to reassign
+
+    Returns:
+        JSON: {data: updated_instance, message: str}
+    """
+    instance = ChoreInstance.query.get(instance_id)
+
+    if not instance:
+        return jsonify({
+            'error': 'Not Found',
+            'message': f'Chore instance {instance_id} not found'
+        }), 404
+
+    data = request.get_json() or {}
+    new_user_id = data.get('new_user_id')
+    reassigned_by = data.get('reassigned_by')
+
+    if not new_user_id:
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'new_user_id is required'
+        }), 400
+
+    if not reassigned_by:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'Could not identify current user'
+            }), 401
+        reassigned_by = current_user.id
+
+    # Validate reassigner is a parent
+    reassigner = User.query.get(reassigned_by)
+    if not reassigner or reassigner.role != 'parent':
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Only parents can reassign chores'
+        }), 403
+
+    if instance.status != 'assigned':
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Can only reassign unclaimed instances'
+        }), 400
+
+    if instance.chore.assignment_type != 'individual':
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Can only reassign individual chores'
+        }), 400
+
+    new_user = User.query.get(new_user_id)
+    if not new_user or new_user.role != 'kid':
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'New assignee must be a kid'
+        }), 400
+
+    # Reassign
+    instance.assigned_to = new_user_id
+
+    # Ensure ChoreAssignment exists
+    assignment = ChoreAssignment.query.filter_by(
+        chore_id=instance.chore_id,
+        user_id=new_user_id
+    ).first()
+
+    if not assignment:
+        assignment = ChoreAssignment(
+            chore_id=instance.chore_id,
+            user_id=new_user_id
+        )
+        db.session.add(assignment)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to reassign chore',
+            'details': str(e)
+        }), 500
+
+    return jsonify({
+        'data': serialize_instance(instance, include_details=True),
+        'message': f'Chore reassigned to {new_user.username}'
     }), 200

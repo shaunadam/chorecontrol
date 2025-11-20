@@ -38,7 +38,7 @@ class User(db.Model):
 
     # Constraints
     __table_args__ = (
-        CheckConstraint("role IN ('parent', 'kid')", name='check_user_role'),
+        CheckConstraint("role IN ('parent', 'kid', 'system')", name='check_user_role'),
     )
 
     def __repr__(self):
@@ -115,6 +115,8 @@ class Chore(db.Model):
     # Workflow
     requires_approval = db.Column(db.Boolean, default=True, nullable=False)
     auto_approve_after_hours = db.Column(db.Integer)  # NULL means no auto-approve
+    allow_late_claims = db.Column(db.Boolean, default=False, nullable=False)
+    late_points = db.Column(db.Integer, nullable=True)
 
     # Metadata
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -236,7 +238,8 @@ class ChoreInstance(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     chore_id = db.Column(db.Integer, db.ForeignKey('chores.id'), nullable=False)
-    due_date = db.Column(db.Date, nullable=False)
+    due_date = db.Column(db.Date, nullable=True)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # Status tracking
     status = db.Column(db.String(20), default='assigned', nullable=False)
@@ -244,6 +247,7 @@ class ChoreInstance(db.Model):
     # Who did what when
     claimed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     claimed_at = db.Column(db.DateTime)
+    claimed_late = db.Column(db.Boolean, default=False, nullable=False)
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_at = db.Column(db.DateTime)
     rejected_by = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -258,6 +262,7 @@ class ChoreInstance(db.Model):
 
     # Relationships
     chore = relationship('Chore', back_populates='instances')
+    assignee = relationship('User', foreign_keys=[assigned_to])
     claimer = relationship('User', foreign_keys=[claimed_by], back_populates='claimed_instances')
     approver = relationship('User', foreign_keys=[approved_by], back_populates='approved_instances')
     rejecter = relationship('User', foreign_keys=[rejected_by], back_populates='rejected_instances')
@@ -265,10 +270,11 @@ class ChoreInstance(db.Model):
 
     # Constraints
     __table_args__ = (
-        CheckConstraint("status IN ('assigned', 'claimed', 'approved', 'rejected')",
+        CheckConstraint("status IN ('assigned', 'claimed', 'approved', 'rejected', 'missed')",
                        name='check_instance_status'),
         Index('idx_chore_instances_status', 'status'),
         Index('idx_chore_instances_due_date', 'due_date'),
+        Index('idx_chore_instances_assigned_to', 'assigned_to'),
     )
 
     def __repr__(self):
@@ -284,10 +290,28 @@ class ChoreInstance(db.Model):
         Returns:
             bool: True if user can claim this instance
         """
+        # Must be in 'assigned' status
         if self.status != 'assigned':
             return False
 
-        # Check if user is assigned to this chore
+        # Check if claimable based on due_date (Option B: Strict)
+        if self.due_date is not None:
+            today = date.today()
+
+            # Cannot claim future chores
+            if self.due_date > today:
+                return False
+
+            # If past due and late claims not allowed, should be 'missed'
+            if self.due_date < today and not self.chore.allow_late_claims:
+                return False
+
+        # Check assignment
+        # For individual chores
+        if self.assigned_to is not None:
+            return self.assigned_to == user_id
+
+        # For shared chores
         assignment = ChoreAssignment.query.filter_by(
             chore_id=self.chore_id,
             user_id=user_id
@@ -318,7 +342,7 @@ class ChoreInstance(db.Model):
 
         Args:
             approver_id: ID of user approving the chore
-            points: Points to award (defaults to chore.points)
+            points: Points to award (optional parent override)
         """
         if self.status != 'claimed':
             raise ValueError("Cannot award points for non-claimed chore")
@@ -326,8 +350,17 @@ class ChoreInstance(db.Model):
         if self.claimed_by is None:
             raise ValueError("Cannot award points without a claimer")
 
-        # Use provided points or default to chore points
-        points_to_award = points if points is not None else self.chore.points
+        # Determine points to award
+        if points is not None:
+            # Parent override
+            points_to_award = points
+        elif self.claimed_late and self.chore.late_points is not None:
+            # Late completion with late_points set
+            points_to_award = self.chore.late_points
+        else:
+            # Normal or late completion without late_points override
+            points_to_award = self.chore.points
+
         self.points_awarded = points_to_award
 
         # Update status
@@ -360,6 +393,7 @@ class Reward(db.Model):
     cooldown_days = db.Column(db.Integer)  # NULL means no cooldown
     max_claims_total = db.Column(db.Integer)  # NULL means unlimited
     max_claims_per_kid = db.Column(db.Integer)  # NULL means unlimited
+    requires_approval = db.Column(db.Boolean, default=False, nullable=False)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -459,6 +493,7 @@ class RewardClaim(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     points_spent = db.Column(db.Integer, nullable=False)
     claimed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=True)
 
     # Approval workflow (optional for rewards)
     status = db.Column(db.String(20), default='approved', nullable=False)

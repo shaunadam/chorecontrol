@@ -247,7 +247,7 @@ class TestClaimReward:
     def test_claim_reward_success(self, client, kid_headers, sample_reward, kid_user, db_session):
         """Test successfully claiming a reward."""
         response = client.post(f'/api/rewards/{sample_reward.id}/claim', headers=kid_headers)
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         data = response.get_json()
         assert data['data']['reward_id'] == sample_reward.id
@@ -360,7 +360,7 @@ class TestClaimReward:
     def test_claim_reward_creates_points_history(self, client, kid_headers, sample_reward, kid_user, db_session):
         """Test that claiming reward creates points history entry."""
         response = client.post(f'/api/rewards/{sample_reward.id}/claim', headers=kid_headers)
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         # Check points history
         from models import PointsHistory
@@ -369,3 +369,278 @@ class TestClaimReward:
         assert history.points_delta == -20
         assert 'Ice cream trip' in history.reason
         assert history.reward_claim_id is not None
+
+
+# Phase 1 Feature Tests: Reward Approval Workflow
+
+
+def test_reward_requires_approval_defaults_to_false(db_session):
+    """Test that requires_approval field defaults to False."""
+    from models import Reward
+
+    reward = Reward(
+        name='Default Reward',
+        points_cost=10,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.commit()
+
+    # Verify default value
+    saved_reward = Reward.query.get(reward.id)
+    assert saved_reward.requires_approval is False
+
+
+def test_reward_can_set_requires_approval_true(db_session):
+    """Test that requires_approval can be set to True."""
+    from models import Reward
+
+    reward = Reward(
+        name='Approval Required Reward',
+        points_cost=50,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.commit()
+
+    # Verify value
+    saved_reward = Reward.query.get(reward.id)
+    assert saved_reward.requires_approval is True
+
+
+def test_reward_claim_has_expires_at_field(db_session, kid_user):
+    """Test that RewardClaim has expires_at field."""
+    from models import Reward, RewardClaim
+    from datetime import datetime, timedelta
+
+    reward = Reward(
+        name='Test Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+
+    # Create claim with expiration
+    expires_at = datetime.utcnow() + timedelta(days=7)
+    claim = RewardClaim(
+        reward_id=reward.id,
+        user_id=kid_user.id,
+        points_spent=10,
+        status='pending',
+        expires_at=expires_at
+    )
+    db_session.add(claim)
+    db_session.commit()
+
+    # Verify expires_at was saved
+    saved_claim = RewardClaim.query.get(claim.id)
+    assert saved_claim.expires_at is not None
+    assert saved_claim.expires_at.date() == expires_at.date()
+
+
+# Phase 2 Tests: Reward Approval Workflow
+
+def test_reward_with_requires_approval_sets_pending_status(client, kid_headers, db_session, kid_user):
+    """Test that rewards with requires_approval=True create pending claims."""
+    from models import Reward
+    
+    reward = Reward(
+        name='Approval Required Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+    
+    kid_user.points = 50
+    db_session.commit()
+    
+    response = client.post(f'/api/rewards/{reward.id}/claim', headers=kid_headers)
+    
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data['data']['status'] == 'pending'
+    assert data['data']['expires_at'] is not None
+
+
+def test_reward_without_requires_approval_auto_approves(client, kid_headers, db_session, kid_user):
+    """Test that rewards with requires_approval=False are auto-approved."""
+    from models import Reward
+    
+    reward = Reward(
+        name='Auto Approve Reward',
+        points_cost=10,
+        requires_approval=False,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+    
+    kid_user.points = 50
+    db_session.commit()
+    
+    response = client.post(f'/api/rewards/{reward.id}/claim', headers=kid_headers)
+    
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data['data']['status'] == 'approved'
+    assert data['data']['expires_at'] is None
+
+
+def test_unclaim_reward_success(client, db_session, kid_user, kid_headers):
+    """Test successfully unclaiming a pending reward."""
+    from models import Reward, RewardClaim
+    
+    reward = Reward(
+        name='Test Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+
+    kid_user.points = 20
+    db_session.commit()
+
+    # Claim reward
+    claim_response = client.post(
+        f'/api/rewards/{reward.id}/claim',
+        headers=kid_headers
+    )
+    assert claim_response.status_code == 201
+    claim_id = claim_response.get_json()['data']['id']
+
+    # Unclaim
+    response = client.post(
+        f'/api/rewards/claims/{claim_id}/unclaim',
+        headers=kid_headers
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['points_refunded'] == 10
+    assert data['new_balance'] == 20
+
+    # Verify claim deleted
+    claim = RewardClaim.query.get(claim_id)
+    assert claim is None
+
+
+def test_approve_reward_claim(client, db_session, kid_user, parent_user, kid_headers, parent_headers):
+    """Test approving a pending reward claim."""
+    from models import Reward, RewardClaim
+    
+    reward = Reward(
+        name='Test Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+
+    kid_user.points = 20
+    db_session.commit()
+
+    # Claim reward
+    claim_response = client.post(
+        f'/api/rewards/{reward.id}/claim',
+        headers=kid_headers
+    )
+    assert claim_response.status_code == 201
+    claim_id = claim_response.get_json()['data']['id']
+
+    # Approve
+    response = client.post(
+        f'/api/rewards/claims/{claim_id}/approve',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['data']['status'] == 'approved'
+    assert data['data']['approved_by'] == parent_user.id
+
+    # Verify claim updated
+    claim = RewardClaim.query.get(claim_id)
+    assert claim.status == 'approved'
+    assert claim.expires_at is None
+
+
+def test_reject_reward_claim(client, db_session, kid_user, parent_user, kid_headers, parent_headers):
+    """Test rejecting a pending reward claim."""
+    from models import Reward, RewardClaim
+    
+    reward = Reward(
+        name='Test Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+
+    kid_user.points = 20
+    db_session.commit()
+
+    # Claim reward
+    claim_response = client.post(
+        f'/api/rewards/{reward.id}/claim',
+        headers=kid_headers
+    )
+    assert claim_response.status_code == 201
+    claim_id = claim_response.get_json()['data']['id']
+
+    # Reject
+    response = client.post(
+        f'/api/rewards/claims/{claim_id}/reject',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['data']['status'] == 'rejected'
+    assert data['data']['points_refunded'] == 10
+
+    # Verify points refunded
+    db_session.refresh(kid_user)
+    assert kid_user.points == 20
+
+
+def test_only_parents_can_approve_rewards(client, db_session, kid_user, kid_headers):
+    """Test that only parents can approve rewards."""
+    from models import Reward
+    
+    reward = Reward(
+        name='Test Reward',
+        points_cost=10,
+        requires_approval=True,
+        is_active=True
+    )
+    db_session.add(reward)
+    db_session.flush()
+
+    kid_user.points = 20
+    db_session.commit()
+
+    # Claim reward
+    claim_response = client.post(
+        f'/api/rewards/{reward.id}/claim',
+        headers=kid_headers
+    )
+    assert claim_response.status_code == 201
+    claim_id = claim_response.get_json()['data']['id']
+
+    # Kid tries to approve
+    response = client.post(
+        f'/api/rewards/claims/{claim_id}/approve',
+        headers=kid_headers
+    )
+
+    assert response.status_code == 403
+    assert 'Only parents' in response.get_json()['message']
