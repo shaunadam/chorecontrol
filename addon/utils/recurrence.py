@@ -24,7 +24,33 @@ def calculate_next_due_date(pattern: dict, after_date: date) -> Optional[date]:
 
     pattern_type = pattern.get('type')
 
-    if pattern_type == 'daily':
+    # Handle 'simple' pattern type with interval
+    if pattern_type == 'simple':
+        interval = pattern.get('interval', 'daily')
+        every_n = pattern.get('every_n', 1)
+
+        if interval == 'daily':
+            return after_date + timedelta(days=every_n)
+        elif interval == 'weekly':
+            return after_date + timedelta(weeks=every_n)
+        elif interval == 'monthly':
+            return after_date + relativedelta(months=every_n)
+        else:
+            raise ValueError(f"Unknown simple interval: {interval}")
+
+    # Handle 'complex' pattern type
+    elif pattern_type == 'complex':
+        days_of_week = pattern.get('days_of_week', [])
+        if days_of_week:
+            # Find next occurrence in the specified days
+            current = after_date + timedelta(days=1)
+            for _ in range(7):
+                if current.weekday() in days_of_week:
+                    return current
+                current += timedelta(days=1)
+        return None
+
+    elif pattern_type == 'daily':
         return after_date + timedelta(days=1)
 
     elif pattern_type == 'weekly':
@@ -127,7 +153,26 @@ def matches_pattern(pattern: dict, check_date: date) -> bool:
     """
     pattern_type = pattern.get('type')
 
-    if pattern_type == 'daily':
+    # Handle 'simple' pattern type
+    if pattern_type == 'simple':
+        interval = pattern.get('interval', 'daily')
+        if interval == 'daily':
+            return True
+        elif interval == 'weekly':
+            # Weekly patterns match once per week - use start_date if available
+            return True  # Simplified - actual matching handled by generate logic
+        elif interval == 'monthly':
+            return True  # Simplified - actual matching handled by generate logic
+        return True
+
+    # Handle 'complex' pattern type
+    elif pattern_type == 'complex':
+        days_of_week = pattern.get('days_of_week', [])
+        if days_of_week:
+            return check_date.weekday() in days_of_week
+        return False
+
+    elif pattern_type == 'daily':
         return True
 
     elif pattern_type == 'weekly':
@@ -167,10 +212,23 @@ def validate_recurrence_pattern(pattern: dict) -> tuple[bool, Optional[str]]:
 
     pattern_type = pattern.get('type')
 
-    if pattern_type not in ['daily', 'weekly', 'monthly', 'none']:
+    if pattern_type not in ['daily', 'weekly', 'monthly', 'none', 'simple', 'complex']:
         return False, f"Invalid pattern type: {pattern_type}"
 
-    if pattern_type == 'weekly':
+    if pattern_type == 'simple':
+        interval = pattern.get('interval')
+        if interval and interval not in ['daily', 'weekly', 'monthly']:
+            return False, f"Invalid simple interval: {interval}"
+
+    elif pattern_type == 'complex':
+        days_of_week = pattern.get('days_of_week')
+        if days_of_week:
+            if not isinstance(days_of_week, list):
+                return False, "days_of_week must be a list"
+            if not all(isinstance(d, int) and 0 <= d <= 6 for d in days_of_week):
+                return False, "days_of_week must contain integers 0-6"
+
+    elif pattern_type == 'weekly':
         days_of_week = pattern.get('days_of_week')
         if not days_of_week or not isinstance(days_of_week, list) or len(days_of_week) == 0:
             return False, "Weekly pattern must have non-empty days_of_week array"

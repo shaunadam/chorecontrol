@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request, g
 from sqlalchemy import desc
 from models import db, User, PointsHistory
 from auth import ha_auth_required, get_current_user as auth_get_current_user
+from utils.webhooks import fire_webhook
 
 points_bp = Blueprint('points', __name__, url_prefix='/api/points')
 
@@ -77,6 +78,9 @@ def adjust_points():
     )
 
     db.session.commit()
+
+    # Fire webhook for points adjustment
+    fire_webhook('points_awarded', user, delta=points_delta, reason=reason, adjusted_by=current_user.username)
 
     return jsonify({
         'data': {

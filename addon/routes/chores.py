@@ -3,11 +3,13 @@
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, date
 
 from models import db, Chore, ChoreAssignment, ChoreInstance, User
 from schemas import validate_recurrence_pattern
 from auth import ha_auth_required, get_current_user as auth_get_current_user
+from utils.instance_generator import generate_instances_for_chore, regenerate_instances_for_chore
+from utils.webhooks import fire_webhook
 
 chores_bp = Blueprint('chores', __name__, url_prefix='/api/chores')
 
@@ -50,6 +52,8 @@ def serialize_chore(chore, include_assignments=True, include_counts=False):
         'assignment_type': chore.assignment_type,
         'requires_approval': chore.requires_approval,
         'auto_approve_after_hours': chore.auto_approve_after_hours,
+        'allow_late_claims': chore.allow_late_claims,
+        'late_points': chore.late_points,
         'is_active': chore.is_active,
         'created_by': chore.created_by,
         'created_at': chore.created_at.isoformat() if chore.created_at else None,
@@ -192,6 +196,10 @@ def create_chore():
             if data['assignment_type'] not in ['individual', 'shared']:
                 return error_response("assignment_type must be 'individual' or 'shared'")
 
+        # Validate new fields
+        if data.get('late_points') is not None and data.get('late_points') < 0:
+            return error_response('late_points must be non-negative')
+
         # Get current user for created_by
         current_user = get_current_user()
 
@@ -207,6 +215,8 @@ def create_chore():
             assignment_type=data.get('assignment_type'),
             requires_approval=data.get('requires_approval', True),
             auto_approve_after_hours=data.get('auto_approve_after_hours'),
+            allow_late_claims=data.get('allow_late_claims', False),
+            late_points=data.get('late_points'),
             created_by=current_user.id if current_user else None
         )
 
@@ -234,6 +244,15 @@ def create_chore():
                 db.session.add(assignment)
 
         db.session.commit()
+
+        # Generate instances for the chore
+        today = date.today()
+        instances = generate_instances_for_chore(chore)
+
+        # Fire webhooks for instances due today
+        for instance in instances:
+            if instance.due_date == today or instance.due_date is None:
+                fire_webhook('chore_instance_created', instance)
 
         # Reload with relationships
         chore = Chore.query.options(
@@ -314,6 +333,13 @@ def update_chore(chore_id):
                 return error_response("recurrence_type must be 'none', 'simple', or 'complex'")
             chore.recurrence_type = data['recurrence_type']
 
+        # Check if recurrence pattern is changing
+        pattern_changed = False
+        if 'recurrence_type' in data and data['recurrence_type'] != chore.recurrence_type:
+            pattern_changed = True
+        if 'recurrence_pattern' in data and data['recurrence_pattern'] != chore.recurrence_pattern:
+            pattern_changed = True
+
         # Update recurrence_pattern with validation
         if 'recurrence_pattern' in data:
             if data['recurrence_pattern']:
@@ -342,6 +368,14 @@ def update_chore(chore_id):
         if 'auto_approve_after_hours' in data:
             chore.auto_approve_after_hours = data['auto_approve_after_hours']
 
+        if 'allow_late_claims' in data:
+            chore.allow_late_claims = data['allow_late_claims']
+
+        if 'late_points' in data:
+            if data['late_points'] is not None and data['late_points'] < 0:
+                return error_response('late_points must be non-negative')
+            chore.late_points = data['late_points']
+
         if 'is_active' in data:
             chore.is_active = data['is_active']
 
@@ -349,6 +383,16 @@ def update_chore(chore_id):
         chore.updated_at = datetime.utcnow()
 
         db.session.commit()
+
+        # Regenerate instances if pattern changed
+        if pattern_changed:
+            today = date.today()
+            instances = regenerate_instances_for_chore(chore)
+
+            # Fire webhooks for new instances due today
+            for instance in instances:
+                if instance.due_date == today or instance.due_date is None:
+                    fire_webhook('chore_instance_created', instance)
 
         # Reload with relationships
         chore = Chore.query.options(

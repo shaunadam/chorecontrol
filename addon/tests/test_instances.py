@@ -1218,3 +1218,224 @@ def test_reassign_instance_only_individual_chores(client, db_session, parent_use
 
     assert response.status_code == 400
     assert 'individual chores' in response.get_json()['message']
+
+
+# ============================================================================
+# GET /api/instances/due-today - Get instances due today
+# ============================================================================
+
+def test_get_instances_due_today_success(client, db_session, kid_headers, parent_user, kid_user):
+    """Test getting instances due today."""
+    from models import Chore, ChoreInstance, ChoreAssignment
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Create instance due today
+    today_instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    # Create instance due tomorrow
+    tomorrow_instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today() + timedelta(days=1),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    db_session.add_all([today_instance, tomorrow_instance])
+    db_session.commit()
+
+    response = client.get('/api/instances/due-today', headers=kid_headers)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['date'] == date.today().isoformat()
+    assert data['count'] == 1
+    assert len(data['instances']) == 1
+    assert data['instances'][0]['id'] == today_instance.id
+
+
+def test_get_instances_due_today_includes_null_due_date(client, db_session, kid_headers, parent_user, kid_user):
+    """Test that instances with null due date are included."""
+    from models import Chore, ChoreInstance, ChoreAssignment
+
+    chore = Chore(
+        name='Anytime Chore',
+        points=5,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Create instance with null due date
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=None,  # Anytime chore
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    response = client.get('/api/instances/due-today', headers=kid_headers)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['count'] == 1
+    assert data['instances'][0]['due_date'] is None
+
+
+def test_get_instances_due_today_filter_by_user(client, db_session, kid_headers, parent_user, kid_user):
+    """Test filtering instances by user_id."""
+    from models import Chore, ChoreInstance, ChoreAssignment, User
+
+    kid2 = User(ha_user_id='due_today_kid2', username='Kid 2', role='kid')
+    db_session.add(kid2)
+    db_session.flush()
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create assignments for both kids
+    assignment1 = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    assignment2 = ChoreAssignment(chore_id=chore.id, user_id=kid2.id)
+    db_session.add_all([assignment1, assignment2])
+
+    # Create instances for both kids
+    instance1 = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    instance2 = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid2.id,
+        status='assigned'
+    )
+    db_session.add_all([instance1, instance2])
+    db_session.commit()
+
+    response = client.get(f'/api/instances/due-today?user_id={kid_user.id}', headers=kid_headers)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['count'] == 1
+    assert data['instances'][0]['assigned_to'] == kid_user.id
+
+
+def test_get_instances_due_today_filter_by_status(client, db_session, kid_headers, parent_user, kid_user):
+    """Test filtering instances by status."""
+    from models import Chore, ChoreInstance, ChoreAssignment
+
+    chore = Chore(
+        name='Test Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Create assigned and claimed instances
+    assigned = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='assigned'
+    )
+    claimed = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=kid_user.id,
+        status='claimed',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow()
+    )
+    db_session.add_all([assigned, claimed])
+    db_session.commit()
+
+    response = client.get('/api/instances/due-today?status=assigned', headers=kid_headers)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['count'] == 1
+    assert data['instances'][0]['status'] == 'assigned'
+
+
+def test_get_instances_due_today_requires_auth(client):
+    """Test that getting due today instances requires authentication."""
+    response = client.get('/api/instances/due-today')
+    assert response.status_code == 401
+
+
+def test_get_instances_due_today_includes_shared_chores(client, db_session, kid_headers, parent_user, kid_user):
+    """Test that shared chores (assigned_to=None) are included in filtered results."""
+    from models import Chore, ChoreInstance, ChoreAssignment
+
+    chore = Chore(
+        name='Shared Chore',
+        points=10,
+        recurrence_type='none',
+        assignment_type='shared',
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.flush()
+
+    # Create shared chore assignment
+    assignment = ChoreAssignment(chore_id=chore.id, user_id=kid_user.id)
+    db_session.add(assignment)
+
+    # Shared instance has assigned_to=None
+    instance = ChoreInstance(
+        chore_id=chore.id,
+        due_date=date.today(),
+        assigned_to=None,
+        status='assigned'
+    )
+    db_session.add(instance)
+    db_session.commit()
+
+    # Filter by user_id should still include shared chores
+    response = client.get(f'/api/instances/due-today?user_id={kid_user.id}', headers=kid_headers)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['count'] == 1
+    assert data['instances'][0]['assigned_to'] is None

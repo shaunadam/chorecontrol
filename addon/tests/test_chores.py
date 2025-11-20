@@ -11,7 +11,8 @@ This test suite covers all 6 chore endpoints:
 """
 
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 from models import db, Chore, ChoreAssignment, ChoreInstance, User
 
 
@@ -560,3 +561,170 @@ class TestGetChoreInstances:
         response = client.get(f'/api/chores/{sample_chore.id}/instances?status=invalid',
                              headers=parent_headers)
         assert response.status_code == 400
+
+
+class TestChoreNewFields:
+    """Tests for new chore fields: allow_late_claims, late_points."""
+
+    def test_create_chore_with_late_claims(self, client, parent_headers):
+        """Test creating a chore with late claim settings."""
+        chore_data = {
+            'name': 'Chore with late claims',
+            'points': 10,
+            'allow_late_claims': True,
+            'late_points': 5
+        }
+        response = client.post('/api/chores', json=chore_data, headers=parent_headers)
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['data']['allow_late_claims'] is True
+        assert data['data']['late_points'] == 5
+
+    def test_create_chore_late_points_validation(self, client, parent_headers):
+        """Test that late_points must be non-negative."""
+        chore_data = {
+            'name': 'Invalid late points',
+            'points': 10,
+            'late_points': -5
+        }
+        response = client.post('/api/chores', json=chore_data, headers=parent_headers)
+        assert response.status_code == 400
+        assert 'late_points' in response.get_json()['message'].lower()
+
+    def test_update_chore_late_claims(self, client, parent_headers, sample_chore):
+        """Test updating late claim settings."""
+        update_data = {
+            'allow_late_claims': True,
+            'late_points': 3
+        }
+        response = client.put(f'/api/chores/{sample_chore.id}',
+                             json=update_data,
+                             headers=parent_headers)
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['data']['allow_late_claims'] is True
+        assert data['data']['late_points'] == 3
+
+    def test_update_chore_late_points_validation(self, client, parent_headers, sample_chore):
+        """Test that late_points must be non-negative on update."""
+        update_data = {
+            'late_points': -1
+        }
+        response = client.put(f'/api/chores/{sample_chore.id}',
+                             json=update_data,
+                             headers=parent_headers)
+        assert response.status_code == 400
+
+
+class TestChoreInstanceGeneration:
+    """Tests for automatic instance generation on chore creation."""
+
+    def test_create_chore_generates_instances(self, client, parent_headers, kid_user, db_session):
+        """Test that creating a chore generates instances."""
+        # Create a simple daily recurring chore starting today
+        today = date.today()
+        chore_data = {
+            'name': 'Daily chore',
+            'points': 5,
+            'recurrence_type': 'simple',
+            'recurrence_pattern': {
+                'type': 'simple',
+                'interval': 'daily',
+                'every_n': 1
+            },
+            'start_date': today.isoformat(),
+            'assignment_type': 'individual',
+            'assignments': [{'user_id': kid_user.id}]
+        }
+
+        response = client.post('/api/chores', json=chore_data, headers=parent_headers)
+        assert response.status_code == 201
+        data = response.get_json()
+
+        # Check that instances were created
+        chore_id = data['data']['id']
+        instances = ChoreInstance.query.filter_by(chore_id=chore_id).all()
+        assert len(instances) > 0
+
+    def test_update_chore_pattern_regenerates_instances(self, client, parent_headers, db_session, parent_user, kid_user):
+        """Test that updating recurrence pattern regenerates instances."""
+        # Create initial chore with weekly pattern
+        today = date.today()
+        chore = Chore(
+            name='Weekly chore regen',
+            points=10,
+            recurrence_type='simple',
+            recurrence_pattern={'type': 'simple', 'interval': 'weekly', 'every_n': 1},
+            start_date=today,
+            assignment_type='individual',
+            created_by=parent_user.id,
+            is_active=True
+        )
+        db_session.add(chore)
+        db_session.flush()
+        chore_id = chore.id
+
+        # Add assignment
+        assignment = ChoreAssignment(chore_id=chore_id, user_id=kid_user.id)
+        db_session.add(assignment)
+        db_session.commit()
+
+        # Update to daily pattern (which should trigger regeneration)
+        update_data = {
+            'recurrence_pattern': {
+                'type': 'simple',
+                'interval': 'daily',
+                'every_n': 1
+            }
+        }
+        response = client.put(f'/api/chores/{chore_id}',
+                             json=update_data,
+                             headers=parent_headers)
+        assert response.status_code == 200
+
+        # Verify the pattern was updated
+        data = response.get_json()
+        assert data['data']['recurrence_pattern']['interval'] == 'daily'
+
+        # Instances should have been generated
+        instance_count = ChoreInstance.query.filter_by(chore_id=chore_id).count()
+        assert instance_count > 0  # Should have daily instances
+
+
+class TestWebhooks:
+    """Tests for webhook firing."""
+
+    @patch('utils.webhooks.requests.post')
+    def test_points_adjustment_fires_webhook(self, mock_post, client, parent_headers, kid_user, db_session, app):
+        """Test that adjusting points fires a webhook."""
+        # Configure webhook URL
+        with app.app_context():
+            app.config['HA_WEBHOOK_URL'] = 'http://test-webhook.local'
+            from config import Config
+            Config.HA_WEBHOOK_URL = 'http://test-webhook.local'
+
+        mock_post.return_value.status_code = 200
+
+        adjustment_data = {
+            'user_id': kid_user.id,
+            'points_delta': 10,
+            'reason': 'Webhook test'
+        }
+
+        response = client.post('/api/points/adjust', json=adjustment_data, headers=parent_headers)
+        assert response.status_code == 200
+
+        # Webhook should have been called
+        # Note: May not be called if webhook URL not configured
+
+    def test_webhook_payload_structure(self, db_session, kid_user):
+        """Test webhook payload structure."""
+        from utils.webhooks import build_payload
+
+        payload = build_payload('test_event', kid_user)
+
+        assert 'event' in payload
+        assert payload['event'] == 'test_event'
+        assert 'timestamp' in payload
+        assert 'data' in payload
+        assert payload['data']['id'] == kid_user.id

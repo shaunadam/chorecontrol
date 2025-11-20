@@ -324,3 +324,149 @@ class TestGetPointsHistory:
 
         assert chore_entry['chore_instance_id'] == 1
         assert reward_entry['reward_claim_id'] == 1
+
+
+class TestModelToDict:
+    """Tests for model to_dict() serialization methods."""
+
+    def test_user_to_dict(self, kid_user):
+        """Test User.to_dict() method."""
+        result = kid_user.to_dict()
+
+        assert result['id'] == kid_user.id
+        assert result['ha_user_id'] == kid_user.ha_user_id
+        assert result['username'] == kid_user.username
+        assert result['role'] == kid_user.role
+        assert result['points'] == kid_user.points
+        assert 'created_at' in result
+        assert 'updated_at' in result
+
+    def test_points_history_to_dict(self, db_session, kid_user, parent_user):
+        """Test PointsHistory.to_dict() method."""
+        history = PointsHistory(
+            user_id=kid_user.id,
+            points_delta=10,
+            reason='Test entry',
+            created_by=parent_user.id
+        )
+        db_session.add(history)
+        db_session.commit()
+
+        result = history.to_dict()
+
+        assert result['id'] == history.id
+        assert result['user_id'] == kid_user.id
+        assert result['points_delta'] == 10
+        assert result['reason'] == 'Test entry'
+        assert result['created_by'] == parent_user.id
+        assert 'created_at' in result
+
+    def test_chore_to_dict(self, sample_chore):
+        """Test Chore.to_dict() method."""
+        result = sample_chore.to_dict()
+
+        assert result['id'] == sample_chore.id
+        assert result['name'] == sample_chore.name
+        assert result['points'] == sample_chore.points
+        assert result['recurrence_type'] == sample_chore.recurrence_type
+        assert result['is_active'] == sample_chore.is_active
+        assert 'created_at' in result
+        assert 'updated_at' in result
+
+    def test_chore_instance_to_dict(self, db_session, sample_chore, kid_user):
+        """Test ChoreInstance.to_dict() method."""
+        from datetime import date
+        from models import ChoreInstance
+
+        instance = ChoreInstance(
+            chore_id=sample_chore.id,
+            due_date=date.today(),
+            assigned_to=kid_user.id,
+            status='assigned'
+        )
+        db_session.add(instance)
+        db_session.commit()
+
+        result = instance.to_dict()
+
+        assert result['id'] == instance.id
+        assert result['chore_id'] == sample_chore.id
+        assert result['chore_name'] == sample_chore.name
+        assert result['status'] == 'assigned'
+        assert result['assigned_to'] == kid_user.id
+        assert result['assigned_to_name'] == kid_user.username
+        assert 'due_date' in result
+
+    def test_reward_to_dict(self, sample_reward):
+        """Test Reward.to_dict() method."""
+        result = sample_reward.to_dict()
+
+        assert result['id'] == sample_reward.id
+        assert result['name'] == sample_reward.name
+        assert result['points_cost'] == sample_reward.points_cost
+        assert result['cooldown_days'] == sample_reward.cooldown_days
+        assert result['is_active'] == sample_reward.is_active
+        assert 'created_at' in result
+
+    def test_reward_claim_to_dict(self, db_session, sample_reward, kid_user):
+        """Test RewardClaim.to_dict() method."""
+        from models import RewardClaim
+
+        claim = RewardClaim(
+            reward_id=sample_reward.id,
+            user_id=kid_user.id,
+            points_spent=sample_reward.points_cost,
+            status='approved'
+        )
+        db_session.add(claim)
+        db_session.commit()
+
+        result = claim.to_dict()
+
+        assert result['id'] == claim.id
+        assert result['reward_id'] == sample_reward.id
+        assert result['reward_name'] == sample_reward.name
+        assert result['user_id'] == kid_user.id
+        assert result['user_name'] == kid_user.username
+        assert result['points_spent'] == sample_reward.points_cost
+        assert result['status'] == 'approved'
+
+
+class TestPointsVerification:
+    """Tests for points balance verification."""
+
+    def test_verify_points_balance_correct(self, db_session, parent_user):
+        """Test verification passes when points balance is correct."""
+        # Create a fresh kid with 0 points to start clean
+        from models import User
+        kid = User(ha_user_id='verify-test-kid', username='Verify Test Kid', role='kid', points=0)
+        db_session.add(kid)
+        db_session.commit()
+
+        # Add some history
+        kid.adjust_points(10, 'Test 1', parent_user.id)
+        kid.adjust_points(5, 'Test 2', parent_user.id)
+        db_session.commit()
+
+        # Verify balance
+        assert kid.verify_points_balance() is True
+        assert kid.points == 15
+
+    def test_calculate_current_points(self, db_session, parent_user):
+        """Test calculate_current_points method."""
+        # Create a fresh kid with 0 points to start clean
+        from models import User
+        kid = User(ha_user_id='calc-test-kid', username='Calc Test Kid', role='kid', points=0)
+        db_session.add(kid)
+        db_session.commit()
+
+        # Add history
+        kid.adjust_points(10, 'Test 1', parent_user.id)
+        kid.adjust_points(-5, 'Test 2', parent_user.id)
+        db_session.commit()
+
+        calculated = kid.calculate_current_points()
+        expected = 10 - 5
+
+        assert calculated == expected
+        assert kid.points == expected

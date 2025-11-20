@@ -10,9 +10,9 @@ State machine: assigned → claimed → approved/rejected
 After rejection: rejected → assigned (can re-claim)
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from flask import Blueprint, jsonify, request, g
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from models import db, ChoreInstance, User, Chore, ChoreAssignment
 from auth import ha_auth_required, get_current_user as auth_get_current_user
 
@@ -187,6 +187,51 @@ def get_instance(instance_id: int):
     return jsonify({
         'data': serialize_instance(instance, include_details=True),
         'message': 'Instance details retrieved successfully'
+    }), 200
+
+
+@instances_bp.route('/due-today', methods=['GET'])
+@ha_auth_required
+def get_instances_due_today():
+    """
+    Get all chore instances due today or with no due date.
+
+    Query params:
+    - user_id: Filter by assigned user (optional)
+    - status: Filter by status (optional)
+
+    Returns:
+        JSON: {date: str, count: int, instances: [...]}
+    """
+    today = date.today()
+
+    query = ChoreInstance.query.filter(
+        or_(
+            ChoreInstance.due_date == today,
+            ChoreInstance.due_date.is_(None)
+        )
+    )
+
+    # Optional filters
+    user_id = request.args.get('user_id', type=int)
+    if user_id:
+        query = query.filter(
+            or_(
+                ChoreInstance.assigned_to == user_id,
+                ChoreInstance.assigned_to.is_(None)  # Include shared chores
+            )
+        )
+
+    status = request.args.get('status')
+    if status:
+        query = query.filter(ChoreInstance.status == status)
+
+    instances = query.all()
+
+    return jsonify({
+        'date': today.isoformat(),
+        'count': len(instances),
+        'instances': [serialize_instance(instance, include_details=True) for instance in instances]
     }), 200
 
 

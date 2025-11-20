@@ -44,6 +44,18 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
 
+    def to_dict(self) -> dict:
+        """Serialize User to dictionary for JSON/webhook responses."""
+        return {
+            'id': self.id,
+            'ha_user_id': self.ha_user_id,
+            'username': self.username,
+            'role': self.role,
+            'points': self.points,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
     def calculate_current_points(self) -> int:
         """
         Calculate current points from points history (audit verification).
@@ -79,7 +91,11 @@ class User(db.Model):
             created_by_id: User ID of who made the adjustment
             chore_instance_id: Optional reference to chore instance
             reward_claim_id: Optional reference to reward claim
+
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         self.points += delta
 
         history = PointsHistory(
@@ -91,6 +107,13 @@ class User(db.Model):
             reward_claim_id=reward_claim_id
         )
         db.session.add(history)
+
+        # Verify balance after transaction (log discrepancies but don't fail)
+        # Note: Full verification done after commit in calling code
+        # This is a quick sanity check during the transaction
+        calculated = self.calculate_current_points() + delta  # Add delta since history not committed yet
+        if self.points != calculated:
+            logger.warning(f"Points mismatch detected for user {self.id}: stored={self.points}, calculated={calculated}")
 
 
 class Chore(db.Model):
@@ -139,6 +162,28 @@ class Chore(db.Model):
 
     def __repr__(self):
         return f'<Chore {self.name}>'
+
+    def to_dict(self) -> dict:
+        """Serialize Chore to dictionary for JSON/webhook responses."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'points': self.points,
+            'recurrence_type': self.recurrence_type,
+            'recurrence_pattern': self.recurrence_pattern,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'assignment_type': self.assignment_type,
+            'requires_approval': self.requires_approval,
+            'auto_approve_after_hours': self.auto_approve_after_hours,
+            'allow_late_claims': self.allow_late_claims,
+            'late_points': self.late_points,
+            'is_active': self.is_active,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
 
     def is_due(self, check_date: Optional[date] = None) -> bool:
         """
@@ -280,6 +325,33 @@ class ChoreInstance(db.Model):
     def __repr__(self):
         return f'<ChoreInstance chore_id={self.chore_id} due={self.due_date} status={self.status}>'
 
+    def to_dict(self) -> dict:
+        """Serialize ChoreInstance to dictionary for JSON/webhook responses."""
+        result = {
+            'id': self.id,
+            'chore_id': self.chore_id,
+            'chore_name': self.chore.name if self.chore else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'status': self.status,
+            'assigned_to': self.assigned_to,
+            'assigned_to_name': self.assignee.username if self.assignee else None,
+            'claimed_by': self.claimed_by,
+            'claimed_by_name': self.claimer.username if self.claimer else None,
+            'claimed_at': self.claimed_at.isoformat() if self.claimed_at else None,
+            'claimed_late': self.claimed_late,
+            'approved_by': self.approved_by,
+            'approved_by_name': self.approver.username if self.approver else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'rejected_by': self.rejected_by,
+            'rejected_by_name': self.rejecter.username if self.rejecter else None,
+            'rejected_at': self.rejected_at.isoformat() if self.rejected_at else None,
+            'rejection_reason': self.rejection_reason,
+            'points_awarded': self.points_awarded,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+        return result
+
     def can_claim(self, user_id: int) -> bool:
         """
         Check if a user can claim this chore instance.
@@ -405,6 +477,22 @@ class Reward(db.Model):
     def __repr__(self):
         return f'<Reward {self.name} ({self.points_cost} pts)>'
 
+    def to_dict(self) -> dict:
+        """Serialize Reward to dictionary for JSON/webhook responses."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'points_cost': self.points_cost,
+            'cooldown_days': self.cooldown_days,
+            'max_claims_total': self.max_claims_total,
+            'max_claims_per_kid': self.max_claims_per_kid,
+            'requires_approval': self.requires_approval,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
     def can_claim(self, user_id: int) -> tuple[bool, Optional[str]]:
         """
         Check if a user can claim this reward.
@@ -517,6 +605,23 @@ class RewardClaim(db.Model):
     def __repr__(self):
         return f'<RewardClaim reward_id={self.reward_id} user_id={self.user_id}>'
 
+    def to_dict(self) -> dict:
+        """Serialize RewardClaim to dictionary for JSON/webhook responses."""
+        return {
+            'id': self.id,
+            'reward_id': self.reward_id,
+            'reward_name': self.reward.name if self.reward else None,
+            'user_id': self.user_id,
+            'user_name': self.user.username if self.user else None,
+            'points_spent': self.points_spent,
+            'claimed_at': self.claimed_at.isoformat() if self.claimed_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'status': self.status,
+            'approved_by': self.approved_by,
+            'approved_by_name': self.approver.username if self.approver else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None
+        }
+
 
 class PointsHistory(db.Model):
     """Audit log of all point changes."""
@@ -549,3 +654,16 @@ class PointsHistory(db.Model):
 
     def __repr__(self):
         return f'<PointsHistory user_id={self.user_id} delta={self.points_delta}>'
+
+    def to_dict(self) -> dict:
+        """Serialize PointsHistory to dictionary for JSON/webhook responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'points_delta': self.points_delta,
+            'reason': self.reason,
+            'chore_instance_id': self.chore_instance_id,
+            'reward_claim_id': self.reward_claim_id,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
