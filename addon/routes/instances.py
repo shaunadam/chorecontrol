@@ -15,6 +15,7 @@ from flask import Blueprint, jsonify, request, g
 from sqlalchemy import and_, or_
 from models import db, ChoreInstance, User, Chore, ChoreAssignment
 from auth import ha_auth_required, get_current_user as auth_get_current_user
+from utils.webhooks import fire_webhook
 
 instances_bp = Blueprint('instances', __name__, url_prefix='/api/instances')
 
@@ -317,6 +318,9 @@ def claim_instance(instance_id: int):
             'details': str(e)
         }), 500
 
+    # Fire webhook
+    fire_webhook('chore_instance_claimed', instance)
+
     return jsonify({
         'data': serialize_instance(instance, include_details=True),
         'message': 'Chore claimed successfully'
@@ -401,6 +405,10 @@ def approve_instance(instance_id: int):
         }), 500
 
     points_awarded = instance.points_awarded or instance.chore.points
+
+    # Fire webhooks
+    fire_webhook('chore_instance_approved', instance)
+    fire_webhook('points_awarded', instance)
 
     return jsonify({
         'data': serialize_instance(instance, include_details=True),
@@ -491,6 +499,9 @@ def reject_instance(instance_id: int):
             'message': 'Failed to reject chore',
             'details': str(e)
         }), 500
+
+    # Fire webhook
+    fire_webhook('chore_instance_rejected', instance)
 
     return jsonify({
         'data': serialize_instance(instance, include_details=True),

@@ -1,10 +1,11 @@
 """Rewards API endpoints for ChoreControl."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, g
 from sqlalchemy import desc
 from models import db, Reward, RewardClaim, User
 from auth import ha_auth_required, get_current_user as auth_get_current_user
+from utils.webhooks import fire_webhook
 
 rewards_bp = Blueprint('rewards', __name__, url_prefix='/api/rewards')
 
@@ -329,7 +330,6 @@ def claim_reward(reward_id):
         }), 400
 
     # Create reward claim
-    from datetime import timedelta
     claim = RewardClaim(
         reward_id=reward.id,
         user_id=user.id,
@@ -354,6 +354,9 @@ def claim_reward(reward_id):
     )
 
     db.session.commit()
+
+    # Fire webhook
+    fire_webhook('reward_claimed', claim)
 
     message = 'Reward claimed successfully'
     if reward.requires_approval:
@@ -463,6 +466,9 @@ def approve_reward_claim(claim_id):
 
     db.session.commit()
 
+    # Fire webhook
+    fire_webhook('reward_approved', claim)
+
     return jsonify({
         'data': {
             'id': claim.id,
@@ -519,6 +525,9 @@ def reject_reward_claim(claim_id):
     )
 
     db.session.commit()
+
+    # Fire webhook
+    fire_webhook('reward_rejected', claim, reason='manual')
 
     return jsonify({
         'data': {

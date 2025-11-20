@@ -145,18 +145,7 @@ After API endpoints work:
 
 ---
 
-## Step 4: Complete HA Integration
-
-Wire up integration to working API:
-
-- Update sensor.py to pull real data from coordinator
-- Create dynamic button entities for chore instances
-- Test service calls end-to-end
-- Implement notification listeners
-
----
-
-## Step 5: Web UI (Optional for MVP)
+## Step 4: Web UI (Optional for MVP)
 
 Basic admin interface:
 
@@ -167,36 +156,16 @@ Basic admin interface:
 
 ---
 
-## Testing the API
+## Step 5: Complete HA Integration
 
-All endpoints can be tested with curl:
+Wire up integration to working API:
 
-```bash
-# Health check
-curl http://localhost:8099/health
-
-# List users
-curl -H "X-Ingress-User: test-parent-1" http://localhost:8099/api/users
-
-# Create a chore
-curl -X POST -H "X-Ingress-User: test-parent-1" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Dishes","points":10,"recurrence_type":"simple","recurrence_pattern":{"type":"simple","interval":"daily"},"requires_approval":true}' \
-  http://localhost:8099/api/chores
-
-# Claim a chore instance
-curl -X POST -H "X-Ingress-User: test-kid-1" \
-  -H "Content-Type: application/json" \
-  -d '{"user_id":2}' \
-  http://localhost:8099/api/instances/1/claim
-
-# Approve a chore
-curl -X POST -H "X-Ingress-User: test-parent-1" \
-  -H "Content-Type: application/json" \
-  -d '{"approver_id":1}' \
-  http://localhost:8099/api/instances/1/approve
-```
+- Update sensor.py to pull real data from coordinator
+- Create dynamic button entities for chore instances
+- Test service calls end-to-end
+- Implement notification listeners
 
 ---
 
-**Last Updated**: 2025-11-18 (Step 2 Complete)
+
+

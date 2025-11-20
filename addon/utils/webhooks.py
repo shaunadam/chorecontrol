@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 def get_webhook_url() -> Optional[str]:
     """Get the configured webhook URL."""
-    from config import Config
-    return Config.HA_WEBHOOK_URL
+    from flask import current_app
+    return current_app.config.get('HA_WEBHOOK_URL')
 
 
 def build_payload(event_name: str, obj: Any, **kwargs) -> dict:
