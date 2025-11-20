@@ -9,11 +9,11 @@ This package contains scheduled jobs that run in the background:
 - points_audit: Audit user points balances
 """
 
-from addon.jobs.instance_generator import generate_daily_instances
-from addon.jobs.auto_approval import check_auto_approvals
-from addon.jobs.missed_instances import mark_missed_instances
-from addon.jobs.reward_expiration import expire_pending_rewards
-from addon.jobs.points_audit import audit_points_balances
+from jobs.instance_generator import generate_daily_instances
+from jobs.auto_approval import check_auto_approvals
+from jobs.missed_instances import mark_missed_instances
+from jobs.reward_expiration import expire_pending_rewards
+from jobs.points_audit import audit_points_balances
 
 __all__ = [
     'generate_daily_instances',

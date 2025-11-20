@@ -8,8 +8,8 @@ from typing import List
 import calendar
 import logging
 
-from addon.models import db, Chore, ChoreInstance, ChoreAssignment
-from addon.utils.recurrence import generate_due_dates
+from models import db, Chore, ChoreInstance, ChoreAssignment
+from utils.recurrence import generate_due_dates
 
 logger = logging.getLogger(__name__)
 

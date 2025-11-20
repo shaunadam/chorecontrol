@@ -18,7 +18,7 @@ def expire_pending_rewards():
     logger.info("Checking for expired reward claims")
 
     # Import inside function to avoid circular imports and to get app context
-    from addon.models import db, RewardClaim, User
+    from models import db, RewardClaim, User
 
     try:
         expired = RewardClaim.query.filter(
@@ -45,7 +45,7 @@ def expire_pending_rewards():
 
                     # Fire webhook
                     try:
-                        from addon.utils.webhooks import fire_webhook
+                        from utils.webhooks import fire_webhook
                         fire_webhook('reward_rejected', claim, reason='expired')
                     except ImportError:
                         # Webhooks not yet implemented

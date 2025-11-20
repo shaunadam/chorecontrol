@@ -18,7 +18,7 @@ def check_auto_approvals():
     logger.debug("Checking for auto-approvals")
 
     # Import inside function to avoid circular imports and to get app context
-    from addon.models import db, ChoreInstance, Chore, User
+    from models import db, ChoreInstance, Chore, User
 
     try:
         # Find eligible instances
@@ -53,7 +53,7 @@ def check_auto_approvals():
 
                     # Fire webhooks
                     try:
-                        from addon.utils.webhooks import fire_webhook
+                        from utils.webhooks import fire_webhook
                         fire_webhook('chore_instance_approved', instance, auto_approved=True)
                         fire_webhook('points_awarded', instance)
                     except ImportError:

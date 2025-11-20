@@ -17,7 +17,7 @@ def audit_points_balances():
     logger.info("Starting points balance audit")
 
     # Import inside function to avoid circular imports and to get app context
-    from addon.models import User
+    from models import User
 
     try:
         users = User.query.filter_by(role='kid').all()

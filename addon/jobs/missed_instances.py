@@ -20,7 +20,7 @@ def mark_missed_instances():
     logger.debug("Checking for missed instances")
 
     # Import inside function to avoid circular imports and to get app context
-    from addon.models import db, ChoreInstance, Chore
+    from models import db, ChoreInstance, Chore
 
     try:
         today = date.today()

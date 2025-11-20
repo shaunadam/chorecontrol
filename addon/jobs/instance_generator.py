@@ -18,8 +18,8 @@ def generate_daily_instances():
     logger.info("Starting daily instance generation")
 
     # Import inside function to avoid circular imports and to get app context
-    from addon.models import db, Chore
-    from addon.utils.instance_generator import generate_instances_for_chore, calculate_lookahead_end_date
+    from models import db, Chore
+    from utils.instance_generator import generate_instances_for_chore, calculate_lookahead_end_date
 
     try:
         active_chores = Chore.query.filter_by(is_active=True).all()
@@ -39,7 +39,7 @@ def generate_daily_instances():
                 for instance in instances:
                     if instance.due_date == today or instance.due_date is None:
                         try:
-                            from addon.utils.webhooks import fire_webhook
+                            from utils.webhooks import fire_webhook
                             fire_webhook('chore_instance_created', instance)
                             webhooks_fired += 1
                         except ImportError:
