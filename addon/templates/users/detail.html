@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="mb-md">
+    <a href="{{ url_for('ui.users_list') }}" class="btn btn-sm btn-outline">← Back to Users</a>
+</div>
+
+<div class="card mb-lg">
+    <div class="card-header">
+        <div>
+            <h1 class="card-title">{{ user.username }}</h1>
+            <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
+        </div>
+        <div class="card-actions">
+            <button class="btn btn-sm btn-outline" onclick="showEditUserModal()">Edit</button>
+        </div>
+    </div>
+
+    <div class="mb-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Home Assistant ID</h3>
+        <p>{{ user.ha_user_id }}</p>
+    </div>
+
+    {% if user.role == 'kid' %}
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ user.points }}</span>
+            <span class="stat-label">Current Points</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ stats.total_completed }}</span>
+            <span class="stat-label">Chores Completed</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ stats.total_points_earned }}</span>
+            <span class="stat-label">Points Earned</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ stats.total_rewards_claimed }}</span>
+            <span class="stat-label">Rewards Claimed</span>
+        </div>
+    </div>
+
+    <div class="mt-md">
+        <button class="btn btn-primary" onclick="showPointsAdjustModal()">Adjust Points</button>
+    </div>
+    {% endif %}
+
+    <div class="mt-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Account Details</h3>
+        <div class="list-item-meta">
+            <strong>Member since:</strong> {{ user.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+        </div>
+        <div class="list-item-meta">
+            <strong>Last updated:</strong> {{ user.updated_at.strftime('%b %d, %Y at %I:%M %p') }}
+        </div>
+    </div>
+</div>
+
+{% if user.role == 'kid' %}
+<!-- Points History -->
+<div class="card mb-lg">
+    <div class="card-header">
+        <h2 class="card-title">Points History</h2>
+    </div>
+
+    {% if points_history %}
+        <ul class="list">
+            {% for entry in points_history %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">{{ entry.reason }}</div>
+                    <span class="points-badge" style="background: {% if entry.points_delta > 0 %}linear-gradient(135deg, #4caf50, #66bb6a){% else %}linear-gradient(135deg, #e53935, #ff6f60){% endif %};">
+                        {% if entry.points_delta > 0 %}+{% endif %}{{ entry.points_delta }}
+                    </span>
+                </div>
+
+                <div class="list-item-meta">
+                    {{ entry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                </div>
+
+                <div class="list-item-meta">
+                    <strong>Balance after:</strong> {{ entry.balance_after }}
+                </div>
+
+                {% if entry.chore_instance %}
+                <div class="list-item-meta">
+                    Related to: <a href="{{ url_for('ui.chore_detail', id=entry.chore_instance.chore_id) }}">{{ entry.chore_instance.chore.name }}</a>
+                </div>
+                {% endif %}
+
+                {% if entry.reward_claim %}
+                <div class="list-item-meta">
+                    Related to: Reward claim - {{ entry.reward_claim.reward.name }}
+                </div>
+                {% endif %}
+
+                {% if entry.created_by %}
+                <div class="list-item-meta">
+                    Created by: {{ entry.created_by.username }}
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Pagination -->
+        {% if pagination %}
+        <div class="flex-between mt-md">
+            <div class="text-secondary">
+                Showing {{ pagination.start }} - {{ pagination.end }} of {{ pagination.total }}
+            </div>
+            <div class="flex flex-gap-sm">
+                {% if pagination.has_prev %}
+                <a href="?page={{ pagination.prev_page }}" class="btn btn-sm btn-outline">Previous</a>
+                {% endif %}
+                <span class="btn btn-sm btn-outline" style="cursor: default;">Page {{ pagination.page }}</span>
+                {% if pagination.has_next %}
+                <a href="?page={{ pagination.next_page }}" class="btn btn-sm btn-outline">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">⭐</div>
+            <div class="empty-state-title">No points history yet</div>
+            <p class="empty-state-text">Points transactions will appear here.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Assigned Chores -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Assigned Chores</h2>
+    </div>
+
+    {% if assigned_chores %}
+        <ul class="list">
+            {% for chore in assigned_chores %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">
+                        <a href="{{ url_for('ui.chore_detail', id=chore.id) }}">{{ chore.name }}</a>
+                    </div>
+                    <span class="status status-{{ 'active' if chore.is_active else 'inactive' }}">
+                        {{ 'Active' if chore.is_active else 'Inactive' }}
+                    </span>
+                </div>
+
+                <div class="list-item-meta">
+                    <strong>Points:</strong> {{ chore.points }}
+                    {% if chore.late_points %}| <strong>Late:</strong> {{ chore.late_points }}{% endif %}
+                </div>
+
+                <div class="list-item-meta">
+                    <strong>Recurrence:</strong>
+                    {% if chore.recurrence_pattern %}
+                        {{ chore.recurrence_pattern }}
+                    {% else %}
+                        One-time
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No assigned chores</div>
+            <p class="empty-state-text">Assign chores from the <a href="{{ url_for('ui.chores_list') }}">Chores page</a>.</p>
+        </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Edit User</h3>
+        <form method="POST" action="{{ url_for('users.update_user', user_id=user.id) }}">
+            <div class="form-group">
+                <label class="form-label" for="username">Username *</label>
+                <input type="text" id="username" name="username" class="form-input" value="{{ user.username }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ha_user_id">Home Assistant User ID *</label>
+                <input type="text" id="ha_user_id" name="ha_user_id" class="form-input" value="{{ user.ha_user_id }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="role">Role *</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="kid" {% if user.role == 'kid' %}selected{% endif %}>Kid</option>
+                    <option value="parent" {% if user.role == 'parent' %}selected{% endif %}>Parent</option>
+                </select>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-primary">Update User</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Points Adjustment Modal -->
+<div id="pointsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Adjust Points</h3>
+        <p>Current balance: <strong>{{ user.points }}</strong></p>
+        <form method="POST" action="{{ url_for('points.adjust_points') }}">
+            <input type="hidden" name="user_id" value="{{ user.id }}">
+            <div class="form-group">
+                <label class="form-label" for="points_delta">Points Change:</label>
+                <input type="number" id="points_delta" name="delta" class="form-input" required>
+                <div class="form-help">Use positive numbers to add points, negative to subtract</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="points_reason">Reason:</label>
+                <input type="text" id="points_reason" name="reason" class="form-input" required>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-primary">Adjust Points</button>
+                <button type="button" class="btn btn-secondary" onclick="closePointsModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showEditUserModal() {
+    document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function closeEditUserModal() {
+    document.getElementById('editUserModal').style.display = 'none';
+}
+
+function showPointsAdjustModal() {
+    document.getElementById('pointsModal').style.display = 'flex';
+}
+
+function closePointsModal() {
+    document.getElementById('pointsModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEditUserModal();
+        closePointsModal();
+    }
+});
+</script>
+{% endblock %}

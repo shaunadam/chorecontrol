@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Rewards - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">Rewards</h1>
+    <a href="{{ url_for('ui.reward_form') }}" class="btn btn-primary">+ Add Reward</a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-md">
+    <form method="GET" class="flex flex-gap-sm" style="flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <select name="active" class="form-select" onchange="this.form.submit()">
+                <option value="">All Rewards</option>
+                <option value="true" {% if request.args.get('active') == 'true' %}selected{% endif %}>Active Only</option>
+                <option value="false" {% if request.args.get('active') == 'false' %}selected{% endif %}>Inactive Only</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Rewards List -->
+{% if rewards %}
+    <ul class="list">
+        {% for reward in rewards %}
+        <li class="list-item">
+            <div class="list-item-header">
+                <div class="list-item-title">{{ reward.name }}</div>
+                <div class="flex flex-gap-sm" style="align-items: center;">
+                    <span class="points-badge" style="background: linear-gradient(135deg, #e53935, #ff6f60);">
+                        {{ reward.points_cost }}
+                    </span>
+                    <span class="status status-{{ 'active' if reward.is_active else 'inactive' }}">
+                        {{ 'Active' if reward.is_active else 'Inactive' }}
+                    </span>
+                </div>
+            </div>
+
+            {% if reward.description %}
+            <div class="list-item-meta">{{ reward.description }}</div>
+            {% endif %}
+
+            <div class="list-item-meta">
+                {% if reward.cooldown_days %}
+                    <strong>Cooldown:</strong> {{ reward.cooldown_days }} day(s)
+                {% endif %}
+                {% if reward.limit_per_kid %}
+                    {% if reward.cooldown_days %} | {% endif %}
+                    <strong>Limit:</strong> {{ reward.limit_per_kid }} per kid
+                {% endif %}
+                {% if reward.expiration_days %}
+                    {% if reward.cooldown_days or reward.limit_per_kid %} | {% endif %}
+                    <strong>Expires in:</strong> {{ reward.expiration_days }} day(s)
+                {% endif %}
+            </div>
+
+            <div class="list-item-meta">
+                <strong>Claims:</strong> {{ reward.total_claims or 0 }} total
+                {% if reward.pending_claims > 0 %}
+                    | <span class="status status-pending">{{ reward.pending_claims }} pending</span>
+                {% endif %}
+            </div>
+
+            <div class="list-item-actions">
+                <a href="{{ url_for('ui.reward_form', id=reward.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                {% if reward.is_active %}
+                <form method="POST" action="{{ url_for('rewards.delete_reward', reward_id=reward.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this reward?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                </form>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Pagination -->
+    {% if pagination %}
+    <div class="flex-between mt-lg">
+        <div class="text-secondary">
+            Showing {{ pagination.start }} - {{ pagination.end }} of {{ pagination.total }}
+        </div>
+        <div class="flex flex-gap-sm">
+            {% if pagination.has_prev %}
+            <a href="?page={{ pagination.prev_page }}" class="btn btn-sm btn-outline">Previous</a>
+            {% endif %}
+            <span class="btn btn-sm btn-outline" style="cursor: default;">Page {{ pagination.page }}</span>
+            {% if pagination.has_next %}
+            <a href="?page={{ pagination.next_page }}" class="btn btn-sm btn-outline">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+{% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-state-icon">🎁</div>
+            <div class="empty-state-title">No rewards yet</div>
+            <p class="empty-state-text">Create rewards that kids can claim with their points!</p>
+            <a href="{{ url_for('ui.reward_form') }}" class="btn btn-primary">Create Reward</a>
+        </div>
+    </div>
+{% endif %}
+
+{% if pending_claims %}
+<div class="card mt-lg">
+    <div class="card-header">
+        <h2 class="card-title">Pending Reward Claims</h2>
+        <a href="{{ url_for('ui.approval_queue') }}" class="btn btn-sm btn-primary">View All Approvals</a>
+    </div>
+
+    <ul class="list">
+        {% for claim in pending_claims %}
+        <li class="list-item">
+            <div class="list-item-header">
+                <div class="list-item-title">{{ claim.reward.name }}</div>
+                <span class="status status-pending">Pending</span>
+            </div>
+
+            <div class="list-item-meta">
+                <strong>{{ claim.user.username }}</strong> claimed this reward
+                <br>Claimed: {{ claim.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
+                <br>Cost: <strong>{{ claim.reward.points_cost }} points</strong>
+                {% if claim.expiration_date %}
+                    <br>Expires: {{ claim.expiration_date.strftime('%b %d, %Y') }}
+                {% endif %}
+            </div>
+
+            <div class="list-item-actions">
+                <form method="POST" action="{{ url_for('rewards.approve_reward_claim', claim_id=claim.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                </form>
+                <form method="POST" action="{{ url_for('rewards.reject_reward_claim', claim_id=claim.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure? This will refund the points.');">
+                    <button type="submit" class="btn btn-sm btn-danger">✗ Reject</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% endblock %}

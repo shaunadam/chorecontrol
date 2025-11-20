@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if chore else 'Create' }} Chore - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="mb-md">
+    <a href="{{ url_for('ui.chores_list') }}" class="btn btn-sm btn-outline">← Back to Chores</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">{{ 'Edit' if chore else 'Create New' }} Chore</h1>
+    </div>
+
+    <form method="POST" action="{{ url_for('chores.create_chore') if not chore else url_for('chores.update_chore', chore_id=chore.id) }}">
+        <div class="form-group">
+            <label class="form-label" for="name">Name *</label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                class="form-input"
+                required
+                maxlength="255"
+                value="{{ chore.name if chore else '' }}"
+                placeholder="e.g., Take out trash"
+            >
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="description">Description</label>
+            <textarea
+                id="description"
+                name="description"
+                class="form-textarea"
+                rows="3"
+                placeholder="Provide details about how to complete this chore..."
+            >{{ chore.description if chore else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="points">Points Value *</label>
+            <input
+                type="number"
+                id="points"
+                name="points"
+                class="form-input"
+                required
+                min="0"
+                value="{{ chore.points if chore else '10' }}"
+            >
+            <div class="form-help">Points awarded when the chore is completed and approved</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="late_points">Late Points</label>
+            <input
+                type="number"
+                id="late_points"
+                name="late_points"
+                class="form-input"
+                min="0"
+                value="{{ chore.late_points if chore and chore.late_points else '' }}"
+                placeholder="Optional"
+            >
+            <div class="form-help">Reduced points if completed after the due date</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="recurrence_pattern">Recurrence Pattern</label>
+            <select id="recurrence_type" class="form-select" onchange="updateRecurrenceFields()">
+                <option value="none">One-time (no recurrence)</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="custom">Custom Pattern</option>
+            </select>
+        </div>
+
+        <div id="recurrence_fields" style="display: none;">
+            <!-- Daily Options -->
+            <div id="daily_options" class="recurrence-option" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label" for="daily_interval">Every</label>
+                    <div class="flex flex-gap-sm">
+                        <input type="number" id="daily_interval" class="form-input" min="1" value="1" style="max-width: 100px;">
+                        <span style="padding: 0.625rem;">day(s)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Options -->
+            <div id="weekly_options" class="recurrence-option" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Days of the Week</label>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="mon" value="MON">
+                        <label for="mon">Monday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="tue" value="TUE">
+                        <label for="tue">Tuesday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="wed" value="WED">
+                        <label for="wed">Wednesday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="thu" value="THU">
+                        <label for="thu">Thursday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="fri" value="FRI">
+                        <label for="fri">Friday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="sat" value="SAT">
+                        <label for="sat">Saturday</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="sun" value="SUN">
+                        <label for="sun">Sunday</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Options -->
+            <div id="monthly_options" class="recurrence-option" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label" for="monthly_day">Day of Month</label>
+                    <input type="number" id="monthly_day" class="form-input" min="1" max="31" placeholder="e.g., 15">
+                    <div class="form-help">Day of the month (1-31)</div>
+                </div>
+            </div>
+
+            <!-- Custom Pattern -->
+            <div id="custom_options" class="recurrence-option" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label" for="custom_pattern">Custom Pattern</label>
+                    <input
+                        type="text"
+                        id="custom_pattern"
+                        class="form-input"
+                        placeholder="e.g., every 2 weeks on Monday, Wednesday"
+                    >
+                    <div class="form-help">
+                        Examples:
+                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                            <li>"daily" or "every day"</li>
+                            <li>"every 3 days"</li>
+                            <li>"weekly on Monday, Wednesday, Friday"</li>
+                            <li>"every 2 weeks on Saturday"</li>
+                            <li>"monthly on day 15"</li>
+                            <li>"on the 1st and 15th"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" id="recurrence_pattern" name="recurrence_pattern" value="{{ chore.recurrence_pattern if chore else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="assigned_to">Assign To</label>
+            <div id="assignments">
+                {% if kids %}
+                    {% for kid in kids %}
+                    <div class="form-checkbox">
+                        <input
+                            type="checkbox"
+                            id="kid_{{ kid.id }}"
+                            name="assigned_to"
+                            value="{{ kid.id }}"
+                            {% if chore and kid.id in chore.assigned_users %}checked{% endif %}
+                        >
+                        <label for="kid_{{ kid.id }}">{{ kid.username }}</label>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-secondary">No kids available. <a href="{{ url_for('ui.users_list') }}">Add a user</a> first.</p>
+                {% endif %}
+            </div>
+            <div class="form-help">Chores can be assigned to multiple kids or left unassigned</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="auto_approve_delay_hours">Auto-approve Delay (hours)</label>
+            <input
+                type="number"
+                id="auto_approve_delay_hours"
+                name="auto_approve_delay_hours"
+                class="form-input"
+                min="0"
+                value="{{ chore.auto_approve_delay_hours if chore and chore.auto_approve_delay_hours else '' }}"
+                placeholder="Optional"
+            >
+            <div class="form-help">Automatically approve after this many hours (leave empty to disable)</div>
+        </div>
+
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input
+                    type="checkbox"
+                    id="is_active"
+                    name="is_active"
+                    {% if not chore or chore.is_active %}checked{% endif %}
+                >
+                <label for="is_active">Active</label>
+            </div>
+            <div class="form-help">Only active chores will generate new instances</div>
+        </div>
+
+        <div class="flex-gap-sm mt-lg">
+            <button type="submit" class="btn btn-primary">{{ 'Update' if chore else 'Create' }} Chore</button>
+            <a href="{{ url_for('ui.chores_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Parse existing recurrence pattern if editing
+{% if chore and chore.recurrence_pattern %}
+const existingPattern = "{{ chore.recurrence_pattern }}";
+parseExistingPattern(existingPattern);
+{% endif %}
+
+function updateRecurrenceFields() {
+    const type = document.getElementById('recurrence_type').value;
+    const fieldsDiv = document.getElementById('recurrence_fields');
+    const allOptions = document.querySelectorAll('.recurrence-option');
+
+    // Hide all options first
+    allOptions.forEach(opt => opt.style.display = 'none');
+
+    if (type === 'none') {
+        fieldsDiv.style.display = 'none';
+        document.getElementById('recurrence_pattern').value = '';
+    } else {
+        fieldsDiv.style.display = 'block';
+        document.getElementById(type + '_options').style.display = 'block';
+    }
+}
+
+function parseExistingPattern(pattern) {
+    const lower = pattern.toLowerCase();
+
+    if (lower.includes('daily') || lower.includes('every day')) {
+        document.getElementById('recurrence_type').value = 'daily';
+        const match = lower.match(/every (\d+) day/);
+        if (match) {
+            document.getElementById('daily_interval').value = match[1];
+        }
+    } else if (lower.includes('weekly') || lower.includes('monday') || lower.includes('tuesday')) {
+        document.getElementById('recurrence_type').value = 'weekly';
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        days.forEach(day => {
+            if (lower.includes(day)) {
+                document.getElementById(day).checked = true;
+            }
+        });
+    } else if (lower.includes('monthly') || lower.includes('day ')) {
+        document.getElementById('recurrence_type').value = 'monthly';
+        const match = lower.match(/day (\d+)/);
+        if (match) {
+            document.getElementById('monthly_day').value = match[1];
+        }
+    } else {
+        document.getElementById('recurrence_type').value = 'custom';
+        document.getElementById('custom_pattern').value = pattern;
+    }
+
+    updateRecurrenceFields();
+}
+
+// Build recurrence pattern before form submission
+document.querySelector('form').addEventListener('submit', function(e) {
+    const type = document.getElementById('recurrence_type').value;
+    let pattern = '';
+
+    if (type === 'daily') {
+        const interval = document.getElementById('daily_interval').value;
+        pattern = interval === '1' ? 'daily' : `every ${interval} days`;
+    } else if (type === 'weekly') {
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const selected = days.filter(day => document.getElementById(day).checked)
+            .map(day => day.toUpperCase());
+        if (selected.length > 0) {
+            pattern = `weekly on ${selected.join(', ')}`;
+        }
+    } else if (type === 'monthly') {
+        const day = document.getElementById('monthly_day').value;
+        if (day) {
+            pattern = `monthly on day ${day}`;
+        }
+    } else if (type === 'custom') {
+        pattern = document.getElementById('custom_pattern').value;
+    }
+
+    document.getElementById('recurrence_pattern').value = pattern;
+});
+</script>
+{% endblock %}

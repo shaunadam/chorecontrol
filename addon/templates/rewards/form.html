@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if reward else 'Create' }} Reward - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="mb-md">
+    <a href="{{ url_for('ui.rewards_list') }}" class="btn btn-sm btn-outline">← Back to Rewards</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">{{ 'Edit' if reward else 'Create New' }} Reward</h1>
+    </div>
+
+    <form method="POST" action="{{ url_for('rewards.create_reward') if not reward else url_for('rewards.update_reward', reward_id=reward.id) }}">
+        <div class="form-group">
+            <label class="form-label" for="name">Name *</label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                class="form-input"
+                required
+                maxlength="255"
+                value="{{ reward.name if reward else '' }}"
+                placeholder="e.g., Extra screen time"
+            >
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="description">Description</label>
+            <textarea
+                id="description"
+                name="description"
+                class="form-textarea"
+                rows="3"
+                placeholder="Describe the reward..."
+            >{{ reward.description if reward else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="points_cost">Points Cost *</label>
+            <input
+                type="number"
+                id="points_cost"
+                name="points_cost"
+                class="form-input"
+                required
+                min="1"
+                value="{{ reward.points_cost if reward else '50' }}"
+            >
+            <div class="form-help">How many points this reward costs to claim</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="cooldown_days">Cooldown (days)</label>
+            <input
+                type="number"
+                id="cooldown_days"
+                name="cooldown_days"
+                class="form-input"
+                min="0"
+                value="{{ reward.cooldown_days if reward and reward.cooldown_days else '' }}"
+                placeholder="Optional"
+            >
+            <div class="form-help">Minimum days before this can be claimed again by the same kid</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="limit_per_kid">Limit Per Kid</label>
+            <input
+                type="number"
+                id="limit_per_kid"
+                name="limit_per_kid"
+                class="form-input"
+                min="0"
+                value="{{ reward.limit_per_kid if reward and reward.limit_per_kid else '' }}"
+                placeholder="Optional"
+            >
+            <div class="form-help">Maximum number of times each kid can claim this reward (leave empty for unlimited)</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="expiration_days">Expiration (days)</label>
+            <input
+                type="number"
+                id="expiration_days"
+                name="expiration_days"
+                class="form-input"
+                min="0"
+                value="{{ reward.expiration_days if reward and reward.expiration_days else '' }}"
+                placeholder="Optional"
+            >
+            <div class="form-help">Days until approved claim expires (leave empty for no expiration)</div>
+        </div>
+
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input
+                    type="checkbox"
+                    id="requires_approval"
+                    name="requires_approval"
+                    {% if not reward or reward.requires_approval %}checked{% endif %}
+                >
+                <label for="requires_approval">Requires Approval</label>
+            </div>
+            <div class="form-help">If checked, parent must approve claims before reward is granted</div>
+        </div>
+
+        <div class="form-group">
+            <div class="form-checkbox">
+                <input
+                    type="checkbox"
+                    id="is_active"
+                    name="is_active"
+                    {% if not reward or reward.is_active %}checked{% endif %}
+                >
+                <label for="is_active">Active</label>
+            </div>
+            <div class="form-help">Only active rewards can be claimed by kids</div>
+        </div>
+
+        <div class="flex-gap-sm mt-lg">
+            <button type="submit" class="btn btn-primary">{{ 'Update' if reward else 'Create' }} Reward</button>
+            <a href="{{ url_for('ui.rewards_list') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

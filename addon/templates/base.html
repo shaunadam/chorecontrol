@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ChoreControl{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <a href="{{ url_for('ui.dashboard') }}">ChoreControl</a>
+                </h1>
+                {% if current_user %}
+                <div class="user-info">
+                    <span class="username">{{ current_user.username }}</span>
+                    <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <nav class="nav">
+                <a href="{{ url_for('ui.dashboard') }}" class="nav-link {% if request.endpoint == 'ui.dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="{{ url_for('ui.approval_queue') }}" class="nav-link {% if request.endpoint == 'ui.approval_queue' %}active{% endif %}">
+                    <span class="nav-icon">✓</span>
+                    <span class="nav-text">Approvals</span>
+                    {% if pending_count and pending_count > 0 %}
+                    <span class="badge">{{ pending_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('ui.chores_list') }}" class="nav-link {% if 'chores' in request.endpoint %}active{% endif %}">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">Chores</span>
+                </a>
+                <a href="{{ url_for('ui.rewards_list') }}" class="nav-link {% if 'rewards' in request.endpoint %}active{% endif %}">
+                    <span class="nav-icon">🎁</span>
+                    <span class="nav-text">Rewards</span>
+                </a>
+                <a href="{{ url_for('ui.users_list') }}" class="nav-link {% if 'users' in request.endpoint %}active{% endif %}">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Users</span>
+                </a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 ChoreControl | <a href="/health">System Status</a></p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -71,26 +71,20 @@ def register_routes(app):
     """Register all application routes."""
 
     # Register blueprints
-    from routes import users_bp, chores_bp
+    from routes import users_bp, chores_bp, ui_bp
     from routes.instances import instances_bp
     from routes.rewards import rewards_bp
     from routes.points import points_bp
 
+    # Register UI blueprint first (so it handles the root route)
+    app.register_blueprint(ui_bp)
+
+    # Register API blueprints
     app.register_blueprint(users_bp)
     app.register_blueprint(chores_bp)
     app.register_blueprint(instances_bp)
     app.register_blueprint(rewards_bp)
     app.register_blueprint(points_bp)
-
-    @app.route('/')
-    def index():
-        """Home page - will serve web UI."""
-        return jsonify({
-            'name': 'ChoreControl',
-            'version': '0.1.0',
-            'status': 'running',
-            'message': 'ChoreControl API is running. Web UI coming soon!'
-        })
 
     @app.route('/health')
     def health():

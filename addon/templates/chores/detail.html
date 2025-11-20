@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}{{ chore.name }} - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="mb-md">
+    <a href="{{ url_for('ui.chores_list') }}" class="btn btn-sm btn-outline">← Back to Chores</a>
+</div>
+
+<div class="card mb-lg">
+    <div class="card-header">
+        <div>
+            <h1 class="card-title">{{ chore.name }}</h1>
+            <span class="status status-{{ 'active' if chore.is_active else 'inactive' }}">
+                {{ 'Active' if chore.is_active else 'Inactive' }}
+            </span>
+        </div>
+        <div class="card-actions">
+            <a href="{{ url_for('ui.chore_form', id=chore.id) }}" class="btn btn-sm btn-primary">Edit</a>
+            {% if chore.is_active %}
+            <form method="POST" action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
+                <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if chore.description %}
+    <div class="mb-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Description</h3>
+        <p>{{ chore.description }}</p>
+    </div>
+    {% endif %}
+
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ chore.points }}</span>
+            <span class="stat-label">Points</span>
+        </div>
+        {% if chore.late_points %}
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ chore.late_points }}</span>
+            <span class="stat-label">Late Points</span>
+        </div>
+        {% endif %}
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ instance_stats.total }}</span>
+            <span class="stat-label">Total Instances</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" style="font-size: 1.5rem;">{{ instance_stats.completed }}</span>
+            <span class="stat-label">Completed</span>
+        </div>
+    </div>
+
+    <div class="mt-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Recurrence</h3>
+        <p>
+            {% if chore.recurrence_pattern %}
+                {{ chore.recurrence_pattern }}
+            {% else %}
+                One-time chore
+            {% endif %}
+        </p>
+    </div>
+
+    {% if chore.assignments %}
+    <div class="mt-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Assigned To</h3>
+        <div class="flex flex-gap-sm" style="flex-wrap: wrap;">
+            {% for assignment in chore.assignments %}
+            <span class="status status-active">{{ assignment.user.username }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-md">
+        <h3 style="font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem;">Details</h3>
+        <div class="list-item-meta">
+            <strong>Auto-approve delay:</strong>
+            {% if chore.auto_approve_delay_hours %}
+                {{ chore.auto_approve_delay_hours }} hours
+            {% else %}
+                Disabled
+            {% endif %}
+        </div>
+        <div class="list-item-meta">
+            <strong>Created:</strong> {{ chore.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+            {% if chore.creator %}
+                by {{ chore.creator.username }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Instances -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Chore Instances</h2>
+        <div class="card-actions">
+            <select id="statusFilter" class="form-select" onchange="filterInstances()">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="claimed">Claimed</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="missed">Missed</option>
+            </select>
+        </div>
+    </div>
+
+    {% if instances %}
+        <ul class="list" id="instancesList">
+            {% for instance in instances %}
+            <li class="list-item" data-status="{{ instance.status }}">
+                <div class="list-item-header">
+                    <div class="list-item-title">
+                        Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                    </div>
+                    <span class="status status-{{ instance.status }}">{{ instance.status|title }}</span>
+                </div>
+
+                {% if instance.assigned_user %}
+                <div class="list-item-meta">
+                    <strong>Assigned to:</strong> {{ instance.assigned_user.username }}
+                </div>
+                {% endif %}
+
+                {% if instance.status == 'claimed' %}
+                <div class="list-item-meta">
+                    <strong>Claimed by:</strong> {{ instance.claimer.username }}
+                    on {{ instance.claimed_at.strftime('%b %d at %I:%M %p') }}
+                    {% if instance.claimed_late %}
+                        <span class="status status-warning">Late</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if instance.status == 'approved' %}
+                <div class="list-item-meta">
+                    <strong>Completed by:</strong> {{ instance.claimer.username }}
+                    <br><strong>Points awarded:</strong> {{ instance.points_awarded }}
+                    <br><strong>Approved:</strong> {{ instance.approved_at.strftime('%b %d at %I:%M %p') }}
+                    {% if instance.approver %}
+                        by {{ instance.approver.username }}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if instance.status == 'rejected' %}
+                <div class="list-item-meta">
+                    <strong>Rejected:</strong> {{ instance.rejected_at.strftime('%b %d at %I:%M %p') }}
+                    {% if instance.rejection_reason %}
+                        <br><strong>Reason:</strong> {{ instance.rejection_reason }}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if instance.status == 'claimed' %}
+                <div class="list-item-actions">
+                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                    </form>
+                    <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }})">✗ Reject</button>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Pagination -->
+        {% if pagination %}
+        <div class="flex-between mt-md">
+            <div class="text-secondary">
+                Showing {{ pagination.start }} - {{ pagination.end }} of {{ pagination.total }}
+            </div>
+            <div class="flex flex-gap-sm">
+                {% if pagination.has_prev %}
+                <a href="?page={{ pagination.prev_page }}" class="btn btn-sm btn-outline">Previous</a>
+                {% endif %}
+                <span class="btn btn-sm btn-outline" style="cursor: default;">Page {{ pagination.page }}</span>
+                {% if pagination.has_next %}
+                <a href="?page={{ pagination.next_page }}" class="btn btn-sm btn-outline">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📅</div>
+            <div class="empty-state-title">No instances yet</div>
+            <p class="empty-state-text">
+                {% if chore.recurrence_pattern %}
+                    Instances will be generated automatically based on the recurrence pattern.
+                {% else %}
+                    This is a one-time chore with no scheduled instances.
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Reject Chore Instance</h3>
+        <p>Are you sure you want to reject this completion?</p>
+        <form id="rejectForm" method="POST">
+            <div class="form-group">
+                <label class="form-label" for="rejection_reason">Reason (optional):</label>
+                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3"></textarea>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-danger">Reject</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showRejectModal(instanceId) {
+    document.getElementById('rejectForm').action = `/api/instances/${instanceId}/reject`;
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+
+function filterInstances() {
+    const filter = document.getElementById('statusFilter').value;
+    const items = document.querySelectorAll('#instancesList .list-item');
+
+    items.forEach(item => {
+        if (filter === 'all' || item.dataset.status === filter) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRejectModal();
+    }
+});
+</script>
+{% endblock %}

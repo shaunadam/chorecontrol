@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Approval Queue - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="page-header mb-lg">
+    <h1>Approval Queue</h1>
+    <p class="text-secondary">Review and approve pending chores and reward claims</p>
+</div>
+
+<!-- Pending Chore Instances -->
+<div class="card mb-lg">
+    <div class="card-header">
+        <h2 class="card-title">Pending Chore Approvals</h2>
+        <span class="badge">{{ pending_instances|length if pending_instances else 0 }}</span>
+    </div>
+
+    {% if pending_instances %}
+        <ul class="list">
+            {% for instance in pending_instances %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">{{ instance.chore.name }}</div>
+                    <span class="status status-claimed">Claimed</span>
+                </div>
+
+                <div class="list-item-meta">
+                    <strong>{{ instance.claimer.username }}</strong> completed this on
+                    {{ instance.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
+                </div>
+
+                <div class="list-item-meta">
+                    Due date: {{ instance.due_date.strftime('%b %d, %Y') }}
+                    {% if instance.claimed_late %}
+                        <span class="status status-warning">Claimed Late</span>
+                    {% endif %}
+                </div>
+
+                <div class="list-item-meta">
+                    Points to award: <strong>{{ instance.points_value }}</strong>
+                    {% if instance.claimed_late and instance.chore.late_points %}
+                        (Late: {{ instance.chore.late_points }})
+                    {% endif %}
+                </div>
+
+                {% if instance.chore.description %}
+                <div class="list-item-meta">
+                    <em>{{ instance.chore.description }}</em>
+                </div>
+                {% endif %}
+
+                <div class="list-item-actions">
+                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success">✓ Approve ({{ instance.points_value }} pts)</button>
+                    </form>
+                    <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }}, '{{ instance.chore.name }}', 'chore')">✗ Reject</button>
+                    <a href="{{ url_for('ui.chore_detail', id=instance.chore.id) }}" class="btn btn-sm btn-outline">View Chore</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">✓</div>
+            <div class="empty-state-title">All caught up!</div>
+            <p class="empty-state-text">No pending chore approvals.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Pending Reward Claims -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Pending Reward Claims</h2>
+        <span class="badge">{{ pending_claims|length if pending_claims else 0 }}</span>
+    </div>
+
+    {% if pending_claims %}
+        <ul class="list">
+            {% for claim in pending_claims %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">{{ claim.reward.name }}</div>
+                    <span class="status status-pending">Pending</span>
+                </div>
+
+                <div class="list-item-meta">
+                    <strong>{{ claim.user.username }}</strong> claimed this reward
+                </div>
+
+                <div class="list-item-meta">
+                    Claimed: {{ claim.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
+                </div>
+
+                <div class="list-item-meta">
+                    Cost: <strong>{{ claim.reward.points_cost }} points</strong>
+                    (Current balance: {{ claim.user.points }})
+                </div>
+
+                {% if claim.reward.description %}
+                <div class="list-item-meta">
+                    <em>{{ claim.reward.description }}</em>
+                </div>
+                {% endif %}
+
+                {% if claim.expiration_date %}
+                <div class="list-item-meta">
+                    Expires: {{ claim.expiration_date.strftime('%b %d, %Y') }}
+                </div>
+                {% endif %}
+
+                <div class="list-item-actions">
+                    <form method="POST" action="{{ url_for('rewards.approve_reward_claim', claim_id=claim.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                    </form>
+                    <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ claim.id }}, '{{ claim.reward.name }}', 'reward')">✗ Reject & Refund</button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">🎁</div>
+            <div class="empty-state-title">No pending reward claims</div>
+            <p class="empty-state-text">Reward claims will appear here for approval.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Reject <span id="rejectType"></span></h3>
+        <p>Are you sure you want to reject <strong id="rejectTitle"></strong>?</p>
+        <form id="rejectForm" method="POST">
+            <div class="form-group" id="reasonGroup">
+                <label class="form-label" for="rejection_reason">Reason (optional):</label>
+                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3"></textarea>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-danger">Reject</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showRejectModal(id, title, type) {
+    document.getElementById('rejectTitle').textContent = title;
+    document.getElementById('rejectType').textContent = type === 'chore' ? 'Chore' : 'Reward Claim';
+
+    if (type === 'chore') {
+        document.getElementById('rejectForm').action = `/api/instances/${id}/reject`;
+        document.getElementById('reasonGroup').style.display = 'block';
+    } else {
+        document.getElementById('rejectForm').action = `/api/rewards/claims/${id}/reject`;
+        document.getElementById('reasonGroup').style.display = 'none';
+    }
+
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRejectModal();
+    }
+});
+</script>
+{% endblock %}

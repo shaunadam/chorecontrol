@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="page-header mb-lg">
+    <h1>Dashboard</h1>
+    <p class="text-secondary">Welcome back, {{ current_user.username }}!</p>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ stats.pending_approvals }}</span>
+        <span class="stat-label">Pending Approvals</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ stats.pending_rewards }}</span>
+        <span class="stat-label">Reward Claims</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ stats.today_completed }}</span>
+        <span class="stat-label">Completed Today</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ stats.active_chores }}</span>
+        <span class="stat-label">Active Chores</span>
+    </div>
+</div>
+
+<!-- Pending Approvals Section -->
+<div class="card mb-lg">
+    <div class="card-header">
+        <h2 class="card-title">Pending Approvals</h2>
+        <a href="{{ url_for('ui.approval_queue') }}" class="btn btn-sm btn-primary">View All</a>
+    </div>
+
+    {% if pending_instances %}
+        <ul class="list">
+            {% for instance in pending_instances %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">{{ instance.chore.name }}</div>
+                    <span class="status status-claimed">Claimed</span>
+                </div>
+                <div class="list-item-meta">
+                    <strong>{{ instance.claimer.username }}</strong> completed this on
+                    {{ instance.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
+                </div>
+                <div class="list-item-meta">
+                    Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                    {% if instance.claimed_late %}
+                        <span class="status status-warning">Claimed Late</span>
+                    {% endif %}
+                </div>
+                <div class="list-item-meta">
+                    Points: <strong>{{ instance.points_value }}</strong>
+                    {% if instance.claimed_late and instance.chore.late_points %}
+                        (Late: {{ instance.chore.late_points }})
+                    {% endif %}
+                </div>
+                <div class="list-item-actions">
+                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                    </form>
+                    <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }}, '{{ instance.chore.name }}')">✗ Reject</button>
+                    <a href="{{ url_for('ui.chore_detail', id=instance.chore.id) }}" class="btn btn-sm btn-outline">View Chore</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">✓</div>
+            <div class="empty-state-title">All caught up!</div>
+            <p class="empty-state-text">No pending chore approvals at the moment.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Kids' Points -->
+<div class="card mb-lg">
+    <div class="card-header">
+        <h2 class="card-title">Kids' Points</h2>
+        <a href="{{ url_for('ui.users_list') }}" class="btn btn-sm btn-outline">Manage</a>
+    </div>
+
+    {% if kids %}
+        <ul class="list">
+            {% for kid in kids %}
+            <li class="list-item">
+                <div class="flex-between">
+                    <div>
+                        <div class="list-item-title">{{ kid.username }}</div>
+                        <div class="list-item-meta">{{ kid.ha_user_id }}</div>
+                    </div>
+                    <div class="points-badge">{{ kid.points }}</div>
+                </div>
+                <div class="list-item-actions">
+                    <a href="{{ url_for('ui.user_detail', id=kid.id) }}" class="btn btn-sm btn-primary">View History</a>
+                    <button class="btn btn-sm btn-outline" onclick="showPointsAdjustModal({{ kid.id }}, '{{ kid.username }}', {{ kid.points }})">Adjust Points</button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">👥</div>
+            <div class="empty-state-title">No kids yet</div>
+            <p class="empty-state-text">Add kids to start tracking chores and points.</p>
+            <a href="{{ url_for('ui.users_list') }}" class="btn btn-primary">Add User</a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Recent Activity -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Recent Activity</h2>
+    </div>
+
+    {% if recent_activity %}
+        <ul class="list">
+            {% for activity in recent_activity %}
+            <li class="list-item">
+                <div class="list-item-header">
+                    <div class="list-item-title">{{ activity.chore.title }}</div>
+                    <span class="status status-{{ activity.status }}">{{ activity.status|title }}</span>
+                </div>
+                <div class="list-item-meta">
+                    {% if activity.status == 'approved' %}
+                        <strong>{{ activity.claimer.username }}</strong> completed and earned <strong>{{ activity.points_awarded }} points</strong>
+                        <br>Approved {{ activity.approved_at.strftime('%b %d at %I:%M %p') }}
+                    {% elif activity.status == 'rejected' %}
+                        <strong>{{ activity.claimer.username }}</strong>'s completion was rejected
+                        {% if activity.rejection_reason %}
+                            <br>Reason: {{ activity.rejection_reason }}
+                        {% endif %}
+                    {% elif activity.status == 'missed' %}
+                        Missed by <strong>{{ activity.assigned_user.username if activity.assigned_user else 'Unassigned' }}</strong>
+                    {% endif %}
+                    <br>Due date: {{ activity.due_date.strftime('%b %d, %Y') }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No recent activity</div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Reject Chore Completion</h3>
+        <p>Are you sure you want to reject <strong id="rejectChoreTitle"></strong>?</p>
+        <form id="rejectForm" method="POST">
+            <div class="form-group">
+                <label class="form-label" for="rejection_reason">Reason (optional):</label>
+                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3" placeholder="Why are you rejecting this?"></textarea>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-danger">Reject</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Points Adjustment Modal -->
+<div id="pointsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Adjust Points</h3>
+        <p>Adjust points for <strong id="pointsUsername"></strong> (Current: <span id="pointsCurrent"></span>)</p>
+        <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}">
+            <input type="hidden" id="pointsUserId" name="user_id">
+            <div class="form-group">
+                <label class="form-label" for="points_delta">Points Change:</label>
+                <input type="number" id="points_delta" name="delta" class="form-input" required placeholder="e.g., 10 or -5">
+                <div class="form-help">Use positive numbers to add points, negative to subtract</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="points_reason">Reason:</label>
+                <input type="text" id="points_reason" name="reason" class="form-input" required placeholder="e.g., Bonus for helping out">
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-primary">Adjust Points</button>
+                <button type="button" class="btn btn-secondary" onclick="closePointsModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+    margin-bottom: 1rem;
+}
+
+.modal-content p {
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showRejectModal(instanceId, choreTitle) {
+    document.getElementById('rejectChoreTitle').textContent = choreTitle;
+    document.getElementById('rejectForm').action = `/api/instances/${instanceId}/reject`;
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+
+function showPointsAdjustModal(userId, username, currentPoints) {
+    document.getElementById('pointsUsername').textContent = username;
+    document.getElementById('pointsCurrent').textContent = currentPoints;
+    document.getElementById('pointsUserId').value = userId;
+    document.getElementById('pointsModal').style.display = 'flex';
+}
+
+function closePointsModal() {
+    document.getElementById('pointsModal').style.display = 'none';
+}
+
+// Close modals on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRejectModal();
+        closePointsModal();
+    }
+});
+</script>
+{% endblock %}

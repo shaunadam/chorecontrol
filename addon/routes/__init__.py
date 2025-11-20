@@ -6,6 +6,7 @@ from flask import Blueprint
 from .users import users_bp
 from .chores import chores_bp
 from .instances import instances_bp
+from .ui import ui_bp
 
 # Export all blueprints
-__all__ = ['users_bp', 'chores_bp', 'instances_bp']
+__all__ = ['users_bp', 'chores_bp', 'instances_bp', 'ui_bp']

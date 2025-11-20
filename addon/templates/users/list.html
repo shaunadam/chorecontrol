@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Users - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">Users</h1>
+    <button class="btn btn-primary" onclick="showAddUserModal()">+ Add User</button>
+</div>
+
+<!-- Filter by Role -->
+<div class="card mb-md">
+    <form method="GET" class="flex flex-gap-sm">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <select name="role" class="form-select" onchange="this.form.submit()">
+                <option value="">All Roles</option>
+                <option value="parent" {% if request.args.get('role') == 'parent' %}selected{% endif %}>Parents</option>
+                <option value="kid" {% if request.args.get('role') == 'kid' %}selected{% endif %}>Kids</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Users List -->
+{% if users %}
+    <ul class="list">
+        {% for user in users %}
+        <li class="list-item">
+            <div class="list-item-header">
+                <div class="list-item-title">
+                    <a href="{{ url_for('ui.user_detail', id=user.id) }}">{{ user.username }}</a>
+                </div>
+                <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
+            </div>
+
+            <div class="list-item-meta">
+                <strong>Home Assistant ID:</strong> {{ user.ha_user_id }}
+            </div>
+
+            {% if user.role == 'kid' %}
+            <div class="list-item-meta">
+                <strong>Current Points:</strong>
+                <span class="points-badge">{{ user.points }}</span>
+            </div>
+
+            <div class="list-item-meta">
+                <strong>Chores assigned:</strong> {{ user.chore_assignments|length }}
+            </div>
+            {% endif %}
+
+            <div class="list-item-meta">
+                <strong>Member since:</strong> {{ user.created_at.strftime('%b %d, %Y') }}
+            </div>
+
+            <div class="list-item-actions">
+                <a href="{{ url_for('ui.user_detail', id=user.id) }}" class="btn btn-sm btn-primary">View Details</a>
+                {% if user.role == 'kid' %}
+                <button class="btn btn-sm btn-outline" onclick="showPointsAdjustModal({{ user.id }}, '{{ user.username }}', {{ user.points }})">Adjust Points</button>
+                {% endif %}
+                <button class="btn btn-sm btn-outline" onclick="showEditUserModal({{ user.id }}, '{{ user.username }}', '{{ user.ha_user_id }}', '{{ user.role }}')">Edit</button>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-state-icon">👥</div>
+            <div class="empty-state-title">No users found</div>
+            <p class="empty-state-text">Add users to start tracking chores and points.</p>
+            <button class="btn btn-primary" onclick="showAddUserModal()">Add User</button>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Add/Edit User Modal -->
+<div id="userModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3 id="userModalTitle">Add User</h3>
+        <form id="userForm" method="POST">
+            <div class="form-group">
+                <label class="form-label" for="username">Username *</label>
+                <input type="text" id="username" name="username" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ha_user_id">Home Assistant User ID *</label>
+                <input type="text" id="ha_user_id" name="ha_user_id" class="form-input" required>
+                <div class="form-help">The HA user ID from Home Assistant</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="role">Role *</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="kid">Kid</option>
+                    <option value="parent">Parent</option>
+                </select>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-primary" id="userSubmitBtn">Add User</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Points Adjustment Modal -->
+<div id="pointsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Adjust Points</h3>
+        <p>Adjust points for <strong id="pointsUsername"></strong> (Current: <span id="pointsCurrent"></span>)</p>
+        <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}">
+            <input type="hidden" id="pointsUserId" name="user_id">
+            <div class="form-group">
+                <label class="form-label" for="points_delta">Points Change:</label>
+                <input type="number" id="points_delta" name="delta" class="form-input" required>
+                <div class="form-help">Use positive numbers to add points, negative to subtract</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="points_reason">Reason:</label>
+                <input type="text" id="points_reason" name="reason" class="form-input" required>
+            </div>
+            <div class="flex-gap-sm">
+                <button type="submit" class="btn btn-primary">Adjust Points</button>
+                <button type="button" class="btn btn-secondary" onclick="closePointsModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAddUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Add User';
+    document.getElementById('userForm').action = '{{ url_for("users.create_user") }}';
+    document.getElementById('userForm').reset();
+    document.getElementById('userSubmitBtn').textContent = 'Add User';
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+function showEditUserModal(id, username, haUserId, role) {
+    document.getElementById('userModalTitle').textContent = 'Edit User';
+    document.getElementById('userForm').action = `/api/users/${id}`;
+    document.getElementById('username').value = username;
+    document.getElementById('ha_user_id').value = haUserId;
+    document.getElementById('role').value = role;
+    document.getElementById('userSubmitBtn').textContent = 'Update User';
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').style.display = 'none';
+}
+
+function showPointsAdjustModal(userId, username, currentPoints) {
+    document.getElementById('pointsUsername').textContent = username;
+    document.getElementById('pointsCurrent').textContent = currentPoints;
+    document.getElementById('pointsUserId').value = userId;
+    document.getElementById('pointsForm').reset();
+    document.getElementById('pointsUserId').value = userId;
+    document.getElementById('pointsModal').style.display = 'flex';
+}
+
+function closePointsModal() {
+    document.getElementById('pointsModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeUserModal();
+        closePointsModal();
+    }
+});
+</script>
+{% endblock %}

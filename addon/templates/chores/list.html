@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Chores - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">Chores</h1>
+    <a href="{{ url_for('ui.chore_form') }}" class="btn btn-primary">+ Add Chore</a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-md">
+    <form method="GET" class="flex flex-gap-sm" style="flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <select name="active" class="form-select" onchange="this.form.submit()">
+                <option value="">All Chores</option>
+                <option value="true" {% if request.args.get('active') == 'true' %}selected{% endif %}>Active Only</option>
+                <option value="false" {% if request.args.get('active') == 'false' %}selected{% endif %}>Inactive Only</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <select name="assigned_to" class="form-select" onchange="this.form.submit()">
+                <option value="">All Assignments</option>
+                {% for kid in kids %}
+                <option value="{{ kid.id }}" {% if request.args.get('assigned_to') == kid.id|string %}selected{% endif %}>
+                    {{ kid.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Chores List -->
+{% if chores %}
+    <ul class="list">
+        {% for chore in chores %}
+        <li class="list-item">
+            <div class="list-item-header">
+                <div class="list-item-title">
+                    <a href="{{ url_for('ui.chore_detail', id=chore.id) }}">{{ chore.name }}</a>
+                </div>
+                <span class="status status-{{ 'active' if chore.is_active else 'inactive' }}">
+                    {{ 'Active' if chore.is_active else 'Inactive' }}
+                </span>
+            </div>
+
+            {% if chore.description %}
+            <div class="list-item-meta">{{ chore.description }}</div>
+            {% endif %}
+
+            <div class="list-item-meta">
+                <strong>Points:</strong> {{ chore.points }}
+                {% if chore.late_points %}
+                    | <strong>Late Points:</strong> {{ chore.late_points }}
+                {% endif %}
+            </div>
+
+            <div class="list-item-meta">
+                <strong>Recurrence:</strong>
+                {% if chore.recurrence_pattern %}
+                    {{ chore.recurrence_pattern }}
+                {% else %}
+                    One-time
+                {% endif %}
+            </div>
+
+            {% if chore.assigned_users %}
+            <div class="list-item-meta">
+                <strong>Assigned to:</strong>
+                {% for assignment in chore.assignments %}
+                    <span class="status status-active" style="margin-right: 0.25rem;">
+                        {{ assignment.user.username }}
+                    </span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="list-item-meta">
+                <span class="status status-pending">Unassigned</span>
+            </div>
+            {% endif %}
+
+            <div class="list-item-actions">
+                <a href="{{ url_for('ui.chore_detail', id=chore.id) }}" class="btn btn-sm btn-primary">View Details</a>
+                <a href="{{ url_for('ui.chore_form', id=chore.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                {% if chore.is_active %}
+                <form method="POST" action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                </form>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Pagination -->
+    {% if pagination %}
+    <div class="flex-between mt-lg">
+        <div class="text-secondary">
+            Showing {{ pagination.start }} - {{ pagination.end }} of {{ pagination.total }}
+        </div>
+        <div class="flex flex-gap-sm">
+            {% if pagination.has_prev %}
+            <a href="?page={{ pagination.prev_page }}" class="btn btn-sm btn-outline">Previous</a>
+            {% endif %}
+            <span class="btn btn-sm btn-outline" style="cursor: default;">Page {{ pagination.page }}</span>
+            {% if pagination.has_next %}
+            <a href="?page={{ pagination.next_page }}" class="btn btn-sm btn-outline">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+{% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No chores found</div>
+            <p class="empty-state-text">Get started by creating your first chore!</p>
+            <a href="{{ url_for('ui.chore_form') }}" class="btn btn-primary">Create Chore</a>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}
