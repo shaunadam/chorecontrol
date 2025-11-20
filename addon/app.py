@@ -45,6 +45,10 @@ def create_app(config_name=None):
     # Register routes
     register_routes(app)
 
+    # Initialize background scheduler
+    from scheduler import init_scheduler
+    init_scheduler(app)
+
     return app
 
 

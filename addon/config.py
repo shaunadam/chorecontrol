@@ -16,12 +16,15 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # APScheduler settings
+    SCHEDULER_ENABLED = os.environ.get('SCHEDULER_ENABLED', 'true').lower() == 'true'
     SCHEDULER_API_ENABLED = True
     SCHEDULER_TIMEZONE = os.environ.get('TZ', 'UTC')
 
     # Home Assistant integration settings
     HA_SUPERVISOR_API = os.environ.get('SUPERVISOR_TOKEN')
     HA_INGRESS_ENABLED = os.environ.get('INGRESS', 'true').lower() == 'true'
+    HA_WEBHOOK_URL = os.environ.get('HA_WEBHOOK_URL')
+    # Example: http://homeassistant.local:8123/api/webhook/chorecontrol-abc123
 
     # Application settings
     DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
@@ -33,6 +36,8 @@ class DevelopmentConfig(Config):
     DEBUG = True
     DATA_DIR = Path(__file__).parent / 'data'
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATA_DIR / 'chorecontrol.db'}"
+    # Keep scheduler running in development
+    SCHEDULER_ENABLED = True
 
 
 class ProductionConfig(Config):
@@ -44,6 +49,8 @@ class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # Disable scheduler during tests
+    SCHEDULER_ENABLED = False
 
 
 # Config dictionary for easy access
