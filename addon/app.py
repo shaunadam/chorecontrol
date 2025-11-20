@@ -58,13 +58,17 @@ def register_middleware(app):
     @app.before_request
     def extract_ha_user():
         """Extract Home Assistant user from ingress headers."""
-        if app.config['HA_INGRESS_ENABLED']:
-            # HA ingress provides authenticated user via header
-            ha_user = request.headers.get('X-Ingress-User')
+        ha_user = request.headers.get('X-Ingress-User')
+
+        if ha_user:
+            # Use the authenticated user from HA ingress
             g.ha_user = ha_user
+        elif app.config.get('DEBUG') or app.config.get('TESTING'):
+            # Only allow dev-user fallback in development/testing mode
+            g.ha_user = 'dev-user'
         else:
-            # For development/testing without ingress
-            g.ha_user = request.headers.get('X-Ingress-User', 'dev-user')
+            # In production without header, set to None (will be rejected by auth)
+            g.ha_user = None
 
 
 def register_routes(app):
