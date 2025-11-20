@@ -1,1 +1,0 @@
-"""ChoreControl test suite."""
