@@ -6,12 +6,21 @@
 
 ChoreControl is a Home Assistant integration that helps families manage chores, track points, and reward kids for completing tasks. Unlike existing solutions that rely on entity-based storage, ChoreControl uses a proper database structure for reliability and scalability.
 
-### Key Features (Planned)
+### Key Features
 
-- **Chore Management**: Create recurring or one-off chores with flexible scheduling
-- **Multi-User Support**: Parent and kid roles with appropriate permissions
-- **Points & Rewards**: Kids earn points for completing chores, redeem for rewards
-- **Approval Workflow**: Claim → Approve → Award points flow with notifications
+#### Implemented ✅
+- **Chore Management**: Create recurring (daily/weekly/monthly) or one-off chores with flexible scheduling
+- **Multi-User Support**: Parent, kid, and system roles with appropriate permissions
+- **Points & Rewards**: Kids earn points for completing chores, redeem for rewards with approval workflow
+- **Approval Workflow**: Claim → Approve → Award points with late claim detection
+- **Background Automation**: Auto-approval after timeout, missed chore detection, reward expiration
+- **Late Claim Support**: Optional late completion with reduced points
+- **Reward Approval**: Optional parent approval for reward claims with 7-day expiration
+- **Points Auditing**: Nightly verification of points balances against transaction history
+- **Webhook Integration**: Real-time event notifications to Home Assistant
+- **REST API**: 28 endpoints for full programmatic control
+
+#### Planned
 - **Calendar Integration**: ICS feed showing upcoming chores
 - **Mobile-First Admin UI**: Manage everything from your phone via HA sidebar
 - **Dashboard Integration**: Native HA dashboards for kids and parents
@@ -35,18 +44,27 @@ ChoreControl consists of two main components:
 
 ## Project Status
 
-**Current Phase**: Flask App Setup → API Implementation
+**Current Phase**: Business Logic Complete ✅ → Web UI & HA Integration
 
 **Completed:**
-- ✅ Flask app structure, config management
-- ✅ Database models (7 tables, relationships)
-- ✅ HA integration framework
-- ✅ Development tooling
-- ✅ Seed data generator
+- ✅ Flask app structure, config management (dev/prod/test environments)
+- ✅ Database models (7 tables with full relationships and validation)
+- ✅ Database migrations (2 migrations including business logic fields)
+- ✅ **REST API (28 endpoints across 5 route modules)**
+- ✅ **Business logic layer (recurrence, instances, points, rewards)**
+- ✅ **Background jobs (5 scheduled jobs via APScheduler)**
+- ✅ **Webhook integration (8 event types to Home Assistant)**
+- ✅ **Comprehensive test suite (245 tests, 5,325+ lines of test code)**
+- ✅ HA integration framework (manifest, config flow structure)
+- ✅ Development tooling (pytest, ruff, black, mypy, pre-commit)
+- ✅ Seed data generator with system user support
 
-**Next:** Initialize database, implement REST API (28 endpoints), business logic
+**Next Steps:**
+1. Web UI (parent dashboard accessible via HA sidebar)
+2. Complete HA integration (sensors, services, entities)
+3. Docker containerization for HA add-on
 
-See [NEXT_STEPS.md](NEXT_STEPS.md) for current tasks.
+See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation guide.
 
 - **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Comprehensive project plan with architecture, data model, and roadmap
 - **[BACKLOG.md](BACKLOG.md)** - Task backlog organized by phase
@@ -66,26 +84,32 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current tasks.
 - API Documentation (Coming soon)
 - Contributing Guide (Coming soon)
 
-## Technology Stack (Proposed)
+## Technology Stack
 
-**Backend (Add-on)**
+**Backend (Add-on)** - Implemented ✅
 - Python 3.11+
-- FastAPI (recommended) or Flask
-- SQLAlchemy ORM
-- SQLite database
-- Jinja2 + HTMX (web UI)
-- Docker
+- Flask 3.0+ with SQLAlchemy ORM
+- SQLite database with Alembic migrations
+- APScheduler for background jobs
+- Requests for webhook delivery
+- Comprehensive pytest test suite (245 tests)
 
-**Frontend (Integration)**
+**Planned**
+- Jinja2 + HTMX/Alpine.js (web UI)
+- Docker containerization
+
+**Frontend (Integration)** - Framework Ready
 - Python 3.11+ (HA custom component)
-- aiohttp for API client
-- Home Assistant entity platform
+- Manifest and config flow structure in place
+- Ready for sensor/service implementation
 
-**Development**
-- Git for version control
-- pytest for testing
-- ruff, black, mypy for linting
-- GitHub for hosting
+**Development** - Fully Configured ✅
+- pytest with fixtures and mocking (245 tests, 100% critical path coverage)
+- ruff for linting
+- black for formatting
+- mypy for type checking
+- pre-commit hooks
+- Git version control
 
 ## Getting Started
 
@@ -96,49 +120,99 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current tasks.
 
 ### Installation
 
-Not yet available. This project is in planning phase.
+Not yet available as a Home Assistant add-on. See Development Setup below to run locally.
 
 ### Development Setup
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/yourusername/chorecontrol.git
    cd chorecontrol
    ```
 
-2. Review planning documents:
-   - Read [PROJECT_PLAN.md](PROJECT_PLAN.md) for full context
-   - Check [DECISIONS.md](DECISIONS.md) for technology choices
-   - See [BACKLOG.md](BACKLOG.md) for tasks
+2. **Set up Python environment:**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r addon/requirements.txt
+   pip install -r addon/requirements-dev.txt
+   ```
 
-3. Development will begin soon!
+3. **Initialize the database:**
+   ```bash
+   cd addon
+   export FLASK_APP=app.py
+   export FLASK_ENV=development
+   flask db upgrade
+   ```
+
+4. **Seed test data:**
+   ```bash
+   python seed_db.py
+   # Creates: 2 parents, 2 kids, 5 chores, 4 rewards, sample instances
+   ```
+
+5. **Run the Flask app:**
+   ```bash
+   python app.py
+   # Server starts on http://localhost:8099
+   ```
+
+6. **Run tests:**
+   ```bash
+   pytest -v
+   # Runs 245 tests across 7 test modules
+   ```
+
+7. **Test API endpoints:**
+   ```bash
+   curl http://localhost:8099/health
+   curl -H "X-Ingress-User: test-parent-1" http://localhost:8099/api/user
+   ```
+
+For more details, see [NEXT_STEPS.md](NEXT_STEPS.md).
 
 ## Roadmap
 
-### Phase 1: MVP (Current Focus)
-- Core chore CRUD operations
-- Simple daily/weekly scheduling
-- Points and basic rewards system
-- Claim/approve workflow
-- Kid and parent dashboards
-- ICS calendar integration
+### Phase 1: Core Backend ✅ COMPLETE
+- ✅ Database models and migrations
+- ✅ REST API (28 endpoints)
+- ✅ Business logic (recurrence, points, rewards)
+- ✅ Background jobs (5 scheduled tasks)
+- ✅ Webhook integration (8 event types)
+- ✅ Comprehensive test suite (245 tests)
 
-See [BACKLOG.md](BACKLOG.md) for detailed task list (71 tasks).
+### Phase 2: Frontend & Integration (In Progress)
+- **Web UI** (Current Focus)
+  - Parent dashboard with approval queue
+  - Chore/reward management forms
+  - User management and points history
+  - Mobile-responsive design
+- **Home Assistant Integration**
+  - Sensor entities (points, pending approvals)
+  - Service calls (claim, approve, reject)
+  - Button entities for chore instances
+  - Event listeners for webhooks
+- **Docker Add-on**
+  - Dockerfile and build configuration
+  - Add-on manifest and documentation
+  - HA ingress configuration
 
-### Phase 2: Enhancements
+### Phase 3: Enhancements
 - Complex scheduling (cron-like patterns)
 - Photo proof of completion
 - Achievements and gamification
 - Advanced analytics
 - Custom Lovelace cards
+- ICS calendar integration
 
-### Phase 3: Advanced Features
+### Phase 4: Advanced Features
 - Multi-family support
 - Mobile app
 - Voice assistant integration
 - External calendar sync (Google, Apple)
 
-Full feature list in [PROJECT_PLAN.md](PROJECT_PLAN.md#phase-2-future-features).
+Full feature list in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Comparison to Existing Solutions
 
@@ -195,6 +269,6 @@ Project maintained by [Your Name] - [Your Email/GitHub]
 
 ---
 
-**Status**: Planning Phase
-**Last Updated**: 2025-11-11
-**Version**: 0.1.0-alpha (pre-release)
+**Status**: Backend Complete, Frontend In Progress
+**Last Updated**: 2025-11-19
+**Version**: 0.2.0-alpha (backend functional, UI pending)

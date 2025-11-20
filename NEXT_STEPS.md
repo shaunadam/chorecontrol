@@ -2,29 +2,51 @@
 
 ## Current Status
 
-**Phase**: Step 2 Complete ✅ → Step 3: Business Logic Layer
+**Phase**: Step 3 Complete ✅ → Step 4: Web UI
 
 **Completed:**
 - ✅ Flask app structure with config management (dev/prod/test modes)
 - ✅ Database models (7 tables, relationships, validation)
-- ✅ Database migrations initialized
+- ✅ Database migrations (2 migrations: initial schema + business logic fields)
 - ✅ Flask app running and tested on http://localhost:8099
 - ✅ HA integration framework (manifest, config flow, services, sensors)
 - ✅ Development tooling (pytest, ruff, black, mypy, pre-commit)
-- ✅ Seed data generator
-- ✅ **REST API endpoints (All 4 streams complete!)**
+- ✅ Seed data generator with system user support
+- ✅ **REST API endpoints (28 endpoints complete!)**
   - ✅ Stream 1: User & Authentication API (5 endpoints)
   - ✅ Stream 2: Chore Management API (6 endpoints)
-  - ✅ Stream 3: Instance Workflow API (5 endpoints)
-  - ✅ Stream 4: Rewards & Points API (8 endpoints)
-- ✅ Comprehensive test suite (5 test files, all passing)
+  - ✅ Stream 3: Instance Workflow API (8 endpoints: claim, approve, reject, unclaim, reassign, due-today)
+  - ✅ Stream 4: Rewards & Points API (9 endpoints: rewards CRUD, claim, unclaim, approve/reject, points adjust)
+- ✅ **Business Logic Layer (Phases 1-5 Complete!)**
+  - ✅ Recurrence pattern parser (daily/weekly/monthly/simple/complex patterns)
+  - ✅ Instance generator with lookahead window (2 months)
+  - ✅ Late claim detection and tracking (`claimed_late` flag)
+  - ✅ Points calculation with late_points support
+  - ✅ Reward approval workflow with expiration
+  - ✅ Instance reassignment and unclaim features
+- ✅ **Background Jobs (5 scheduled jobs via APScheduler)**
+  - ✅ Daily instance generation (midnight)
+  - ✅ Auto-approval checker (every 5 minutes)
+  - ✅ Missed instance marker (hourly)
+  - ✅ Reward expiration (daily at 00:01)
+  - ✅ Points balance audit (daily at 02:00)
+- ✅ **Webhook Integration (all 8 event types)**
+  - ✅ chore_instance_created, claimed, approved, rejected
+  - ✅ points_awarded, reward_claimed, approved, rejected
+- ✅ **Comprehensive test suite (245 tests, 5,325+ lines)**
+  - ✅ test_background_jobs.py (878 lines)
+  - ✅ test_instances.py (1,441 lines)
+  - ✅ test_chores.py (730 lines)
+  - ✅ test_rewards.py (646 lines)
+  - ✅ test_points.py (472 lines)
+  - ✅ test_users.py (608 lines)
+  - ✅ test_webhooks.py (359 lines)
 - ✅ Authentication middleware (`auth.py` module)
 
 **Ready to Implement:**
-- Business logic layer (scheduler, points calculation, validation)
-- Background tasks (APScheduler for instance generation)
-- Web UI (Jinja2 templates)
+- Web UI (Jinja2 templates for parent dashboard)
 - Integration with Home Assistant sensors/services
+- Docker containerization for HA add-on
 
 ---
 
@@ -133,26 +155,140 @@ All REST API endpoints have been implemented across 4 parallel streams:
 
 ---
 
-## Step 3: Business Logic Layer
+## Step 3: Business Logic Layer ✅ COMPLETE
 
-After API endpoints work:
+All business logic has been fully implemented and tested:
 
-- Chore scheduler (generate instances from recurrence patterns)
-- Points calculation/awarding on approval
-- Reward validation (cooldown, limits, balance checks)
-- Background tasks (APScheduler for daily generation)
-- Event notifications to HA
+- ✅ Chore scheduler (generate instances from recurrence patterns)
+  - See: [addon/utils/recurrence.py](addon/utils/recurrence.py) (248 lines)
+  - See: [addon/utils/instance_generator.py](addon/utils/instance_generator.py) (174 lines)
+- ✅ Points calculation/awarding on approval
+  - See: [addon/models.py](addon/models.py) - `ChoreInstance.award_points()`, `User.adjust_points()`
+- ✅ Reward validation (cooldown, limits, balance checks)
+  - See: [addon/models.py](addon/models.py) - `Reward.can_claim()`, `RewardClaim` model
+- ✅ Background tasks (APScheduler for daily generation)
+  - See: [addon/scheduler.py](addon/scheduler.py) (163 lines)
+  - See: [addon/jobs/](addon/jobs/) (5 job modules)
+- ✅ Event notifications to HA
+  - See: [addon/utils/webhooks.py](addon/utils/webhooks.py) (91 lines)
+
+**Test Coverage**: 245 tests across 7 test files verify all business logic works correctly.
 
 ---
 
-## Step 4: Web UI (Optional for MVP)
+## Step 4: Web UI
 
-Basic admin interface:
+Build a parent-focused web interface accessible via Home Assistant sidebar.
 
-- Parent dashboard (pending approvals)
-- Chore management (create/edit forms)
-- Kid/reward management
-- Mobile-responsive Jinja2 templates
+### Core Pages to Implement:
+
+1. **Dashboard** (`/`)
+   - Today's pending approvals
+   - Recently completed chores
+   - Kids' points balances
+   - Quick actions
+
+2. **Chores Management** (`/chores`)
+   - List all chores (active/inactive filter)
+   - Create new chore form
+   - Edit existing chore
+   - View generated instances
+
+3. **Rewards Management** (`/rewards`)
+   - List all rewards
+   - Create/edit reward forms
+   - View pending reward claims
+   - Approve/reject claims
+
+4. **Kids Management** (`/users`)
+   - List all users
+   - Edit user details
+   - View points history
+   - Manual points adjustment
+
+5. **Approval Queue** (`/approvals`)
+   - Pending chore approvals
+   - Pending reward claims
+   - Quick approve/reject actions
+
+### Technical Implementation:
+
+**Templates to Create** (in `addon/templates/`):
+- `base.html` - Base template with navigation
+- `dashboard.html` - Main dashboard
+- `chores/list.html` - Chore list view
+- `chores/form.html` - Create/edit chore form
+- `chores/detail.html` - Single chore with instances
+- `rewards/list.html` - Reward list view
+- `rewards/form.html` - Create/edit reward form
+- `approvals/queue.html` - Pending approvals view
+- `users/list.html` - User management
+- `users/detail.html` - User profile with points history
+
+**Static Assets** (in `addon/static/`):
+- `css/style.css` - Mobile-first responsive styles
+- `js/app.js` - Interactive features (HTMX or vanilla JS)
+
+**Routes to Add** (in `addon/routes/ui.py`):
+```python
+@ui_bp.route('/')
+def dashboard():
+    # Render dashboard with pending approvals, today's chores, etc.
+
+@ui_bp.route('/chores')
+def chores_list():
+    # List chores with pagination
+
+@ui_bp.route('/chores/new')
+@ui_bp.route('/chores/<int:id>/edit')
+def chore_form():
+    # Create/edit chore form
+
+@ui_bp.route('/approvals')
+def approval_queue():
+    # Pending approvals view
+```
+
+### Key Files to Reference During UI Development:
+
+**Models & Data**: [addon/models.py](addon/models.py:1-670)
+- All models have `to_dict()` methods for easy serialization
+- Understand relationships between models
+- Use `can_claim()`, `can_approve()` validation methods
+
+**API Routes** (use these as reference for data flow):
+- [addon/routes/instances.py](addon/routes/instances.py:1-686) - Instance workflow logic
+- [addon/routes/chores.py](addon/routes/chores.py:1-520) - Chore CRUD patterns
+- [addon/routes/rewards.py](addon/routes/rewards.py:1-544) - Reward claim flow
+- [addon/routes/points.py](addon/routes/points.py:1-184) - Points history patterns
+
+**Forms & Validation**:
+- [addon/schemas.py](addon/schemas.py) - Validation helpers
+- [addon/utils/recurrence.py](addon/utils/recurrence.py) - Pattern validation
+
+**Config**: [addon/config.py](addon/config.py:1-63)
+- Environment-based configuration
+- Database and scheduler settings
+
+**App Setup**: [addon/app.py](addon/app.py:1-146)
+- See how blueprints are registered
+- Middleware setup for HA ingress authentication
+
+### UI Design Principles:
+
+- **Mobile-First**: Parents will primarily use this on phones
+- **Quick Actions**: One-click approve/reject from dashboard
+- **Clear Status**: Visual indicators for pending/approved/missed
+- **Minimal Friction**: Auto-save forms, inline editing where possible
+- **HA Native Feel**: Match Home Assistant's design language
+
+### Optional Enhancements:
+
+- HTMX for dynamic updates without full page reloads
+- Toast notifications for actions
+- Drag-and-drop chore reordering
+- Bulk approval actions
+- Inline editing of chore instances
 
 ---
 
