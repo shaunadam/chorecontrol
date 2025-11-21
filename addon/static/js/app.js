@@ -220,6 +220,112 @@ async function apiCall(url, method = 'GET', data = null) {
     }
 }
 
+// Submit form as JSON to API endpoint
+async function submitJsonForm(form, options = {}) {
+    const url = form.action;
+    const formData = new FormData(form);
+    const data = {};
+
+    // Fields that should always be arrays
+    const arrayFields = ['assigned_to'];
+    // Fields that should be integers
+    const intFields = ['user_id', 'delta', 'approver_id', 'points', 'late_points', 'auto_approve_delay_hours', 'points_cost', 'cooldown_days', 'max_claims_total', 'max_claims_per_kid'];
+    // Fields that are booleans (checkboxes)
+    const boolFields = ['is_active', 'requires_approval'];
+
+    // Initialize array fields
+    arrayFields.forEach(field => {
+        data[field] = [];
+    });
+
+    // Convert form data to JSON object
+    for (const [key, value] of formData.entries()) {
+        if (arrayFields.includes(key)) {
+            // Add to array (for multiple checkboxes with same name)
+            data[key].push(parseInt(value, 10) || value);
+        } else if (intFields.includes(key)) {
+            // Parse as integer
+            const parsed = parseInt(value, 10);
+            data[key] = isNaN(parsed) ? null : parsed;
+        } else if (boolFields.includes(key)) {
+            // Handle boolean - presence means true
+            data[key] = true;
+        } else {
+            data[key] = value;
+        }
+    }
+
+    // Handle unchecked boolean checkboxes (they won't be in formData)
+    boolFields.forEach(field => {
+        if (!(field in data)) {
+            // Check if the form has this field as a checkbox
+            const checkbox = form.querySelector(`input[name="${field}"][type="checkbox"]`);
+            if (checkbox) {
+                data[field] = false;
+            }
+        }
+    });
+
+    // Get submit button to show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.textContent : '';
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Loading...';
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || result.error || 'Request failed');
+        }
+
+        // Success - show message and redirect or reload
+        showToast(result.message || 'Success!', 'success');
+
+        // Redirect after short delay to show toast
+        setTimeout(() => {
+            if (options.redirectUrl) {
+                window.location.href = options.redirectUrl;
+            } else {
+                window.location.reload();
+            }
+        }, 500);
+
+        return result;
+    } catch (error) {
+        console.error('Form submission failed:', error);
+        showToast(error.message, 'error');
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+
+        throw error;
+    }
+}
+
+// Auto-setup JSON forms - forms with data-json-form attribute
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form[data-json-form]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitJsonForm(form);
+        });
+    });
+});
+
 // Export for use in other scripts
 window.ChoreControl = {
     showToast: showToast,
@@ -227,5 +333,6 @@ window.ChoreControl = {
     validateForm: validateForm,
     debounce: debounce,
     Storage: Storage,
-    apiCall: apiCall
+    apiCall: apiCall,
+    submitJsonForm: submitJsonForm
 };

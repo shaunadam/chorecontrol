@@ -49,6 +49,14 @@ def create_app(config_name=None):
     from scheduler import init_scheduler
     init_scheduler(app)
 
+    # Create default admin user on first run
+    with app.app_context():
+        from auth import create_default_admin
+        admin = create_default_admin()
+        if admin:
+            import logging
+            logging.getLogger(__name__).info(f"Created default admin user: {admin.username}")
+
     return app
 
 
@@ -57,30 +65,43 @@ def register_middleware(app):
 
     @app.before_request
     def extract_ha_user():
-        """Extract Home Assistant user from ingress headers."""
+        """Extract Home Assistant user from ingress headers or session."""
+        from auth import get_session_user_id
+        from models import User
+
         ha_user = request.headers.get('X-Ingress-User')
 
         if ha_user:
             # Use the authenticated user from HA ingress
-            g.ha_user = ha_user
-        elif app.config.get('DEBUG') or app.config.get('TESTING'):
-            # Only allow dev-user fallback in development/testing mode
-            g.ha_user = 'dev-user'
+            # Check if this HA user exists in our database
+            user = User.query.filter_by(ha_user_id=ha_user).first()
+            if user:
+                g.ha_user = ha_user
+            else:
+                # HA user not in database - they need to log in
+                g.ha_user = None
         else:
-            # In production without header, set to None (will be rejected by auth)
-            g.ha_user = None
+            # No HA header - check session for local login
+            session_user_id = get_session_user_id()
+            if session_user_id:
+                g.ha_user = session_user_id
+            else:
+                g.ha_user = None
 
 
 def register_routes(app):
     """Register all application routes."""
 
     # Register blueprints
-    from routes import users_bp, chores_bp, ui_bp
+    from routes import users_bp, chores_bp, ui_bp, auth_bp
     from routes.instances import instances_bp
     from routes.rewards import rewards_bp
     from routes.points import points_bp
 
-    # Register UI blueprint first (so it handles the root route)
+    # Register auth blueprint first (handles login/logout)
+    app.register_blueprint(auth_bp)
+
+    # Register UI blueprint (so it handles the root route)
     app.register_blueprint(ui_bp)
 
     # Register API blueprints

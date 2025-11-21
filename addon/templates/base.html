@@ -18,6 +18,7 @@
                 <div class="user-info">
                     <span class="username">{{ current_user.username }}</span>
                     <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline" style="margin-left: 0.5rem;">Logout</a>
                 </div>
                 {% endif %}
             </div>

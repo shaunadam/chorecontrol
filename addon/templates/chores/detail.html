@@ -18,7 +18,7 @@
         <div class="card-actions">
             <a href="{{ url_for('ui.chore_form', id=chore.id) }}" class="btn btn-sm btn-primary">Edit</a>
             {% if chore.is_active %}
-            <form method="POST" action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
+            <form method="POST" action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}" style="display: inline;" data-json-form onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
                 <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
             </form>
             {% endif %}
@@ -159,7 +159,7 @@
 
                 {% if instance.status == 'claimed' %}
                 <div class="list-item-actions">
-                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;">
+                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;" data-json-form>
                         <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
                     </form>
                     <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }})">✗ Reject</button>
@@ -206,10 +206,10 @@
     <div class="modal-content">
         <h3>Reject Chore Instance</h3>
         <p>Are you sure you want to reject this completion?</p>
-        <form id="rejectForm" method="POST">
+        <form id="rejectForm" method="POST" data-json-form>
             <div class="form-group">
-                <label class="form-label" for="rejection_reason">Reason (optional):</label>
-                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3"></textarea>
+                <label class="form-label" for="rejection_reason">Reason (required):</label>
+                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3" placeholder="Please provide a reason for rejection" required></textarea>
             </div>
             <div class="flex-gap-sm">
                 <button type="submit" class="btn btn-danger">Reject</button>

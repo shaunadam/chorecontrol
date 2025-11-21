@@ -10,6 +10,7 @@ from typing import Optional, List
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import CheckConstraint, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -24,6 +25,7 @@ class User(db.Model):
     username = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False)
     points = db.Column(db.Integer, default=0, nullable=False)  # Denormalized, only for kids
+    password_hash = db.Column(db.String(255), nullable=True)  # NULL for HA-only users
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -43,6 +45,20 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
+
+    def set_password(self, password: str) -> None:
+        """Set password hash from plaintext password."""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        """Check if provided password matches the stored hash."""
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+    def has_password(self) -> bool:
+        """Check if user has a password set (for local login)."""
+        return self.password_hash is not None
 
     def to_dict(self) -> dict:
         """Serialize User to dictionary for JSON/webhook responses."""

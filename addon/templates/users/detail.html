@@ -181,7 +181,7 @@
 <div id="editUserModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3>Edit User</h3>
-        <form method="POST" action="{{ url_for('users.update_user', user_id=user.id) }}">
+        <form method="POST" action="{{ url_for('users.update_user', user_id=user.id) }}" data-json-form>
             <div class="form-group">
                 <label class="form-label" for="username">Username *</label>
                 <input type="text" id="username" name="username" class="form-input" value="{{ user.username }}" required>
@@ -210,7 +210,7 @@
     <div class="modal-content">
         <h3>Adjust Points</h3>
         <p>Current balance: <strong>{{ user.points }}</strong></p>
-        <form method="POST" action="{{ url_for('points.adjust_points') }}">
+        <form method="POST" action="{{ url_for('points.adjust_points') }}" data-json-form>
             <input type="hidden" name="user_id" value="{{ user.id }}">
             <div class="form-group">
                 <label class="form-label" for="points_delta">Points Change:</label>

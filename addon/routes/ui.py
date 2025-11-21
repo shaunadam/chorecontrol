@@ -362,3 +362,104 @@ def user_detail(id):
                          points_history=points_history,
                          assigned_chores=assigned_chores,
                          pagination=pagination)
+
+
+@ui_bp.route('/users/create', methods=['POST'])
+@ha_auth_required
+def create_user():
+    """Create a new user."""
+    current_user = get_current_user()
+    if not current_user or current_user.role != 'parent':
+        flash('Only parents can create users.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    username = request.form.get('username', '').strip()
+    role = request.form.get('role', 'kid')
+    password = request.form.get('password', '')
+
+    if not username:
+        flash('Username is required.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    if role not in ('parent', 'kid'):
+        flash('Invalid role.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    # Check if username already exists
+    existing = User.query.filter_by(username=username).first()
+    if existing:
+        flash(f'Username "{username}" already exists.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    # Generate a unique ha_user_id for local users
+    ha_user_id = f'local-{username.lower().replace(" ", "-")}'
+
+    # Ensure ha_user_id is unique
+    counter = 1
+    original_ha_user_id = ha_user_id
+    while User.query.filter_by(ha_user_id=ha_user_id).first():
+        ha_user_id = f'{original_ha_user_id}-{counter}'
+        counter += 1
+
+    # Create user
+    new_user = User(
+        ha_user_id=ha_user_id,
+        username=username,
+        role=role,
+        points=0
+    )
+
+    if password:
+        new_user.set_password(password)
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    flash(f'User "{username}" created successfully.', 'success')
+    return redirect(url_for('ui.users_list'))
+
+
+@ui_bp.route('/users/update', methods=['POST'])
+@ha_auth_required
+def update_user():
+    """Update an existing user."""
+    current_user = get_current_user()
+    if not current_user or current_user.role != 'parent':
+        flash('Only parents can update users.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    user_id = request.form.get('user_id', type=int)
+    username = request.form.get('username', '').strip()
+    role = request.form.get('role')
+    password = request.form.get('password', '')
+
+    if not user_id:
+        flash('User ID is required.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('ui.users_list'))
+
+    if username:
+        # Check if username is taken by another user
+        existing = User.query.filter(User.username == username, User.id != user_id).first()
+        if existing:
+            flash(f'Username "{username}" is already taken.', 'error')
+            return redirect(url_for('ui.users_list'))
+        user.username = username
+
+    if role and role in ('parent', 'kid'):
+        # If changing from parent to kid, initialize points
+        if user.role == 'parent' and role == 'kid':
+            user.points = 0
+        user.role = role
+
+    if password:
+        user.set_password(password)
+
+    db.session.commit()
+
+    flash(f'User "{user.username}" updated successfully.', 'success')
+    return redirect(url_for('ui.users_list'))

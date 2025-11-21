@@ -12,7 +12,7 @@
         <h1 class="card-title">{{ 'Edit' if reward else 'Create New' }} Reward</h1>
     </div>
 
-    <form method="POST" action="{{ url_for('rewards.create_reward') if not reward else url_for('rewards.update_reward', reward_id=reward.id) }}">
+    <form method="POST" action="{{ url_for('rewards.create_reward') if not reward else url_for('rewards.update_reward', reward_id=reward.id) }}" data-json-form>
         <div class="form-group">
             <label class="form-label" for="name">Name *</label>
             <input

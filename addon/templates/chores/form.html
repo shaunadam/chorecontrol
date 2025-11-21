@@ -12,7 +12,7 @@
         <h1 class="card-title">{{ 'Edit' if chore else 'Create New' }} Chore</h1>
     </div>
 
-    <form method="POST" action="{{ url_for('chores.create_chore') if not chore else url_for('chores.update_chore', chore_id=chore.id) }}">
+    <form method="POST" action="{{ url_for('chores.create_chore') if not chore else url_for('chores.update_chore', chore_id=chore.id) }}" data-json-form>
         <div class="form-group">
             <label class="form-label" for="name">Name *</label>
             <input

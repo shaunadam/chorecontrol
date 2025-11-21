@@ -66,7 +66,7 @@
             <div class="list-item-actions">
                 <a href="{{ url_for('ui.reward_form', id=reward.id) }}" class="btn btn-sm btn-primary">Edit</a>
                 {% if reward.is_active %}
-                <form method="POST" action="{{ url_for('rewards.delete_reward', reward_id=reward.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this reward?');">
+                <form method="POST" action="{{ url_for('rewards.delete_reward', reward_id=reward.id) }}" style="display: inline;" data-json-form onsubmit="return confirm('Are you sure you want to deactivate this reward?');">
                     <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
                 </form>
                 {% endif %}
@@ -129,10 +129,10 @@
             </div>
 
             <div class="list-item-actions">
-                <form method="POST" action="{{ url_for('rewards.approve_reward_claim', claim_id=claim.id) }}" style="display: inline;">
+                <form method="POST" action="{{ url_for('rewards.approve_reward_claim', claim_id=claim.id) }}" style="display: inline;" data-json-form>
                     <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
                 </form>
-                <form method="POST" action="{{ url_for('rewards.reject_reward_claim', claim_id=claim.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure? This will refund the points.');">
+                <form method="POST" action="{{ url_for('rewards.reject_reward_claim', claim_id=claim.id) }}" style="display: inline;" data-json-form onsubmit="return confirm('Are you sure? This will refund the points.');">
                     <button type="submit" class="btn btn-sm btn-danger">✗ Reject</button>
                 </form>
             </div>

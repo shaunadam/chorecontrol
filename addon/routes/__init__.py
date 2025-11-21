@@ -7,6 +7,7 @@ from .users import users_bp
 from .chores import chores_bp
 from .instances import instances_bp
 from .ui import ui_bp
+from .auth_routes import auth_bp
 
 # Export all blueprints
-__all__ = ['users_bp', 'chores_bp', 'instances_bp', 'ui_bp']
+__all__ = ['users_bp', 'chores_bp', 'instances_bp', 'ui_bp', 'auth_bp']

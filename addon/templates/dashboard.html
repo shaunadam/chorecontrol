@@ -60,7 +60,7 @@
                     {% endif %}
                 </div>
                 <div class="list-item-actions">
-                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;">
+                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;" data-json-form>
                         <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
                     </form>
                     <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }}, '{{ instance.chore.name }}')">✗ Reject</button>
@@ -157,10 +157,10 @@
     <div class="modal-content">
         <h3>Reject Chore Completion</h3>
         <p>Are you sure you want to reject <strong id="rejectChoreTitle"></strong>?</p>
-        <form id="rejectForm" method="POST">
+        <form id="rejectForm" method="POST" data-json-form>
             <div class="form-group">
-                <label class="form-label" for="rejection_reason">Reason (optional):</label>
-                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3" placeholder="Why are you rejecting this?"></textarea>
+                <label class="form-label" for="rejection_reason">Reason (required):</label>
+                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3" placeholder="Please provide a reason for rejection" required></textarea>
             </div>
             <div class="flex-gap-sm">
                 <button type="submit" class="btn btn-danger">Reject</button>
@@ -175,7 +175,7 @@
     <div class="modal-content">
         <h3>Adjust Points</h3>
         <p>Adjust points for <strong id="pointsUsername"></strong> (Current: <span id="pointsCurrent"></span>)</p>
-        <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}">
+        <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}" data-json-form>
             <input type="hidden" id="pointsUserId" name="user_id">
             <div class="form-group">
                 <label class="form-label" for="points_delta">Points Change:</label>

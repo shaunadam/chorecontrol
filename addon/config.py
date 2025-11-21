@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 
 class Config:
@@ -9,6 +10,10 @@ class Config:
 
     # Flask settings
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+
+    # Session settings
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)  # Session lasts 7 days
 
     # Database settings
     DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
