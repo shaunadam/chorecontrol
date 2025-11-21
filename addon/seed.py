@@ -21,6 +21,7 @@ from typing import List, Dict, Any, Optional
 from models import db, User, Chore, ChoreAssignment, ChoreInstance
 from models import Reward, RewardClaim, PointsHistory
 from app import create_app
+from utils.instance_generator import generate_instances_for_chore
 
 from seed_helpers import (
     PARENT_NAMES,
@@ -205,6 +206,13 @@ class SeedDataGenerator:
             recurrence_type = self._get_recurrence_type(i, num_chores)
             recurrence_pattern = self._get_recurrence_pattern(recurrence_type)
 
+            # Determine assignment type - make some chores shared
+            # ~20% of chores should be shared (claimable by any assigned kid)
+            assignment_type = "shared" if i % 5 == 0 else "individual"
+
+            # For one-off chores, some should have no start_date (anytime chores)
+            start_date = None if (recurrence_type == "none" and i % 2 == 0) else datetime.now().date()
+
             # Create chore
             chore_dict = {
                 "name": chore_data["name"],
@@ -212,9 +220,9 @@ class SeedDataGenerator:
                 "points": chore_data["points"],
                 "recurrence_type": recurrence_type,
                 "recurrence_pattern": recurrence_pattern,
-                "start_date": datetime.now().date(),
+                "start_date": start_date,
                 "end_date": None,
-                "assignment_type": "individual",
+                "assignment_type": assignment_type,
                 "requires_approval": i % 7 != 0,  # Every 7th chore has auto-approval
                 "auto_approve_after_hours": 24 if i % 7 == 0 else None,
                 "is_active": True,
@@ -227,7 +235,10 @@ class SeedDataGenerator:
             chores.append(chore_obj)
 
             self.created_counts["chores"] += 1
-            self.log(f"Created chore: {chore_dict['name']} ({recurrence_type})")
+            type_info = f"{recurrence_type}, {assignment_type}"
+            if start_date is None:
+                type_info += ", anytime"
+            self.log(f"Created chore: {chore_dict['name']} ({type_info})")
 
         db.session.commit()
 
@@ -605,6 +616,19 @@ class SeedDataGenerator:
         )
 
         assignments = self.create_assignments(chores, kids)
+
+        # Generate instances for chores (this creates instances including those with no due date)
+        print(f"\n🔄 Generating chore instances from definitions...")
+        generated_count = 0
+        for chore in chores:
+            instances_created = generate_instances_for_chore(chore)
+            generated_count += len(instances_created)
+            if instances_created:
+                self.log(f"Generated {len(instances_created)} instance(s) for '{chore.name}'")
+        self.created_counts["instances"] += generated_count
+        print(f"  Generated {generated_count} instances from chore definitions")
+
+        # Also create some historical instances in various states
         instances = self.create_chore_instances(chores, kids, num_instances=num_instances)
         rewards = self.create_rewards(num_rewards=num_rewards)
         claims = self.create_reward_claims(rewards, kids, num_claims=num_claims)

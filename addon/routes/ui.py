@@ -335,6 +335,47 @@ def approval_queue():
                          pending_claims=pending_claims)
 
 
+@ui_bp.route('/available')
+@ha_auth_required
+def available_chores():
+    """List all available chores that can be claimed."""
+    # Get all instances with status='assigned' (claimable)
+    instances = ChoreInstance.query.filter_by(status='assigned')\
+        .order_by(ChoreInstance.due_date.asc().nullslast(), ChoreInstance.created_at.desc())\
+        .all()
+
+    # Separate into categories for better display
+    instances_with_dates = []
+    instances_without_dates = []
+
+    for instance in instances:
+        # Get eligible kids for this instance
+        if instance.chore.assignment_type == 'shared':
+            # For shared chores, all assigned kids can claim
+            eligible_kids = [assignment.user for assignment in instance.chore.assignments]
+        else:
+            # For individual chores, only the assigned kid can claim
+            if instance.assignee:
+                eligible_kids = [instance.assignee]
+            else:
+                eligible_kids = []
+
+        instance.eligible_kids = eligible_kids
+
+        if instance.due_date:
+            instances_with_dates.append(instance)
+        else:
+            instances_without_dates.append(instance)
+
+    # Get all kids for the claim dropdown
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    return render_template('available.html',
+                         instances_with_dates=instances_with_dates,
+                         instances_without_dates=instances_without_dates,
+                         kids=kids)
+
+
 @ui_bp.route('/users')
 @ha_auth_required
 def users_list():

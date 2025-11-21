@@ -38,6 +38,10 @@
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Chores</span>
                 </a>
+                <a href="{{ url_for('ui.available_chores') }}" class="nav-link {% if request.endpoint == 'ui.available_chores' %}active{% endif %}">
+                    <span class="nav-icon">✋</span>
+                    <span class="nav-text">Available</span>
+                </a>
                 <a href="{{ url_for('ui.calendar') }}" class="nav-link {% if request.endpoint == 'ui.calendar' %}active{% endif %}">
                     <span class="nav-icon">📅</span>
                     <span class="nav-text">Calendar</span>

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Available Chores - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">Available Chores</h1>
+</div>
+
+<!-- Status Legend -->
+<div class="card mb-md">
+    <div class="flex flex-gap-sm" style="flex-wrap: wrap; align-items: center;">
+        <strong>Assignment Types:</strong>
+        <span class="status status-active">Individual</span> - Assigned to a specific kid
+        <span class="status status-claimed">Shared</span> - Any eligible kid can claim
+    </div>
+</div>
+
+<!-- Chores with Due Dates -->
+<div class="card-header mb-md">
+    <h2 class="card-title">Scheduled Chores</h2>
+</div>
+
+{% if instances_with_dates %}
+<div class="card mb-lg">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Chore Name</th>
+                    <th>Due Date</th>
+                    <th>Points</th>
+                    <th>Type</th>
+                    <th>Eligible</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instance in instances_with_dates %}
+                <tr>
+                    <td>
+                        <strong>{{ instance.chore.name }}</strong>
+                        {% if instance.chore.description %}
+                        <br><small class="text-secondary">{{ instance.chore.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.due_date %}
+                            {{ instance.due_date.strftime('%b %d, %Y') }}
+                        {% else %}
+                            <span class="text-secondary">Anytime</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="points-badge">{{ instance.chore.points }} pts</span>
+                    </td>
+                    <td>
+                        {% if instance.chore.assignment_type == 'shared' %}
+                            <span class="status status-claimed">Shared</span>
+                        {% else %}
+                            <span class="status status-active">Individual</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.eligible_kids %}
+                            {% for kid in instance.eligible_kids %}
+                                <span class="status status-active" style="margin-right: 0.25rem; margin-bottom: 0.25rem;">
+                                    {{ kid.username }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-secondary">None</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.eligible_kids %}
+                        <form class="claim-form" data-instance-id="{{ instance.id }}">
+                            <div class="flex flex-gap-sm" style="align-items: center;">
+                                <select name="user_id" class="form-select" style="min-width: 100px;" required>
+                                    <option value="">Select kid...</option>
+                                    {% for kid in instance.eligible_kids %}
+                                    <option value="{{ kid.id }}">{{ kid.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Claim</button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <span class="text-secondary">No eligible kids</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card mb-lg">
+    <div class="empty-state">
+        <div class="empty-state-icon">✓</div>
+        <div class="empty-state-title">No scheduled chores available</div>
+        <p class="empty-state-text">All scheduled chores have been claimed.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Chores without Due Dates (Anytime Chores) -->
+<div class="card-header mb-md">
+    <h2 class="card-title">Anytime Chores</h2>
+</div>
+
+{% if instances_without_dates %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Chore Name</th>
+                    <th>Points</th>
+                    <th>Type</th>
+                    <th>Eligible</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instance in instances_without_dates %}
+                <tr>
+                    <td>
+                        <strong>{{ instance.chore.name }}</strong>
+                        {% if instance.chore.description %}
+                        <br><small class="text-secondary">{{ instance.chore.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="points-badge">{{ instance.chore.points }} pts</span>
+                    </td>
+                    <td>
+                        {% if instance.chore.assignment_type == 'shared' %}
+                            <span class="status status-claimed">Shared</span>
+                        {% else %}
+                            <span class="status status-active">Individual</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.eligible_kids %}
+                            {% for kid in instance.eligible_kids %}
+                                <span class="status status-active" style="margin-right: 0.25rem; margin-bottom: 0.25rem;">
+                                    {{ kid.username }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-secondary">None</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if instance.eligible_kids %}
+                        <form class="claim-form" data-instance-id="{{ instance.id }}">
+                            <div class="flex flex-gap-sm" style="align-items: center;">
+                                <select name="user_id" class="form-select" style="min-width: 100px;" required>
+                                    <option value="">Select kid...</option>
+                                    {% for kid in instance.eligible_kids %}
+                                    <option value="{{ kid.id }}">{{ kid.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Claim</button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <span class="text-secondary">No eligible kids</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">✓</div>
+        <div class="empty-state-title">No anytime chores available</div>
+        <p class="empty-state-text">All anytime chores have been claimed.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle claim form submissions
+    document.querySelectorAll('.claim-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const instanceId = this.dataset.instanceId;
+            const userId = this.querySelector('select[name="user_id"]').value;
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            if (!userId) {
+                alert('Please select a kid to claim this chore');
+                return;
+            }
+
+            // Disable button during request
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Claiming...';
+
+            try {
+                const response = await fetch(`/api/instances/${instanceId}/claim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: parseInt(userId) })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success - reload page to show updated list
+                    window.location.reload();
+                } else {
+                    // Error - show message
+                    alert(data.message || 'Failed to claim chore');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Claim';
+                }
+            } catch (error) {
+                console.error('Error claiming chore:', error);
+                alert('Failed to claim chore. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Claim';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

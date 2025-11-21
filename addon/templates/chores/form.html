@@ -77,6 +77,22 @@
             </select>
         </div>
 
+        <!-- Start date for one-off chores -->
+        <div id="start_date_field" class="form-group">
+            <label class="form-label" for="start_date">Due Date</label>
+            <input
+                type="date"
+                id="start_date"
+                name="start_date"
+                class="form-input"
+                value="{{ chore.start_date.isoformat() if chore and chore.start_date else '' }}"
+            >
+            <div class="form-help">
+                For one-time chores: leave empty to create an "anytime" chore with no due date.<br>
+                For recurring chores: this is when the schedule starts.
+            </div>
+        </div>
+
         <div id="recurrence_fields" style="display: none;">
             <!-- Daily Options -->
             <div id="daily_options" class="recurrence-option" style="display: none;">
@@ -161,6 +177,22 @@
         </div>
 
         <div class="form-group">
+            <label class="form-label" for="assignment_type">Assignment Type</label>
+            <select id="assignment_type" name="assignment_type" class="form-select">
+                <option value="individual" {% if not chore or chore.assignment_type == 'individual' %}selected{% endif %}>
+                    Individual - Each assigned kid gets their own instance
+                </option>
+                <option value="shared" {% if chore and chore.assignment_type == 'shared' %}selected{% endif %}>
+                    Shared - One instance that any assigned kid can claim (first come, first served)
+                </option>
+            </select>
+            <div class="form-help">
+                <strong>Individual:</strong> Creates separate chore instances for each kid (e.g., "Make your bed")<br>
+                <strong>Shared:</strong> Creates one instance that any assigned kid can claim (e.g., "Take out the garbage")
+            </div>
+        </div>
+
+        <div class="form-group">
             <label class="form-label" for="assigned_to">Assign To</label>
             <div id="assignments">
                 {% if kids %}
@@ -180,7 +212,7 @@
                     <p class="text-secondary">No kids available. <a href="{{ url_for('ui.users_list') }}">Add a user</a> first.</p>
                 {% endif %}
             </div>
-            <div class="form-help">Chores can be assigned to multiple kids or left unassigned</div>
+            <div class="form-help">Select which kids can do this chore. For shared chores, any of the selected kids can claim it.</div>
         </div>
 
         <div class="form-group">
@@ -225,12 +257,18 @@
 {% if chore and chore.recurrence_pattern %}
 const existingPattern = "{{ chore.recurrence_pattern }}";
 parseExistingPattern(existingPattern);
+{% else %}
+// Initialize field visibility on page load
+updateRecurrenceFields();
 {% endif %}
 
 function updateRecurrenceFields() {
     const type = document.getElementById('recurrence_type').value;
     const fieldsDiv = document.getElementById('recurrence_fields');
     const allOptions = document.querySelectorAll('.recurrence-option');
+    const startDateField = document.getElementById('start_date_field');
+    const startDateLabel = startDateField.querySelector('.form-label');
+    const startDateHelp = startDateField.querySelector('.form-help');
 
     // Hide all options first
     allOptions.forEach(opt => opt.style.display = 'none');
@@ -238,9 +276,15 @@ function updateRecurrenceFields() {
     if (type === 'none') {
         fieldsDiv.style.display = 'none';
         document.getElementById('recurrence_pattern').value = '';
+        // Update label for one-time chores
+        startDateLabel.textContent = 'Due Date';
+        startDateHelp.innerHTML = 'Leave empty to create an "anytime" chore with no due date that can be claimed whenever.';
     } else {
         fieldsDiv.style.display = 'block';
         document.getElementById(type + '_options').style.display = 'block';
+        // Update label for recurring chores
+        startDateLabel.textContent = 'Start Date';
+        startDateHelp.innerHTML = 'When this recurring schedule should start generating instances.';
     }
 }
 

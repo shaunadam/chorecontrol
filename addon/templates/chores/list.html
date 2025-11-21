@@ -63,6 +63,13 @@
                 {% else %}
                     One-time
                 {% endif %}
+                |
+                <strong>Type:</strong>
+                {% if chore.assignment_type == 'shared' %}
+                    <span class="status status-claimed">Shared</span>
+                {% else %}
+                    Individual
+                {% endif %}
             </div>
 
             {% if chore.assigned_users %}
