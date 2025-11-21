@@ -18,10 +18,9 @@ import sys
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
-# Note: When models.py is available, uncomment these imports:
-# from models import db, User, Chore, ChoreAssignment, ChoreInstance
-# from models import Reward, RewardClaim, PointsHistory
-# from app import create_app
+from models import db, User, Chore, ChoreAssignment, ChoreInstance
+from models import Reward, RewardClaim, PointsHistory
+from app import create_app
 
 from seed_helpers import (
     PARENT_NAMES,
@@ -79,18 +78,43 @@ class SeedDataGenerator:
         return response.lower() in ["yes", "y"]
 
     def clear_database(self) -> None:
-        """Clear all data from the database."""
+        """Clear all data from the database, preserving admin user."""
         print("\n🗑️  Clearing existing data...")
 
-        # TODO: When models are available, uncomment this:
-        # db.session.query(PointsHistory).delete()
-        # db.session.query(RewardClaim).delete()
-        # db.session.query(Reward).delete()
-        # db.session.query(ChoreInstance).delete()
-        # db.session.query(ChoreAssignment).delete()
-        # db.session.query(Chore).delete()
-        # db.session.query(User).delete()
-        # db.session.commit()
+        # Find the admin user to preserve
+        admin_user = User.query.filter_by(ha_user_id='local-admin').first()
+
+        db.session.query(PointsHistory).delete()
+        db.session.query(RewardClaim).delete()
+        db.session.query(Reward).delete()
+        db.session.query(ChoreInstance).delete()
+        db.session.query(ChoreAssignment).delete()
+        db.session.query(Chore).delete()
+
+        # Delete all users except admin
+        if admin_user:
+            db.session.query(User).filter(User.id != admin_user.id).delete()
+            self.log("Preserved admin user")
+        else:
+            db.session.query(User).delete()
+
+        db.session.commit()
+
+        # Recreate admin if it didn't exist
+        if not admin_user:
+            # Expire all to avoid identity map conflicts
+            db.session.expire_all()
+
+            admin_user = User(
+                ha_user_id='local-admin',
+                username='admin',
+                role='parent',
+                points=0
+            )
+            admin_user.set_password('admin')
+            db.session.add(admin_user)
+            db.session.commit()
+            self.log("Created admin user (username: 'admin', password: 'admin')")
 
         self.log("Database cleared successfully")
 
@@ -120,14 +144,14 @@ class SeedDataGenerator:
                 "points": 0,
             }
 
-            # TODO: When models are available:
-            # parent = User(**parent_data)
-            # db.session.add(parent)
-            # parents.append(parent)
+            parent = User(**parent_data)
+            # Set default password for parent users so they can log in
+            parent.set_password('password')
+            db.session.add(parent)
+            parents.append(parent)
 
-            parents.append(parent_data)
             self.created_counts["users"] += 1
-            self.log(f"Created parent: {username}")
+            self.log(f"Created parent: {username} (password: 'password')")
 
         # Create kids
         for i in range(num_kids):
@@ -139,16 +163,16 @@ class SeedDataGenerator:
                 "points": 0,  # Will be updated after points history is created
             }
 
-            # TODO: When models are available:
-            # kid = User(**kid_data)
-            # db.session.add(kid)
-            # kids.append(kid)
+            kid = User(**kid_data)
+            # Set default password for kid users so they can log in
+            kid.set_password('password')
+            db.session.add(kid)
+            kids.append(kid)
 
-            kids.append(kid_data)
             self.created_counts["users"] += 1
-            self.log(f"Created kid: {username} (age {KID_AGES.get(username, 'N/A')})")
+            self.log(f"Created kid: {username} (age {KID_AGES.get(username, 'N/A')}, password: 'password')")
 
-        # db.session.commit()
+        db.session.commit()
 
         return {"parents": parents, "kids": kids}
 
@@ -182,12 +206,12 @@ class SeedDataGenerator:
             recurrence_pattern = self._get_recurrence_pattern(recurrence_type)
 
             # Create chore
-            chore = {
+            chore_dict = {
                 "name": chore_data["name"],
                 "description": chore_data["description"],
                 "points": chore_data["points"],
                 "recurrence_type": recurrence_type,
-                "recurrence_pattern": json.dumps(recurrence_pattern) if recurrence_pattern else None,
+                "recurrence_pattern": recurrence_pattern,
                 "start_date": datetime.now().date(),
                 "end_date": None,
                 "assignment_type": "individual",
@@ -196,18 +220,16 @@ class SeedDataGenerator:
                 "is_active": True,
             }
 
-            # TODO: When models are available:
-            # chore_obj = Chore(**chore)
-            # if created_by_user:
-            #     chore_obj.created_by = created_by_user.id
-            # db.session.add(chore_obj)
-            # chores.append(chore_obj)
+            chore_obj = Chore(**chore_dict)
+            if created_by_user:
+                chore_obj.created_by = created_by_user.id
+            db.session.add(chore_obj)
+            chores.append(chore_obj)
 
-            chores.append(chore)
             self.created_counts["chores"] += 1
-            self.log(f"Created chore: {chore['name']} ({recurrence_type})")
+            self.log(f"Created chore: {chore_dict['name']} ({recurrence_type})")
 
-        # db.session.commit()
+        db.session.commit()
 
         return chores
 
@@ -254,31 +276,29 @@ class SeedDataGenerator:
         chore_data_lookup = {c["name"]: c for c in get_random_chore_data(50)}
 
         for chore in chores:
-            chore_data = chore_data_lookup.get(chore["name"], {"age_min": 6})
+            chore_data = chore_data_lookup.get(chore.name, {"age_min": 6})
 
             # Assign to age-appropriate kids
             for kid in kids:
-                kid_age = KID_AGES.get(kid["username"], 10)
+                kid_age = KID_AGES.get(kid.username, 10)
                 if kid_age >= chore_data.get("age_min", 0):
                     # Randomly assign (70% chance)
                     import random
                     if random.random() < 0.7:
                         assignment = {
-                            "chore_id": chore.get("id", 0),
-                            "user_id": kid.get("id", 0),
+                            "chore_id": chore.id,
+                            "user_id": kid.id,
                             "due_date": None,  # For recurring, generated per instance
                         }
 
-                        # TODO: When models are available:
-                        # assignment_obj = ChoreAssignment(**assignment)
-                        # db.session.add(assignment_obj)
-                        # assignments.append(assignment_obj)
+                        assignment_obj = ChoreAssignment(**assignment)
+                        db.session.add(assignment_obj)
+                        assignments.append(assignment_obj)
 
-                        assignments.append(assignment)
                         self.created_counts["assignments"] += 1
-                        self.log(f"Assigned '{chore['name']}' to {kid['username']}")
+                        self.log(f"Assigned '{chore.name}' to {kid.username}")
 
-        # db.session.commit()
+        db.session.commit()
 
         return assignments
 
@@ -313,7 +333,7 @@ class SeedDataGenerator:
             status = get_random_status_distribution()
 
             instance = {
-                "chore_id": chore.get("id", 0),
+                "chore_id": chore.id,
                 "due_date": due_date,
                 "status": status,
                 "claimed_by": None,
@@ -328,7 +348,7 @@ class SeedDataGenerator:
 
             # Set fields based on status
             if status in ["claimed", "approved", "rejected"]:
-                instance["claimed_by"] = kid.get("id", 0)
+                instance["claimed_by"] = kid.id
                 instance["claimed_at"] = dates[i] + timedelta(hours=random.randint(1, 12))
 
             if status in ["approved", "rejected"]:
@@ -336,7 +356,7 @@ class SeedDataGenerator:
                 instance["approved_at"] = instance["claimed_at"] + timedelta(hours=random.randint(1, 24))
 
             if status == "approved":
-                instance["points_awarded"] = chore["points"]
+                instance["points_awarded"] = chore.points
 
             if status == "rejected":
                 instance["rejected_by"] = 1  # Parent ID
@@ -345,16 +365,14 @@ class SeedDataGenerator:
                 instance["approved_by"] = None
                 instance["approved_at"] = None
 
-            # TODO: When models are available:
-            # instance_obj = ChoreInstance(**instance)
-            # db.session.add(instance_obj)
-            # instances.append(instance_obj)
+            instance_obj = ChoreInstance(**instance)
+            db.session.add(instance_obj)
+            instances.append(instance_obj)
 
-            instances.append(instance)
             self.created_counts["instances"] += 1
-            self.log(f"Created instance: {chore['name']} - {status}")
+            self.log(f"Created instance: {chore.name} - {status}")
 
-        # db.session.commit()
+        db.session.commit()
 
         return instances
 
@@ -376,7 +394,7 @@ class SeedDataGenerator:
         import random
 
         for i, reward_data in enumerate(reward_data_list):
-            reward = {
+            reward_dict = {
                 "name": reward_data["name"],
                 "description": reward_data["description"],
                 "points_cost": reward_data["points_cost"],
@@ -386,16 +404,14 @@ class SeedDataGenerator:
                 "is_active": True,
             }
 
-            # TODO: When models are available:
-            # reward_obj = Reward(**reward)
-            # db.session.add(reward_obj)
-            # rewards.append(reward_obj)
+            reward_obj = Reward(**reward_dict)
+            db.session.add(reward_obj)
+            rewards.append(reward_obj)
 
-            rewards.append(reward)
             self.created_counts["rewards"] += 1
-            self.log(f"Created reward: {reward['name']} ({reward['points_cost']} points)")
+            self.log(f"Created reward: {reward_dict['name']} ({reward_dict['points_cost']} points)")
 
-        # db.session.commit()
+        db.session.commit()
 
         return rewards
 
@@ -428,25 +444,23 @@ class SeedDataGenerator:
             status = random.choice(["approved", "approved", "approved", "pending"])
 
             claim = {
-                "reward_id": reward.get("id", 0),
-                "user_id": kid.get("id", 0),
-                "points_spent": reward["points_cost"],
+                "reward_id": reward.id,
+                "user_id": kid.id,
+                "points_spent": reward.points_cost,
                 "claimed_at": claimed_at,
                 "status": status,
                 "approved_by": 1 if status == "approved" else None,
                 "approved_at": claimed_at + timedelta(hours=1) if status == "approved" else None,
             }
 
-            # TODO: When models are available:
-            # claim_obj = RewardClaim(**claim)
-            # db.session.add(claim_obj)
-            # claims.append(claim_obj)
+            claim_obj = RewardClaim(**claim)
+            db.session.add(claim_obj)
+            claims.append(claim_obj)
 
-            claims.append(claim)
             self.created_counts["reward_claims"] += 1
-            self.log(f"Created claim: {kid['username']} claimed '{reward['name']}' - {status}")
+            self.log(f"Created claim: {kid.username} claimed '{reward.name}' - {status}")
 
-        # db.session.commit()
+        db.session.commit()
 
         return claims
 
@@ -473,49 +487,45 @@ class SeedDataGenerator:
 
         # Points from approved chore instances
         for instance in instances:
-            if instance["status"] == "approved" and instance["points_awarded"]:
+            if instance.status == "approved" and instance.points_awarded:
                 entry = {
-                    "user_id": instance["claimed_by"],
-                    "points_delta": instance["points_awarded"],
-                    "reason": f"Completed chore (instance {instance.get('id', 0)})",
-                    "chore_instance_id": instance.get("id", 0),
+                    "user_id": instance.claimed_by,
+                    "points_delta": instance.points_awarded,
+                    "reason": f"Completed chore (instance {instance.id})",
+                    "chore_instance_id": instance.id,
                     "reward_claim_id": None,
-                    "created_by": instance["approved_by"],
-                    "created_at": instance["approved_at"],
+                    "created_by": instance.approved_by,
+                    "created_at": instance.approved_at,
                 }
 
-                # TODO: When models are available:
-                # entry_obj = PointsHistory(**entry)
-                # db.session.add(entry_obj)
-                # history.append(entry_obj)
+                entry_obj = PointsHistory(**entry)
+                db.session.add(entry_obj)
+                history.append(entry_obj)
 
-                history.append(entry)
                 self.created_counts["points_history"] += 1
                 self.log(f"Points awarded: +{entry['points_delta']}")
 
         # Points spent on reward claims
         for claim in claims:
-            if claim["status"] == "approved":
+            if claim.status == "approved":
                 entry = {
-                    "user_id": claim["user_id"],
-                    "points_delta": -claim["points_spent"],
-                    "reason": f"Redeemed reward (claim {claim.get('id', 0)})",
+                    "user_id": claim.user_id,
+                    "points_delta": -claim.points_spent,
+                    "reason": f"Redeemed reward (claim {claim.id})",
                     "chore_instance_id": None,
-                    "reward_claim_id": claim.get("id", 0),
-                    "created_by": claim["user_id"],
-                    "created_at": claim["approved_at"] or claim["claimed_at"],
+                    "reward_claim_id": claim.id,
+                    "created_by": claim.user_id,
+                    "created_at": claim.approved_at or claim.claimed_at,
                 }
 
-                # TODO: When models are available:
-                # entry_obj = PointsHistory(**entry)
-                # db.session.add(entry_obj)
-                # history.append(entry_obj)
+                entry_obj = PointsHistory(**entry)
+                db.session.add(entry_obj)
+                history.append(entry_obj)
 
-                history.append(entry)
                 self.created_counts["points_history"] += 1
-                self.log(f"Points spent: -{entry['points_delta']}")
+                self.log(f"Points spent: {entry['points_delta']}")
 
-        # db.session.commit()
+        db.session.commit()
 
         # Update user points balances
         self._update_user_points(kids, history)
@@ -527,21 +537,18 @@ class SeedDataGenerator:
         print(f"\n📊 Updating user points balances...")
 
         for kid in kids:
-            kid_id = kid.get("id", 0)
+            kid_id = kid.id
             total_points = sum(
-                entry["points_delta"]
+                entry.points_delta
                 for entry in history
-                if entry["user_id"] == kid_id
+                if entry.user_id == kid_id
             )
 
-            kid["points"] = max(0, total_points)  # Ensure non-negative
+            kid.points = max(0, total_points)  # Ensure non-negative
 
-            # TODO: When models are available:
-            # kid.points = max(0, total_points)
+            self.log(f"{kid.username}: {kid.points} points")
 
-            self.log(f"{kid['username']}: {kid['points']} points")
-
-        # db.session.commit()
+        db.session.commit()
 
     def print_summary(self) -> None:
         """Print summary of created data."""
@@ -680,37 +687,21 @@ Examples:
         print("❌ Error: Cannot use --reset and --preserve together")
         sys.exit(1)
 
-    # TODO: When Flask app is available, uncomment:
-    # app = create_app()
-    # with app.app_context():
-    #     generator = SeedDataGenerator(verbose=args.verbose)
-    #     generator.generate_all(
-    #         num_kids=args.kids,
-    #         num_chores=args.chores,
-    #         num_instances=args.instances,
-    #         num_rewards=args.rewards,
-    #         num_claims=args.claims,
-    #         reset=args.reset
-    #     )
+    # Disable scheduler for seeding
+    import os
+    os.environ['SCHEDULER_ENABLED'] = 'false'
 
-    # For now, run without Flask context (will fail on DB operations)
-    print("\n⚠️  Note: This script requires the Flask app and models to be implemented.")
-    print("The logic is ready, but database operations are currently commented out.")
-    print("\nTo use this script:")
-    print("1. Implement models.py with SQLAlchemy models")
-    print("2. Implement app.py with Flask application factory")
-    print("3. Uncomment the TODO sections in this file")
-    print("\nSimulating seed generation with current parameters:")
-
-    generator = SeedDataGenerator(verbose=args.verbose)
-    generator.generate_all(
-        num_kids=args.kids,
-        num_chores=args.chores,
-        num_instances=args.instances,
-        num_rewards=args.rewards,
-        num_claims=args.claims,
-        reset=args.reset
-    )
+    app = create_app()
+    with app.app_context():
+        generator = SeedDataGenerator(verbose=args.verbose)
+        generator.generate_all(
+            num_kids=args.kids,
+            num_chores=args.chores,
+            num_instances=args.instances,
+            num_rewards=args.rewards,
+            num_claims=args.claims,
+            reset=args.reset
+        )
 
 
 if __name__ == "__main__":

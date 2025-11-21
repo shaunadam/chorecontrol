@@ -25,7 +25,7 @@ def adjust_points():
             'message': 'Only parents can manually adjust points'
         }), 403
 
-    data = request.get_json()
+    data = request.get_json(force=True, silent=True)
 
     # Validate required fields
     if not data or 'user_id' not in data or 'points_delta' not in data or 'reason' not in data:

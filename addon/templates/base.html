@@ -38,6 +38,10 @@
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Chores</span>
                 </a>
+                <a href="{{ url_for('ui.calendar') }}" class="nav-link {% if request.endpoint == 'ui.calendar' %}active{% endif %}">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Calendar</span>
+                </a>
                 <a href="{{ url_for('ui.rewards_list') }}" class="nav-link {% if 'rewards' in request.endpoint %}active{% endif %}">
                     <span class="nav-icon">🎁</span>
                     <span class="nav-text">Rewards</span>

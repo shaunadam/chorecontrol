@@ -92,7 +92,6 @@
                 <div class="flex-between">
                     <div>
                         <div class="list-item-title">{{ kid.username }}</div>
-                        <div class="list-item-meta">{{ kid.ha_user_id }}</div>
                     </div>
                     <div class="points-badge">{{ kid.points }}</div>
                 </div>
@@ -179,7 +178,7 @@
             <input type="hidden" id="pointsUserId" name="user_id">
             <div class="form-group">
                 <label class="form-label" for="points_delta">Points Change:</label>
-                <input type="number" id="points_delta" name="delta" class="form-input" required placeholder="e.g., 10 or -5">
+                <input type="number" id="points_delta" name="points_delta" class="form-input" required placeholder="e.g., 10 or -5">
                 <div class="form-help">Use positive numbers to add points, negative to subtract</div>
             </div>
             <div class="form-group">

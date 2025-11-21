@@ -565,7 +565,7 @@ class TestAuthenticationMiddleware:
         response = client.get('/api/users', headers={'X-Ingress-User': 'nonexistent-user'})
         assert response.status_code == 401
         data = response.get_json()
-        assert 'User not found in database' in data['message']
+        assert 'User not found in database' in data['message'] or 'Please create a user account first' in data['message']
 
     def test_requires_parent_decorator(self, client, kid_user, parent_user):
         """Test that requires_parent decorator works correctly."""

@@ -200,6 +200,58 @@ def chore_form(id=None):
     return render_template('chores/form.html', chore=chore, kids=kids)
 
 
+@ui_bp.route('/calendar')
+@ha_auth_required
+def calendar():
+    """Calendar view showing chore instances."""
+    # Get all instances with due dates for calendar
+    instances_with_dates = ChoreInstance.query.filter(
+        ChoreInstance.due_date.isnot(None)
+    ).all()
+
+    # Format instances for FullCalendar
+    calendar_events = []
+    for instance in instances_with_dates:
+        # Get assigned user name
+        assigned_user = instance.assignee.username if instance.assignee else 'Unassigned'
+
+        # Get assignment type from chore
+        assignment_type = instance.chore.assignment_type if instance.chore else 'individual'
+
+        # Map status to colors
+        status_colors = {
+            'assigned': '#1e88e5',   # blue
+            'claimed': '#fb8c00',    # warning/orange
+            'approved': '#4caf50',   # green
+            'rejected': '#e53935',   # red
+            'missed': '#757575'      # gray
+        }
+
+        calendar_events.append({
+            'id': instance.id,
+            'title': f"{instance.chore.name} - {assigned_user}",
+            'start': instance.due_date.isoformat(),
+            'backgroundColor': status_colors.get(instance.status, '#1e88e5'),
+            'borderColor': status_colors.get(instance.status, '#1e88e5'),
+            'extendedProps': {
+                'choreName': instance.chore.name,
+                'assignedTo': assigned_user,
+                'status': instance.status,
+                'points': instance.chore.points,
+                'assignmentType': assignment_type
+            }
+        })
+
+    # Get instances without due dates for data table
+    instances_without_dates = ChoreInstance.query.filter(
+        ChoreInstance.due_date.is_(None)
+    ).order_by(ChoreInstance.created_at.desc()).all()
+
+    return render_template('calendar.html',
+                         calendar_events=calendar_events,
+                         instances_without_dates=instances_without_dates)
+
+
 @ui_bp.route('/rewards')
 @ha_auth_required
 def rewards_list():

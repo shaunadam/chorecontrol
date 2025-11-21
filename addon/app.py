@@ -73,13 +73,10 @@ def register_middleware(app):
 
         if ha_user:
             # Use the authenticated user from HA ingress
-            # Check if this HA user exists in our database
-            user = User.query.filter_by(ha_user_id=ha_user).first()
-            if user:
-                g.ha_user = ha_user
-            else:
-                # HA user not in database - they need to log in
-                g.ha_user = None
+            # Set g.ha_user so requires_auth can distinguish between:
+            # - No HA header at all (g.ha_user = None)
+            # - HA header present but user not in database (g.ha_user set, but user lookup fails)
+            g.ha_user = ha_user
         else:
             # No HA header - check session for local login
             session_user_id = get_session_user_id()

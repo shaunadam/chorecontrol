@@ -229,7 +229,7 @@ async function submitJsonForm(form, options = {}) {
     // Fields that should always be arrays
     const arrayFields = ['assigned_to'];
     // Fields that should be integers
-    const intFields = ['user_id', 'delta', 'approver_id', 'points', 'late_points', 'auto_approve_delay_hours', 'points_cost', 'cooldown_days', 'max_claims_total', 'max_claims_per_kid'];
+    const intFields = ['user_id', 'points_delta', 'approver_id', 'points', 'late_points', 'auto_approve_delay_hours', 'points_cost', 'cooldown_days', 'max_claims_total', 'max_claims_per_kid'];
     // Fields that are booleans (checkboxes)
     const boolFields = ['is_active', 'requires_approval'];
 

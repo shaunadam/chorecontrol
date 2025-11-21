@@ -1036,7 +1036,7 @@ def test_unclaim_instance_success(client, db_session, kid_user, parent_user):
     response = client.post(
         f'/api/instances/{instance.id}/unclaim',
         json={'user_id': kid_user.id},
-        headers={'X-Ingress-User': 'kid1'}
+        headers={'X-Ingress-User': kid_user.ha_user_id}
     )
 
     assert response.status_code == 200
@@ -1125,7 +1125,7 @@ def test_reassign_instance_success(client, db_session, parent_user):
     response = client.post(
         f'/api/instances/{instance.id}/reassign',
         json={'new_user_id': kid2.id, 'reassigned_by': parent_user.id},
-        headers={'X-Ingress-User': 'parent1'}
+        headers={'X-Ingress-User': parent_user.ha_user_id}
     )
 
     assert response.status_code == 200
@@ -1213,7 +1213,7 @@ def test_reassign_instance_only_individual_chores(client, db_session, parent_use
     response = client.post(
         f'/api/instances/{instance.id}/reassign',
         json={'new_user_id': kid1.id, 'reassigned_by': parent_user.id},
-        headers={'X-Ingress-User': 'parent1'}
+        headers={'X-Ingress-User': parent_user.ha_user_id}
     )
 
     assert response.status_code == 400

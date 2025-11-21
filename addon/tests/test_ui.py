@@ -320,6 +320,7 @@ class TestUIAuthentication:
             '/',
             '/chores',
             '/chores/new',
+            '/calendar',
             '/rewards',
             '/rewards/new',
             '/approvals',
@@ -336,6 +337,7 @@ class TestUIAuthentication:
             '/',
             '/chores',
             '/chores/new',
+            '/calendar',
             '/rewards',
             '/rewards/new',
             '/approvals',
@@ -405,3 +407,134 @@ class TestUIEmptyStates:
         response = client.get('/approvals', headers=parent_headers)
         assert response.status_code == 200
         assert b'All caught up' in response.data or b'No pending' in response.data
+
+
+class TestCalendar:
+    """Tests for calendar page."""
+
+    def test_calendar_renders(self, client, parent_headers, parent_user):
+        """Test that calendar page loads successfully."""
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'Calendar' in response.data
+
+    def test_calendar_requires_auth(self, client):
+        """Test that calendar requires authentication."""
+        response = client.get('/calendar')
+        assert response.status_code == 401
+
+    def test_calendar_shows_instances_with_due_dates(self, client, parent_headers, parent_user, kid_user, sample_chore):
+        """Test that instances with due dates appear in calendar events."""
+        from models import db
+        instance = ChoreInstance(
+            chore_id=sample_chore.id,
+            due_date=date.today(),
+            assigned_to=kid_user.id,
+            status='assigned'
+        )
+        db.session.add(instance)
+        db.session.commit()
+
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        # Check that the chore name appears in the calendar events JSON
+        assert sample_chore.name.encode() in response.data
+
+    def test_calendar_shows_instances_without_due_dates_in_table(self, client, parent_headers, parent_user, kid_user, sample_chore):
+        """Test that instances without due dates appear in data table."""
+        from models import db
+        instance = ChoreInstance(
+            chore_id=sample_chore.id,
+            due_date=None,
+            assigned_to=kid_user.id,
+            status='assigned'
+        )
+        db.session.add(instance)
+        db.session.commit()
+
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'Instances Without Due Date' in response.data
+        assert sample_chore.name.encode() in response.data
+
+    def test_calendar_empty_state_for_no_due_date_instances(self, client, parent_headers, parent_user, kid_user, sample_chore):
+        """Test empty state when all instances have due dates."""
+        from models import db
+        # Create only instances with due dates
+        instance = ChoreInstance(
+            chore_id=sample_chore.id,
+            due_date=date.today(),
+            assigned_to=kid_user.id,
+            status='assigned'
+        )
+        db.session.add(instance)
+        db.session.commit()
+
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'No instances without due dates' in response.data or b'All chore instances have due dates' in response.data
+
+    def test_calendar_shows_status_legend(self, client, parent_headers, parent_user):
+        """Test that status legend is displayed."""
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'Assigned' in response.data
+        assert b'Claimed' in response.data
+        assert b'Approved' in response.data
+        assert b'Rejected' in response.data
+        assert b'Missed' in response.data
+
+    def test_calendar_includes_fullcalendar(self, client, parent_headers, parent_user):
+        """Test that FullCalendar library is included."""
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'fullcalendar' in response.data
+
+    def test_calendar_shows_different_statuses(self, client, parent_headers, parent_user, kid_user, sample_chore):
+        """Test that instances with different statuses are shown."""
+        from models import db
+        # Create instances with different statuses
+        statuses = ['assigned', 'claimed', 'approved', 'rejected', 'missed']
+        for i, status in enumerate(statuses):
+            instance = ChoreInstance(
+                chore_id=sample_chore.id,
+                due_date=date.today() + timedelta(days=i),
+                assigned_to=kid_user.id,
+                status=status
+            )
+            if status == 'claimed':
+                instance.claimed_by = kid_user.id
+                instance.claimed_at = datetime.utcnow()
+            elif status == 'approved':
+                instance.claimed_by = kid_user.id
+                instance.claimed_at = datetime.utcnow()
+                instance.approved_by = parent_user.id
+                instance.approved_at = datetime.utcnow()
+            elif status == 'rejected':
+                instance.claimed_by = kid_user.id
+                instance.claimed_at = datetime.utcnow()
+                instance.rejected_by = parent_user.id
+                instance.rejected_at = datetime.utcnow()
+            db.session.add(instance)
+        db.session.commit()
+
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        # All instances should be in the calendar events
+        assert response.data.count(sample_chore.name.encode()) >= 5
+
+    def test_calendar_shows_unassigned_instances(self, client, parent_headers, parent_user, sample_chore):
+        """Test that unassigned instances are shown correctly."""
+        from models import db
+        instance = ChoreInstance(
+            chore_id=sample_chore.id,
+            due_date=date.today(),
+            assigned_to=None,
+            status='assigned'
+        )
+        db.session.add(instance)
+        db.session.commit()
+
+        response = client.get('/calendar', headers=parent_headers)
+        assert response.status_code == 200
+        assert b'Unassigned' in response.data

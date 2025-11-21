@@ -102,9 +102,12 @@ def init_scheduler(app):
         replace_existing=True
     )
 
-    # Start the scheduler
-    scheduler.start()
-    logger.info("Background scheduler started with %d jobs", len(scheduler.get_jobs()))
+    # Start the scheduler (only if not already running)
+    if not scheduler.running:
+        scheduler.start()
+        logger.info("Background scheduler started with %d jobs", len(scheduler.get_jobs()))
+    else:
+        logger.info("Background scheduler already running with %d jobs", len(scheduler.get_jobs()))
 
     # Register shutdown handler
     atexit.register(shutdown_scheduler)

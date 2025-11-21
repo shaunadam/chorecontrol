@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">Calendar</h1>
+</div>
+
+<!-- Status Legend -->
+<div class="card mb-md">
+    <div class="flex flex-gap-sm" style="flex-wrap: wrap; align-items: center;">
+        <strong>Status:</strong>
+        <span class="status status-assigned">Assigned</span>
+        <span class="status status-claimed">Claimed</span>
+        <span class="status status-approved">Approved</span>
+        <span class="status status-rejected">Rejected</span>
+        <span class="status status-missed">Missed</span>
+    </div>
+</div>
+
+<!-- Calendar Container -->
+<div class="card mb-lg">
+    <div id="calendar"></div>
+</div>
+
+<!-- Instances Without Due Dates -->
+<div class="card-header mb-md">
+    <h2 class="card-title">Instances Without Due Date</h2>
+</div>
+
+{% if instances_without_dates %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Chore Name</th>
+                    <th>Points</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Assignment Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instance in instances_without_dates %}
+                <tr>
+                    <td>{{ instance.chore.name }}</td>
+                    <td>
+                        <span class="points-badge">{{ instance.chore.points }} pts</span>
+                    </td>
+                    <td>{{ instance.assignee.username if instance.assignee else 'Unassigned' }}</td>
+                    <td>
+                        <span class="status status-{{ instance.status }}">{{ instance.status|capitalize }}</span>
+                    </td>
+                    <td>{{ instance.chore.assignment_type|capitalize if instance.chore else 'Individual' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">✓</div>
+        <div class="empty-state-title">No instances without due dates</div>
+        <p class="empty-state-text">All chore instances have due dates assigned.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth'
+        },
+        events: {{ calendar_events | tojson }},
+        eventDisplay: 'block',
+        dayMaxEvents: 3,
+        moreLinkClick: 'popover',
+        eventDidMount: function(info) {
+            // Add tooltip with details
+            var props = info.event.extendedProps;
+            var tooltip =
+                'Chore: ' + props.choreName + '\n' +
+                'Assigned: ' + props.assignedTo + '\n' +
+                'Status: ' + props.status + '\n' +
+                'Points: ' + props.points + '\n' +
+                'Type: ' + props.assignmentType;
+            info.el.setAttribute('title', tooltip);
+        }
+    });
+
+    calendar.render();
+});
+</script>
+{% endblock %}
