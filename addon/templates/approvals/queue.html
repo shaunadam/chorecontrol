@@ -30,16 +30,20 @@
                 </div>
 
                 <div class="list-item-meta">
-                    Due date: {{ instance.due_date.strftime('%b %d, %Y') }}
-                    {% if instance.claimed_late %}
-                        <span class="status status-warning">Claimed Late</span>
+                    {% if instance.due_date %}
+                        Due date: {{ instance.due_date.strftime('%b %d, %Y') }}
+                        {% if instance.claimed_late %}
+                            <span class="status status-warning">Claimed Late</span>
+                        {% endif %}
+                    {% else %}
+                        No due date
                     {% endif %}
                 </div>
 
                 <div class="list-item-meta">
-                    Points to award: <strong>{{ instance.points_value }}</strong>
-                    {% if instance.claimed_late and instance.chore.late_points %}
-                        (Late: {{ instance.chore.late_points }})
+                    Points to award: <strong>{% if instance.claimed_late and instance.chore.late_points is not none %}{{ instance.chore.late_points }}{% else %}{{ instance.chore.points }}{% endif %}</strong>
+                    {% if instance.claimed_late %}
+                        <span class="status status-warning">Late</span>
                     {% endif %}
                 </div>
 
@@ -51,7 +55,7 @@
 
                 <div class="list-item-actions">
                     <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;" data-json-form>
-                        <button type="submit" class="btn btn-sm btn-success">✓ Approve ({{ instance.points_value }} pts)</button>
+                        <button type="submit" class="btn btn-sm btn-success">✓ Approve ({% if instance.claimed_late and instance.chore.late_points is not none %}{{ instance.chore.late_points }}{% else %}{{ instance.chore.points }}{% endif %} pts)</button>
                     </form>
                     <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }}, '{{ instance.chore.name }}', 'chore')">✗ Reject</button>
                     <a href="{{ url_for('ui.chore_detail', id=instance.chore.id) }}" class="btn btn-sm btn-outline">View Chore</a>

@@ -357,8 +357,14 @@ def available_chores():
             # For individual chores, only the assigned kid can claim
             if instance.assignee:
                 eligible_kids = [instance.assignee]
+            elif instance.assigned_to:
+                # Fallback: load assignee if assigned_to is set but relationship not loaded
+                assignee = User.query.get(instance.assigned_to)
+                eligible_kids = [assignee] if assignee else []
             else:
-                eligible_kids = []
+                # No specific assignment on instance - shouldn't happen for individual chores
+                # but fallback to chore assignments for robustness
+                eligible_kids = [assignment.user for assignment in instance.chore.assignments]
 
         instance.eligible_kids = eligible_kids
 

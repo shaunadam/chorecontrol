@@ -34,7 +34,7 @@
                     <span class="badge">{{ pending_count }}</span>
                     {% endif %}
                 </a>
-                <a href="{{ url_for('ui.chores_list') }}" class="nav-link {% if 'chores' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('ui.chores_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ui.chores') %}active{% endif %}">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Chores</span>
                 </a>

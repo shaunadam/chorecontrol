@@ -224,24 +224,34 @@ def create_chore():
         db.session.flush()  # Get chore.id before creating assignments
 
         # Create assignments if provided
-        if 'assignments' in data and data['assignments']:
+        # Support both formats:
+        # - assigned_to: [1, 2, 3] (from web UI form)
+        # - assignments: [{user_id: 1}, {user_id: 2}] (from API)
+        assignment_user_ids = []
+
+        if 'assigned_to' in data and data['assigned_to']:
+            # Web UI format: array of user IDs
+            assignment_user_ids = data['assigned_to']
+        elif 'assignments' in data and data['assignments']:
+            # API format: array of objects with user_id
             for assignment_data in data['assignments']:
                 if 'user_id' not in assignment_data:
                     db.session.rollback()
                     return error_response("Each assignment must have 'user_id'")
+                assignment_user_ids.append(assignment_data['user_id'])
 
-                # Verify user exists
-                user = User.query.get(assignment_data['user_id'])
-                if not user:
-                    db.session.rollback()
-                    return error_response(f"User {assignment_data['user_id']} not found")
+        for user_id in assignment_user_ids:
+            # Verify user exists
+            user = User.query.get(user_id)
+            if not user:
+                db.session.rollback()
+                return error_response(f"User {user_id} not found")
 
-                assignment = ChoreAssignment(
-                    chore_id=chore.id,
-                    user_id=assignment_data['user_id'],
-                    due_date=datetime.fromisoformat(assignment_data['due_date']).date() if assignment_data.get('due_date') else None
-                )
-                db.session.add(assignment)
+            assignment = ChoreAssignment(
+                chore_id=chore.id,
+                user_id=user_id
+            )
+            db.session.add(assignment)
 
         db.session.commit()
 
@@ -298,7 +308,7 @@ def get_chore(chore_id):
         return error_response(f"Failed to retrieve chore: {str(e)}", 500)
 
 
-@chores_bp.route('/<int:chore_id>', methods=['PUT'])
+@chores_bp.route('/<int:chore_id>', methods=['PUT', 'POST'])
 @ha_auth_required
 def update_chore(chore_id):
     """
@@ -378,6 +388,44 @@ def update_chore(chore_id):
 
         if 'is_active' in data:
             chore.is_active = data['is_active']
+
+        # Update assignments if provided
+        # Support both formats:
+        # - assigned_to: [1, 2, 3] (from web UI form)
+        # - assignments: [{user_id: 1}, {user_id: 2}] (from API)
+        assignment_user_ids = None
+
+        if 'assigned_to' in data:
+            # Web UI format: array of user IDs
+            assignment_user_ids = data['assigned_to'] if data['assigned_to'] else []
+        elif 'assignments' in data:
+            # API format: array of objects with user_id
+            assignment_user_ids = []
+            for assignment_data in data['assignments']:
+                if 'user_id' not in assignment_data:
+                    return error_response("Each assignment must have 'user_id'")
+                assignment_user_ids.append(assignment_data['user_id'])
+
+        if assignment_user_ids is not None:
+            # Clear existing assignments
+            ChoreAssignment.query.filter_by(chore_id=chore.id).delete()
+
+            # Add new assignments
+            for user_id in assignment_user_ids:
+                # Verify user exists
+                user = User.query.get(user_id)
+                if not user:
+                    db.session.rollback()
+                    return error_response(f"User {user_id} not found")
+
+                assignment = ChoreAssignment(
+                    chore_id=chore.id,
+                    user_id=user_id
+                )
+                db.session.add(assignment)
+
+            # Mark pattern as changed to regenerate instances with new assignments
+            pattern_changed = True
 
         # Update timestamp
         chore.updated_at = datetime.utcnow()

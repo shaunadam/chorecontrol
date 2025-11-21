@@ -67,7 +67,7 @@
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="recurrence_pattern">Recurrence Pattern</label>
+            <label class="form-label" for="recurrence_type">Recurrence Pattern</label>
             <select id="recurrence_type" class="form-select" onchange="updateRecurrenceFields()">
                 <option value="none">One-time (no recurrence)</option>
                 <option value="daily">Daily</option>
@@ -75,6 +75,7 @@
                 <option value="monthly">Monthly</option>
                 <option value="custom">Custom Pattern</option>
             </select>
+            <input type="hidden" id="recurrence_type_value" name="recurrence_type" value="{{ chore.recurrence_type if chore and chore.recurrence_type else 'none' }}">
         </div>
 
         <!-- Start date for one-off chores -->
@@ -269,9 +270,21 @@ function updateRecurrenceFields() {
     const startDateField = document.getElementById('start_date_field');
     const startDateLabel = startDateField.querySelector('.form-label');
     const startDateHelp = startDateField.querySelector('.form-help');
+    const recurrenceTypeValue = document.getElementById('recurrence_type_value');
 
     // Hide all options first
     allOptions.forEach(opt => opt.style.display = 'none');
+
+    // Map UI type to backend recurrence_type
+    let backendType = 'none';
+    if (type === 'none') {
+        backendType = 'none';
+    } else if (type === 'custom') {
+        backendType = 'complex';
+    } else {
+        backendType = 'simple';
+    }
+    recurrenceTypeValue.value = backendType;
 
     if (type === 'none') {
         fieldsDiv.style.display = 'none';
