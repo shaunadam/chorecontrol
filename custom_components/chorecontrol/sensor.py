@@ -2,32 +2,26 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     COORDINATOR,
     DOMAIN,
-    ROLE_KID,
-    ROLE_PARENT,
-    SENSOR_ACTIVE_CHORES,
-    SENSOR_CLAIMED_CHORES,
-    SENSOR_COMPLETED_THIS_WEEK,
-    SENSOR_COMPLETED_TODAY,
-    SENSOR_PENDING_APPROVALS,
-    SENSOR_PENDING_CHORES,
-    SENSOR_POINTS,
-    SENSOR_TOTAL_KIDS,
 )
-from .coordinator import ChoreControlDataUpdateCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .coordinator import ChoreControlDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,11 +43,40 @@ async def async_setup_entry(
     entities.append(ChoreControlTotalKidsSensor(coordinator))
     entities.append(ChoreControlActiveChoresSensor(coordinator))
 
+    # Track which kids we've created sensors for
+    known_kid_ids: set[int] = set()
+
     # Per-kid sensors
-    if coordinator.data and "users" in coordinator.data:
-        for user in coordinator.data["users"]:
-            if user.get("role") == ROLE_KID:
-                entities.extend(
+    if coordinator.data and "kids" in coordinator.data:
+        for user in coordinator.data["kids"]:
+            user_id = user["id"]
+            known_kid_ids.add(user_id)
+            entities.extend(
+                [
+                    ChoreControlPointsSensor(coordinator, user),
+                    ChoreControlPendingChoresSensor(coordinator, user),
+                    ChoreControlClaimedChoresSensor(coordinator, user),
+                    ChoreControlCompletedTodaySensor(coordinator, user),
+                    ChoreControlCompletedThisWeekSensor(coordinator, user),
+                ]
+            )
+
+    async_add_entities(entities)
+
+    @callback
+    def async_add_new_kid_sensors() -> None:
+        """Add sensors for newly discovered kids."""
+        if not coordinator.data or "kids" not in coordinator.data:
+            return
+
+        new_entities: list[SensorEntity] = []
+
+        for user in coordinator.data["kids"]:
+            user_id = user["id"]
+            if user_id not in known_kid_ids:
+                _LOGGER.debug("Adding sensors for new kid: %s", user["username"])
+                known_kid_ids.add(user_id)
+                new_entities.extend(
                     [
                         ChoreControlPointsSensor(coordinator, user),
                         ChoreControlPendingChoresSensor(coordinator, user),
@@ -63,7 +86,13 @@ async def async_setup_entry(
                     ]
                 )
 
-    async_add_entities(entities)
+        if new_entities:
+            async_add_entities(new_entities)
+
+    # Listen for coordinator updates to add sensors for new kids
+    entry.async_on_unload(
+        coordinator.async_add_listener(async_add_new_kid_sensors)
+    )
 
 
 class ChoreControlSensorBase(CoordinatorEntity, SensorEntity):
@@ -95,9 +124,19 @@ class ChoreControlPendingApprovalsSensor(ChoreControlSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of pending approvals."""
-        if not self.coordinator.data or "parent_dashboard" not in self.coordinator.data:
+        if not self.coordinator.data:
             return 0
-        return self.coordinator.data["parent_dashboard"].get("pending_approvals", 0)
+        return self.coordinator.data.get("pending_approvals_count", 0)
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, "chorecontrol")},
+            "name": "ChoreControl",
+            "manufacturer": "ChoreControl",
+            "model": "Chore Management System",
+        }
 
 
 class ChoreControlTotalKidsSensor(ChoreControlSensorBase):
@@ -114,9 +153,19 @@ class ChoreControlTotalKidsSensor(ChoreControlSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of kids."""
-        if not self.coordinator.data or "users" not in self.coordinator.data:
+        if not self.coordinator.data:
             return 0
-        return sum(1 for u in self.coordinator.data["users"] if u.get("role") == ROLE_KID)
+        return len(self.coordinator.data.get("kids", []))
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, "chorecontrol")},
+            "name": "ChoreControl",
+            "manufacturer": "ChoreControl",
+            "model": "Chore Management System",
+        }
 
 
 class ChoreControlActiveChoresSensor(ChoreControlSensorBase):
@@ -133,9 +182,19 @@ class ChoreControlActiveChoresSensor(ChoreControlSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of active chores."""
-        if not self.coordinator.data or "chores" not in self.coordinator.data:
+        if not self.coordinator.data:
             return 0
-        return sum(1 for c in self.coordinator.data["chores"] if c.get("is_active", False))
+        return len(self.coordinator.data.get("chores", []))
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, "chorecontrol")},
+            "name": "ChoreControl",
+            "manufacturer": "ChoreControl",
+            "model": "Chore Management System",
+        }
 
 
 # Per-kid sensors
@@ -173,12 +232,27 @@ class ChoreControlPointsSensor(ChoreControlKidSensorBase):
     @property
     def native_value(self) -> int:
         """Return the kid's points balance."""
-        if not self.coordinator.data or "users" not in self.coordinator.data:
-            return 0
-        for user in self.coordinator.data["users"]:
-            if user["id"] == self.user_id:
-                return user.get("points", 0)
-        return 0
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["points"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
 
 
 class ChoreControlPendingChoresSensor(ChoreControlKidSensorBase):
@@ -199,8 +273,27 @@ class ChoreControlPendingChoresSensor(ChoreControlKidSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of pending chores."""
-        # TODO: Implement based on actual data structure
-        return 0
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["pending_count"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
 
 
 class ChoreControlClaimedChoresSensor(ChoreControlKidSensorBase):
@@ -221,8 +314,27 @@ class ChoreControlClaimedChoresSensor(ChoreControlKidSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of claimed chores."""
-        # TODO: Implement based on actual data structure
-        return 0
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["claimed_count"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
 
 
 class ChoreControlCompletedTodaySensor(ChoreControlKidSensorBase):
@@ -243,8 +355,27 @@ class ChoreControlCompletedTodaySensor(ChoreControlKidSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of chores completed today."""
-        # TODO: Implement based on actual data structure
-        return 0
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["completed_today"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
 
 
 class ChoreControlCompletedThisWeekSensor(ChoreControlKidSensorBase):
@@ -265,5 +396,24 @@ class ChoreControlCompletedThisWeekSensor(ChoreControlKidSensorBase):
     @property
     def native_value(self) -> int:
         """Return the number of chores completed this week."""
-        # TODO: Implement based on actual data structure
-        return 0
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["completed_this_week"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }

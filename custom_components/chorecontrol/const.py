@@ -13,7 +13,7 @@ DEFAULT_ADDON_URL: Final = "http://chorecontrol"
 DEFAULT_SCAN_INTERVAL: Final = 30  # seconds
 
 # Platforms
-PLATFORMS: Final = ["sensor", "button"]
+PLATFORMS: Final = ["sensor", "button", "binary_sensor"]
 
 # Event types (from DEC-007)
 EVENT_CHORE_ASSIGNED: Final = "chorecontrol_chore_assigned"
@@ -54,6 +54,7 @@ API_USERS: Final = "/api/users"
 API_CHORES: Final = "/api/chores"
 API_INSTANCES: Final = "/api/instances"
 API_REWARDS: Final = "/api/rewards"
+API_REWARD_CLAIMS: Final = "/api/reward-claims"
 API_POINTS: Final = "/api/points"
 API_DASHBOARD: Final = "/api/dashboard"
 API_HEALTH: Final = "/health"

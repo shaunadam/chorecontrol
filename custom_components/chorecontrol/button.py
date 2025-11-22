@@ -2,16 +2,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR, DOMAIN
-from .coordinator import ChoreControlDataUpdateCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .coordinator import ChoreControlDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,53 +31,149 @@ async def async_setup_entry(
         COORDINATOR
     ]
 
-    entities: list[ButtonEntity] = []
+    # Track current buttons by unique_id
+    current_buttons: dict[str, ChoreControlClaimButton] = {}
 
-    # TODO: Create claim buttons for chore/kid combinations
-    # This will be implemented when we have the actual chore instance data
-    # For now, just set up the platform without entities
+    def _create_button_for_user(
+        instance: dict[str, Any],
+        user_id: int,
+        username: str,
+        needed_ids: set[str],
+        new_buttons: list[ChoreControlClaimButton],
+    ) -> None:
+        """Create a button for a specific user and instance."""
+        unique_id = f"{DOMAIN}_claim_{instance['instance_id']}_{user_id}"
+        needed_ids.add(unique_id)
 
-    async_add_entities(entities)
+        if unique_id not in current_buttons:
+            button = ChoreControlClaimButton(
+                coordinator, instance, user_id, username
+            )
+            current_buttons[unique_id] = button
+            new_buttons.append(button)
+            _LOGGER.debug(
+                "Creating button: %s for %s",
+                instance["chore_name"],
+                username,
+            )
+
+    def _process_instance(
+        instance: dict[str, Any],
+        kids: list[dict[str, Any]],
+        needed_ids: set[str],
+        new_buttons: list[ChoreControlClaimButton],
+    ) -> None:
+        """Process a single claimable instance to create buttons."""
+        if instance["assignment_type"] == "shared":
+            # Shared chore: one button per kid who can claim
+            for kid in kids:
+                _create_button_for_user(
+                    instance, kid["id"], kid["username"], needed_ids, new_buttons
+                )
+        else:
+            # Individual chore: one button for assigned user
+            user_id = instance.get("assigned_to")
+            if not user_id:
+                return
+            user = coordinator.get_user_by_id(user_id)
+            if user:
+                _create_button_for_user(
+                    instance, user_id, user["username"], needed_ids, new_buttons
+                )
+
+    @callback
+    def async_update_buttons() -> None:
+        """Update button entities based on claimable instances."""
+        if not coordinator.data:
+            return
+
+        claimable = coordinator.data.get("claimable_instances", [])
+        kids = coordinator.data.get("kids", [])
+
+        # Build set of needed button unique_ids
+        needed_ids: set[str] = set()
+        new_buttons: list[ChoreControlClaimButton] = []
+
+        for instance in claimable:
+            _process_instance(instance, kids, needed_ids, new_buttons)
+
+        # Remove buttons no longer needed
+        entity_registry = er.async_get(hass)
+        for unique_id in list(current_buttons.keys()):
+            if unique_id not in needed_ids:
+                current_buttons.pop(unique_id)
+                # Remove from entity registry
+                entity_id = entity_registry.async_get_entity_id(
+                    "button", DOMAIN, unique_id
+                )
+                if entity_id:
+                    entity_registry.async_remove(entity_id)
+                    _LOGGER.debug("Removed button %s", entity_id)
+
+        # Add new buttons
+        if new_buttons:
+            async_add_entities(new_buttons)
+            _LOGGER.debug("Added %d new claim buttons", len(new_buttons))
+
+    # Initial button creation
+    async_update_buttons()
+
+    # Listen for coordinator updates to add/remove buttons
+    entry.async_on_unload(coordinator.async_add_listener(async_update_buttons))
 
 
-class ChoreControlButtonBase(CoordinatorEntity, ButtonEntity):
-    """Base class for ChoreControl buttons."""
+class ChoreControlClaimButton(CoordinatorEntity, ButtonEntity):
+    """Button to claim a chore instance."""
 
     def __init__(
         self,
         coordinator: ChoreControlDataUpdateCoordinator,
+        instance: dict[str, Any],
+        user_id: int,
+        username: str,
     ) -> None:
         """Initialize the button."""
         super().__init__(coordinator)
+        self.instance_id = instance["instance_id"]
+        self.chore_name = instance["chore_name"]
+        self.user_id = user_id
+        self.username = username
+        self.points = instance.get("points", 0)
+
+        self._attr_unique_id = f"{DOMAIN}_claim_{self.instance_id}_{user_id}"
+        self._attr_name = f"Claim {self.chore_name} ({username})"
+        self._attr_icon = "mdi:checkbox-marked-circle-outline"
         self._attr_has_entity_name = True
 
-
-class ChoreControlClaimButton(ChoreControlButtonBase):
-    """Button to claim a chore."""
-
-    def __init__(
-        self,
-        coordinator: ChoreControlDataUpdateCoordinator,
-        chore_instance: dict[str, Any],
-        user: dict[str, Any],
-    ) -> None:
-        """Initialize the button."""
-        super().__init__(coordinator)
-        self.chore_instance_id = chore_instance["id"]
-        self.user_id = user["id"]
-        self.username = user["username"]
-        chore_name = chore_instance.get("chore_name", "chore")
-
-        self._attr_unique_id = (
-            f"{DOMAIN}_claim_{self.chore_instance_id}_{self.user_id}"
-        )
-        self._attr_name = f"Claim {chore_name} - {self.username}"
-        self._attr_icon = "mdi:hand-okay"
-
     async def async_press(self) -> None:
-        """Handle the button press."""
-        await self.coordinator.api_client.claim_chore(
-            self.chore_instance_id,
+        """Handle button press - claim the chore."""
+        _LOGGER.debug(
+            "Claiming chore instance %s for user %s (%s)",
+            self.instance_id,
             self.user_id,
+            self.username,
         )
+        await self.coordinator.api_client.claim_chore(self.instance_id, self.user_id)
         await self.coordinator.async_request_refresh()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional attributes."""
+        return {
+            "instance_id": self.instance_id,
+            "chore_name": self.chore_name,
+            "user_id": self.user_id,
+            "username": self.username,
+            "points": self.points,
+        }
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }

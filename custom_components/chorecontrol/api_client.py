@@ -14,6 +14,7 @@ from .const import (
     API_HEALTH,
     API_INSTANCES,
     API_POINTS,
+    API_REWARD_CLAIMS,
     API_REWARDS,
     API_USERS,
 )
@@ -51,12 +52,20 @@ class ChoreControlApiClient:
         except aiohttp.ClientError as err:
             _LOGGER.error("Error communicating with API: %s", err)
             raise
-        except Exception as err:
+        except Exception:
             _LOGGER.exception("Unexpected error communicating with API")
             raise
 
+    async def check_health(self) -> bool:
+        """Check if API is available."""
+        try:
+            await self._request("GET", API_HEALTH)
+            return True
+        except Exception:
+            return False
+
     async def health_check(self) -> dict[str, Any]:
-        """Check add-on health."""
+        """Check add-on health (returns full response)."""
         return await self._request("GET", API_HEALTH)
 
     # User endpoints
@@ -68,10 +77,17 @@ class ChoreControlApiClient:
         """Get user by ID."""
         return await self._request("GET", f"{API_USERS}/{user_id}")
 
+    async def get_user_points(self, user_id: int) -> dict[str, Any]:
+        """Get user points and history."""
+        return await self._request("GET", f"{API_USERS}/{user_id}/points")
+
     # Chore endpoints
-    async def get_chores(self) -> list[dict[str, Any]]:
-        """Get all chores."""
-        return await self._request("GET", API_CHORES)
+    async def get_chores(self, active_only: bool = True) -> list[dict[str, Any]]:
+        """Get chores with optional active filter."""
+        endpoint = API_CHORES
+        if active_only:
+            endpoint = f"{API_CHORES}?is_active=true"
+        return await self._request("GET", endpoint)
 
     async def get_chore(self, chore_id: int) -> dict[str, Any]:
         """Get chore by ID."""
@@ -82,17 +98,25 @@ class ChoreControlApiClient:
         self,
         status: str | None = None,
         user_id: int | None = None,
+        due_date: str | None = None,
     ) -> list[dict[str, Any]]:
         """Get chore instances with optional filters."""
-        params = {}
+        params = []
         if status:
-            params["status"] = status
+            params.append(f"status={status}")
         if user_id:
-            params["user_id"] = user_id
+            params.append(f"user_id={user_id}")
+        if due_date:
+            params.append(f"due_date={due_date}")
 
-        # For now, just get all instances
-        # TODO: Add query parameter support
-        return await self._request("GET", API_INSTANCES)
+        endpoint = API_INSTANCES
+        if params:
+            endpoint = f"{API_INSTANCES}?{'&'.join(params)}"
+        return await self._request("GET", endpoint)
+
+    async def get_due_today(self) -> list[dict[str, Any]]:
+        """Get instances due today."""
+        return await self._request("GET", f"{API_INSTANCES}/due-today")
 
     async def claim_chore(
         self,
@@ -106,16 +130,27 @@ class ChoreControlApiClient:
             data={"user_id": user_id},
         )
 
+    async def unclaim_chore(self, instance_id: int) -> dict[str, Any]:
+        """Unclaim a chore instance."""
+        return await self._request(
+            "POST",
+            f"{API_INSTANCES}/{instance_id}/unclaim",
+        )
+
     async def approve_chore(
         self,
         instance_id: int,
-        approver_user_id: int,
+        approver_id: int,
+        points: int | None = None,
     ) -> dict[str, Any]:
         """Approve a claimed chore."""
+        data: dict[str, Any] = {"approver_user_id": approver_id}
+        if points is not None:
+            data["points"] = points
         return await self._request(
             "POST",
             f"{API_INSTANCES}/{instance_id}/approve",
-            data={"approver_user_id": approver_user_id},
+            data=data,
         )
 
     async def reject_chore(
@@ -135,9 +170,12 @@ class ChoreControlApiClient:
         )
 
     # Reward endpoints
-    async def get_rewards(self) -> list[dict[str, Any]]:
-        """Get all rewards."""
-        return await self._request("GET", API_REWARDS)
+    async def get_rewards(self, active_only: bool = True) -> list[dict[str, Any]]:
+        """Get rewards with optional active filter."""
+        endpoint = API_REWARDS
+        if active_only:
+            endpoint = f"{API_REWARDS}?is_active=true"
+        return await self._request("GET", endpoint)
 
     async def claim_reward(
         self,
@@ -149,6 +187,41 @@ class ChoreControlApiClient:
             "POST",
             f"{API_REWARDS}/{reward_id}/claim",
             data={"user_id": user_id},
+        )
+
+    async def unclaim_reward(self, claim_id: int) -> dict[str, Any]:
+        """Unclaim a reward."""
+        return await self._request(
+            "POST",
+            f"{API_REWARD_CLAIMS}/{claim_id}/unclaim",
+        )
+
+    async def approve_reward(
+        self,
+        claim_id: int,
+        approver_id: int,
+    ) -> dict[str, Any]:
+        """Approve a reward claim."""
+        return await self._request(
+            "POST",
+            f"{API_REWARD_CLAIMS}/{claim_id}/approve",
+            data={"approver_user_id": approver_id},
+        )
+
+    async def reject_reward(
+        self,
+        claim_id: int,
+        approver_id: int,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Reject a reward claim."""
+        return await self._request(
+            "POST",
+            f"{API_REWARD_CLAIMS}/{claim_id}/reject",
+            data={
+                "approver_user_id": approver_id,
+                "reason": reason,
+            },
         )
 
     # Points endpoints

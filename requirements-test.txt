@@ -1,0 +1,7 @@
+# Test dependencies for ChoreControl Home Assistant integration
+homeassistant
+aiohttp
+pytest>=7.0
+pytest-asyncio>=0.21
+voluptuous
+ruff
