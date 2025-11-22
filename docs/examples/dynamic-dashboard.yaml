@@ -1,0 +1,175 @@
+# Dynamic Dashboard using Decluttering Card
+# Install decluttering-card from HACS
+# This allows you to define templates and reuse them
+
+# First, add to your configuration.yaml:
+# decluttering_templates: !include decluttering_templates.yaml
+
+# Create decluttering_templates.yaml with these templates:
+
+# ============================================
+# DECLUTTERING TEMPLATES FILE
+# Save as: decluttering_templates.yaml
+# ============================================
+
+kid_card:
+  card:
+    type: vertical-stack
+    cards:
+      - type: markdown
+        content: "## [[name]]"
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.chorecontrol_[[username]]_points
+            name: Points
+            icon: mdi:star
+          - type: entity
+            entity: sensor.chorecontrol_[[username]]_completed_today
+            name: Today
+            icon: mdi:check-circle
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Available Chores
+          show_header_toggle: false
+        filter:
+          include:
+            - domain: button
+              attributes:
+                user_id: '[[user_id]]'
+        show_empty: true
+        unique: true
+        card_param: entities
+
+kid_stats_row:
+  card:
+    type: glance
+    entities:
+      - entity: sensor.chorecontrol_[[username]]_pending_chores
+        name: To Do
+      - entity: sensor.chorecontrol_[[username]]_claimed_chores
+        name: Waiting
+      - entity: sensor.chorecontrol_[[username]]_completed_today
+        name: Today
+      - entity: sensor.chorecontrol_[[username]]_completed_this_week
+        name: Week
+
+kid_detailed_card:
+  card:
+    type: vertical-stack
+    cards:
+      - type: markdown
+        content: "## [[name]]"
+      - type: glance
+        entities:
+          - entity: sensor.chorecontrol_[[username]]_points
+            name: Points
+          - entity: sensor.chorecontrol_[[username]]_pending_chores
+            name: To Do
+          - entity: sensor.chorecontrol_[[username]]_claimed_chores
+            name: Waiting
+          - entity: sensor.chorecontrol_[[username]]_completed_today
+            name: Today
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Chores to Claim
+          show_header_toggle: false
+        filter:
+          include:
+            - domain: button
+              attributes:
+                user_id: '[[user_id]]'
+        sort:
+          method: attribute
+          attribute: chore_name
+        show_empty: true
+        unique: true
+        card_param: entities
+
+# ============================================
+# DASHBOARD FILE
+# This is your actual dashboard view
+# ============================================
+
+title: ChoreControl
+views:
+  - title: Kids
+    path: kids
+    cards:
+      # System status at top
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: binary_sensor.chorecontrol_api_connected
+            name: API
+          - type: entity
+            entity: sensor.chorecontrol_pending_approvals
+            name: Pending
+
+      # Kid cards using decluttering template
+      - type: custom:decluttering-card
+        template: kid_card
+        variables:
+          - name: Emma
+          - username: emma
+          - user_id: 3
+
+      - type: custom:decluttering-card
+        template: kid_card
+        variables:
+          - name: Jack
+          - username: jack
+          - user_id: 4
+
+  - title: Detailed View
+    path: detailed
+    cards:
+      # More detailed kid cards
+      - type: horizontal-stack
+        cards:
+          - type: custom:decluttering-card
+            template: kid_detailed_card
+            variables:
+              - name: Emma
+              - username: emma
+              - user_id: 3
+
+          - type: custom:decluttering-card
+            template: kid_detailed_card
+            variables:
+              - name: Jack
+              - username: jack
+              - user_id: 4
+
+  - title: Stats
+    path: stats
+    cards:
+      # Use stats row template for compact view
+      - type: markdown
+        content: "## Emma"
+      - type: custom:decluttering-card
+        template: kid_stats_row
+        variables:
+          - username: emma
+
+      - type: markdown
+        content: "## Jack"
+      - type: custom:decluttering-card
+        template: kid_stats_row
+        variables:
+          - username: jack
+
+# ============================================
+# ADDING A NEW KID
+# ============================================
+# To add a new kid to the dashboard, simply add another
+# decluttering-card with their info:
+#
+# - type: custom:decluttering-card
+#   template: kid_card
+#   variables:
+#     - name: Sarah
+#     - username: sarah
+#     - user_id: 5

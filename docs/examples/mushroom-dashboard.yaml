@@ -1,0 +1,251 @@
+# Modern dashboard using Mushroom cards (HACS)
+# Cleaner, more mobile-friendly design
+
+title: Chores
+views:
+  - title: Emma
+    path: emma
+    cards:
+      # Points chip at top
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            icon: mdi:star
+            content: "{{ states('sensor.chorecontrol_emma_points') }} points"
+            icon_color: amber
+          - type: entity
+            entity: binary_sensor.chorecontrol_api_connected
+            icon_color: green
+
+      # Stats in a nice grid
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_emma_pending_chores
+            name: To Do
+            icon_color: orange
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_emma_claimed_chores
+            name: Waiting
+            icon_color: blue
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_emma_completed_today
+            name: Done Today
+            icon_color: green
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_emma_completed_this_week
+            name: This Week
+            icon_color: teal
+            layout: vertical
+
+      # Section title
+      - type: custom:mushroom-title-card
+        title: Chores to Claim
+        subtitle: Tap a chore to claim it
+
+      # Claim buttons with mushroom styling
+      - type: custom:auto-entities
+        card:
+          type: grid
+          columns: 1
+          square: false
+        card_param: cards
+        filter:
+          include:
+            - domain: button
+              attributes:
+                user_id: 3  # Emma's user ID
+              options:
+                type: custom:mushroom-entity-card
+                tap_action:
+                  action: toggle
+                icon_color: cyan
+        sort:
+          method: attribute
+          attribute: chore_name
+        show_empty: true
+        unique: true
+
+      # Empty state
+      - type: conditional
+        conditions:
+          - entity: sensor.chorecontrol_emma_pending_chores
+            state: "0"
+        card:
+          type: custom:mushroom-template-card
+          primary: All done!
+          secondary: No chores available
+          icon: mdi:party-popper
+          icon_color: green
+
+  - title: Jack
+    path: jack
+    cards:
+      # Points chip at top
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            icon: mdi:star
+            content: "{{ states('sensor.chorecontrol_jack_points') }} points"
+            icon_color: amber
+          - type: entity
+            entity: binary_sensor.chorecontrol_api_connected
+            icon_color: green
+
+      # Stats in a nice grid
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_jack_pending_chores
+            name: To Do
+            icon_color: orange
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_jack_claimed_chores
+            name: Waiting
+            icon_color: blue
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_jack_completed_today
+            name: Done Today
+            icon_color: green
+            layout: vertical
+          - type: custom:mushroom-entity-card
+            entity: sensor.chorecontrol_jack_completed_this_week
+            name: This Week
+            icon_color: teal
+            layout: vertical
+
+      # Section title
+      - type: custom:mushroom-title-card
+        title: Chores to Claim
+        subtitle: Tap a chore to claim it
+
+      # Claim buttons
+      - type: custom:auto-entities
+        card:
+          type: grid
+          columns: 1
+          square: false
+        card_param: cards
+        filter:
+          include:
+            - domain: button
+              attributes:
+                user_id: 4  # Jack's user ID
+              options:
+                type: custom:mushroom-entity-card
+                tap_action:
+                  action: toggle
+                icon_color: cyan
+        sort:
+          method: attribute
+          attribute: chore_name
+        show_empty: true
+        unique: true
+
+      # Empty state
+      - type: conditional
+        conditions:
+          - entity: sensor.chorecontrol_jack_pending_chores
+            state: "0"
+        card:
+          type: custom:mushroom-template-card
+          primary: All done!
+          secondary: No chores available
+          icon: mdi:party-popper
+          icon_color: green
+
+  - title: Overview
+    path: overview
+    cards:
+      # Chips for quick status
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: entity
+            entity: binary_sensor.chorecontrol_api_connected
+            icon_color: green
+          - type: entity
+            entity: sensor.chorecontrol_pending_approvals
+            icon_color: orange
+
+      # Overview title
+      - type: custom:mushroom-title-card
+        title: Family Overview
+
+      # Side by side kids
+      - type: horizontal-stack
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Emma
+                secondary: "{{ states('sensor.chorecontrol_emma_points') }} points"
+                icon: mdi:account
+                icon_color: pink
+              - type: custom:mushroom-entity-card
+                entity: sensor.chorecontrol_emma_completed_today
+                name: Today
+                icon_color: green
+
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Jack
+                secondary: "{{ states('sensor.chorecontrol_jack_points') }} points"
+                icon: mdi:account
+                icon_color: blue
+              - type: custom:mushroom-entity-card
+                entity: sensor.chorecontrol_jack_completed_today
+                name: Today
+                icon_color: green
+
+      # Approval alert
+      - type: conditional
+        conditions:
+          - entity: sensor.chorecontrol_pending_approvals
+            state_not: "0"
+        card:
+          type: custom:mushroom-template-card
+          primary: Approvals Needed
+          secondary: >
+            {{ states('sensor.chorecontrol_pending_approvals') }} chores waiting
+          icon: mdi:clipboard-check-outline
+          icon_color: orange
+          tap_action:
+            action: url
+            url_path: /hassio/ingress/chorecontrol
+
+      # Action buttons
+      - type: custom:mushroom-title-card
+        title: Quick Actions
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            primary: ChoreControl
+            secondary: Open Web UI
+            icon: mdi:clipboard-list
+            icon_color: blue
+            tap_action:
+              action: url
+              url_path: /hassio/ingress/chorecontrol
+
+          - type: custom:mushroom-template-card
+            primary: Refresh
+            secondary: Update data
+            icon: mdi:refresh
+            icon_color: cyan
+            tap_action:
+              action: call-service
+              service: chorecontrol.refresh_data
+              data: {}

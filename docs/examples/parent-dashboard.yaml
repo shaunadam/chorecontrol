@@ -1,0 +1,152 @@
+# Parent Dashboard Example
+# Shows pending approvals and all kids' status
+
+title: ChoreControl
+views:
+  - title: Overview
+    path: overview
+    cards:
+      # System status
+      - type: entities
+        title: System Status
+        entities:
+          - entity: binary_sensor.chorecontrol_api_connected
+            name: API Status
+          - entity: sensor.chorecontrol_pending_approvals
+            name: Pending Approvals
+          - entity: sensor.chorecontrol_active_chores
+            name: Active Chores
+          - entity: sensor.chorecontrol_total_kids
+            name: Total Kids
+
+      # Alert for pending approvals
+      - type: conditional
+        conditions:
+          - entity: sensor.chorecontrol_pending_approvals
+            state_not: "0"
+        card:
+          type: markdown
+          content: |
+            ## Chores Need Approval
+            You have {{ states('sensor.chorecontrol_pending_approvals') }} chores waiting for approval.
+
+            [Review in ChoreControl](/hassio/ingress/chorecontrol)
+
+      # Kids overview - example with two kids
+      - type: horizontal-stack
+        cards:
+          # Emma's stats
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "## Emma"
+              - type: entity
+                entity: sensor.chorecontrol_emma_points
+                name: Points
+              - type: entity
+                entity: sensor.chorecontrol_emma_pending_chores
+                name: To Do
+              - type: entity
+                entity: sensor.chorecontrol_emma_claimed_chores
+                name: Claimed
+              - type: entity
+                entity: sensor.chorecontrol_emma_completed_today
+                name: Done Today
+
+          # Jack's stats
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "## Jack"
+              - type: entity
+                entity: sensor.chorecontrol_jack_points
+                name: Points
+              - type: entity
+                entity: sensor.chorecontrol_jack_pending_chores
+                name: To Do
+              - type: entity
+                entity: sensor.chorecontrol_jack_claimed_chores
+                name: Claimed
+              - type: entity
+                entity: sensor.chorecontrol_jack_completed_today
+                name: Done Today
+
+  - title: Approvals
+    path: approvals
+    cards:
+      # Pending approval count
+      - type: entity
+        entity: sensor.chorecontrol_pending_approvals
+        name: Chores Awaiting Approval
+
+      # Link to web UI for detailed approvals
+      - type: markdown
+        content: |
+          ## Approval Actions
+
+          For detailed approvals with rejection reasons,
+          use the [ChoreControl Web UI](/hassio/ingress/chorecontrol).
+
+          ### Quick Approve via Script
+
+          You can also create scripts to approve specific chores.
+
+      # Example: Approve via service call
+      # You need to know the instance ID from the web UI
+      - type: button
+        name: Approve Chore Instance #42
+        icon: mdi:check
+        show_icon: true
+        show_name: true
+        tap_action:
+          action: call-service
+          service: chorecontrol.approve_chore
+          data:
+            chore_instance_id: 42
+            approver_user_id: 1
+
+      # Refresh data button
+      - type: button
+        name: Refresh Data
+        icon: mdi:refresh
+        show_icon: true
+        show_name: true
+        tap_action:
+          action: call-service
+          service: chorecontrol.refresh_data
+          data: {}
+
+  - title: Points
+    path: points
+    cards:
+      # Points overview
+      - type: markdown
+        content: |
+          ## Points Management
+
+          Use these buttons to manually adjust points.
+
+      # Point adjustment examples
+      - type: vertical-stack
+        cards:
+          - type: button
+            name: Give Emma 5 Bonus Points
+            icon: mdi:plus-circle
+            tap_action:
+              action: call-service
+              service: chorecontrol.adjust_points
+              data:
+                user_id: 3
+                points_delta: 5
+                reason: "Bonus points"
+
+          - type: button
+            name: Remove 5 Points from Emma
+            icon: mdi:minus-circle
+            tap_action:
+              action: call-service
+              service: chorecontrol.adjust_points
+              data:
+                user_id: 3
+                points_delta: -5
+                reason: "Points deduction"

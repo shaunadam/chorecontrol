@@ -1,0 +1,80 @@
+# Kid Dashboard Example
+# Uses auto-entities card (install from HACS)
+# Replace 'emma' and user_id '3' with actual values
+
+title: Emma's Chores
+views:
+  - title: My Chores
+    path: my-chores
+    cards:
+      # Points display
+      - type: markdown
+        content: |
+          # My Points: {{ states('sensor.chorecontrol_emma_points') }}
+
+      # Stats row
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.chorecontrol_emma_pending_chores
+            name: To Do
+            icon: mdi:clipboard-list
+          - type: entity
+            entity: sensor.chorecontrol_emma_claimed_chores
+            name: Waiting
+            icon: mdi:clock-outline
+          - type: entity
+            entity: sensor.chorecontrol_emma_completed_today
+            name: Done Today
+            icon: mdi:check-circle
+
+      # Claimable chores - auto-populated
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Chores I Can Claim
+          show_header_toggle: false
+        filter:
+          include:
+            - domain: button
+              attributes:
+                user_id: 3  # Emma's user ID
+        sort:
+          method: attribute
+          attribute: chore_name
+        show_empty: true
+        unique: true
+        card_param: entities
+
+      # Empty state message
+      - type: conditional
+        conditions:
+          - entity: sensor.chorecontrol_emma_pending_chores
+            state: "0"
+        card:
+          type: markdown
+          content: |
+            ## All done for now!
+            No chores available to claim.
+
+      # Weekly progress
+      - type: entity
+        entity: sensor.chorecontrol_emma_completed_this_week
+        name: Completed This Week
+        icon: mdi:calendar-check
+
+      # Quick actions
+      - type: markdown
+        content: |
+          ## Need Help?
+          Ask a parent if you have questions about your chores.
+
+  - title: My Rewards
+    path: my-rewards
+    cards:
+      - type: markdown
+        content: |
+          # My Points: {{ states('sensor.chorecontrol_emma_points') }}
+
+          Check the ChoreControl app to see available rewards
+          and claim them with your points!
