@@ -2340,8 +2340,8 @@ Read TASKS.md thoroughly, focusing on:
 
 ## Important Notes
 
-- This is Stream {STREAM_NUMBER} of 7 - previous streams may or may not be complete
-- If you need something from a previous stream that doesn't exist, implement a minimal stub
+- This is Stream {STREAM_NUMBER} of 7 - previous streams should be complete
+- If you need something from a previous stream that doesn't exist, stop and ask me what to do
 - Don't modify code outside your stream's scope unless necessary for integration
 - Ask if anything is unclear before proceeding
 ```
