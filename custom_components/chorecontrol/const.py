@@ -42,6 +42,8 @@ SERVICE_APPROVE_CHORE: Final = "approve_chore"
 SERVICE_REJECT_CHORE: Final = "reject_chore"
 SERVICE_ADJUST_POINTS: Final = "adjust_points"
 SERVICE_CLAIM_REWARD: Final = "claim_reward"
+SERVICE_APPROVE_REWARD: Final = "approve_reward"
+SERVICE_REJECT_REWARD: Final = "reject_reward"
 SERVICE_REFRESH_DATA: Final = "refresh_data"
 
 # Service parameters
@@ -51,6 +53,8 @@ ATTR_APPROVER_USER_ID: Final = "approver_user_id"
 ATTR_REASON: Final = "reason"
 ATTR_POINTS_DELTA: Final = "points_delta"
 ATTR_REWARD_ID: Final = "reward_id"
+ATTR_CLAIM_ID: Final = "claim_id"
+ATTR_POINTS: Final = "points"
 
 # Sensor types
 SENSOR_POINTS: Final = "points"

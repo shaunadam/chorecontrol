@@ -45,6 +45,14 @@ approve_chore:
         number:
           min: 1
           mode: box
+    points:
+      name: Points override
+      description: Override the default points to award (optional).
+      required: false
+      example: 10
+      selector:
+        number:
+          mode: box
 
 reject_chore:
   name: Reject chore
@@ -131,6 +139,60 @@ claim_reward:
         number:
           min: 1
           mode: box
+
+approve_reward:
+  name: Approve reward
+  description: Approve a pending reward claim.
+  fields:
+    claim_id:
+      name: Claim ID
+      description: The ID of the reward claim to approve.
+      required: true
+      example: 15
+      selector:
+        number:
+          min: 1
+          mode: box
+    approver_user_id:
+      name: Approver user ID
+      description: The ID of the parent/approver.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+
+reject_reward:
+  name: Reject reward
+  description: Reject a pending reward claim with a reason.
+  fields:
+    claim_id:
+      name: Claim ID
+      description: The ID of the reward claim to reject.
+      required: true
+      example: 15
+      selector:
+        number:
+          min: 1
+          mode: box
+    approver_user_id:
+      name: Approver user ID
+      description: The ID of the parent/approver.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+    reason:
+      name: Reason
+      description: The reason for rejecting the reward claim.
+      required: true
+      example: "Not enough good behavior this week"
+      selector:
+        text:
+          multiline: false
 
 refresh_data:
   name: Refresh data

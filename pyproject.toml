@@ -117,6 +117,11 @@ ignore = [
     "ARG",     # Unused arguments (common in fixtures)
     "PLR2004", # Magic values in tests are fine
 ]
+# Ignore type-checking block rules in HA custom components (HA integration style)
+"custom_components/**/*.py" = [
+    "TC001",   # Application imports in type-checking block
+    "TC002",   # Third-party imports in type-checking block
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["chorecontrol"]

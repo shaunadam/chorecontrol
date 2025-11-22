@@ -1854,6 +1854,8 @@ Consistent service naming in all streams:
 
 **Goal:** Create example dashboard configurations that work with dynamic entities, and document entity naming patterns.
 
+Include setup instruction documentation for setting up the Home Assistant integration
+
 ### Context
 
 ChoreControl creates many dynamic entities (buttons for each claimable chore, sensors per kid). Users need guidance on how to build dashboards that automatically adapt to these changing entities.

@@ -11,12 +11,15 @@ from homeassistant.components.webhook import (
     async_register,
     async_unregister,
 )
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .api_client import ChoreControlApiClient
 from .const import (
     ATTR_APPROVER_USER_ID,
     ATTR_CHORE_INSTANCE_ID,
+    ATTR_CLAIM_ID,
+    ATTR_POINTS,
     ATTR_POINTS_DELTA,
     ATTR_REASON,
     ATTR_REWARD_ID,
@@ -34,10 +37,12 @@ from .const import (
     PLATFORMS,
     SERVICE_ADJUST_POINTS,
     SERVICE_APPROVE_CHORE,
+    SERVICE_APPROVE_REWARD,
     SERVICE_CLAIM_CHORE,
     SERVICE_CLAIM_REWARD,
     SERVICE_REFRESH_DATA,
     SERVICE_REJECT_CHORE,
+    SERVICE_REJECT_REWARD,
     WEBHOOK_ID,
 )
 from .coordinator import ChoreControlDataUpdateCoordinator
@@ -60,6 +65,7 @@ SERVICE_APPROVE_CHORE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CHORE_INSTANCE_ID): cv.positive_int,
         vol.Required(ATTR_APPROVER_USER_ID): cv.positive_int,
+        vol.Optional(ATTR_POINTS): int,
     }
 )
 
@@ -83,6 +89,21 @@ SERVICE_CLAIM_REWARD_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_REWARD_ID): cv.positive_int,
         vol.Required(ATTR_USER_ID): cv.positive_int,
+    }
+)
+
+SERVICE_APPROVE_REWARD_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CLAIM_ID): cv.positive_int,
+        vol.Required(ATTR_APPROVER_USER_ID): cv.positive_int,
+    }
+)
+
+SERVICE_REJECT_REWARD_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CLAIM_ID): cv.positive_int,
+        vol.Required(ATTR_APPROVER_USER_ID): cv.positive_int,
+        vol.Required(ATTR_REASON): cv.string,
     }
 )
 
@@ -158,7 +179,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_setup_services(
+async def async_setup_services(  # noqa: PLR0915
     hass: HomeAssistant,
     coordinator: ChoreControlDataUpdateCoordinator,
 ) -> None:
@@ -175,22 +196,46 @@ async def async_setup_services(
             user_id,
         )
 
-        await coordinator.api_client.claim_chore(chore_instance_id, user_id)
-        await coordinator.async_request_refresh()
+        try:
+            result = await coordinator.api_client.claim_chore(chore_instance_id, user_id)
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to claim chore instance {chore_instance_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error claiming chore: %s", err)
+            raise HomeAssistantError(f"Error claiming chore: {err}") from err
 
     async def handle_approve_chore(call: ServiceCall) -> None:
         """Handle approve_chore service call."""
         chore_instance_id = call.data[ATTR_CHORE_INSTANCE_ID]
         approver_user_id = call.data[ATTR_APPROVER_USER_ID]
+        points = call.data.get(ATTR_POINTS)
 
         _LOGGER.debug(
-            "Approving chore instance %s by user %s",
+            "Approving chore instance %s by user %s (points=%s)",
             chore_instance_id,
             approver_user_id,
+            points,
         )
 
-        await coordinator.api_client.approve_chore(chore_instance_id, approver_user_id)
-        await coordinator.async_request_refresh()
+        try:
+            result = await coordinator.api_client.approve_chore(
+                chore_instance_id, approver_user_id, points
+            )
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to approve chore instance {chore_instance_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error approving chore: %s", err)
+            raise HomeAssistantError(f"Error approving chore: {err}") from err
 
     async def handle_reject_chore(call: ServiceCall) -> None:
         """Handle reject_chore service call."""
@@ -205,12 +250,22 @@ async def async_setup_services(
             reason,
         )
 
-        await coordinator.api_client.reject_chore(
-            chore_instance_id,
-            approver_user_id,
-            reason,
-        )
-        await coordinator.async_request_refresh()
+        try:
+            result = await coordinator.api_client.reject_chore(
+                chore_instance_id,
+                approver_user_id,
+                reason,
+            )
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to reject chore instance {chore_instance_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error rejecting chore: %s", err)
+            raise HomeAssistantError(f"Error rejecting chore: {err}") from err
 
     async def handle_adjust_points(call: ServiceCall) -> None:
         """Handle adjust_points service call."""
@@ -225,8 +280,18 @@ async def async_setup_services(
             reason,
         )
 
-        await coordinator.api_client.adjust_points(user_id, points_delta, reason)
-        await coordinator.async_request_refresh()
+        try:
+            result = await coordinator.api_client.adjust_points(user_id, points_delta, reason)
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to adjust points for user {user_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error adjusting points: %s", err)
+            raise HomeAssistantError(f"Error adjusting points: {err}") from err
 
     async def handle_claim_reward(call: ServiceCall) -> None:
         """Handle claim_reward service call."""
@@ -239,8 +304,70 @@ async def async_setup_services(
             user_id,
         )
 
-        await coordinator.api_client.claim_reward(reward_id, user_id)
-        await coordinator.async_request_refresh()
+        try:
+            result = await coordinator.api_client.claim_reward(reward_id, user_id)
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to claim reward {reward_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error claiming reward: %s", err)
+            raise HomeAssistantError(f"Error claiming reward: {err}") from err
+
+    async def handle_approve_reward(call: ServiceCall) -> None:
+        """Handle approve_reward service call."""
+        claim_id = call.data[ATTR_CLAIM_ID]
+        approver_user_id = call.data[ATTR_APPROVER_USER_ID]
+
+        _LOGGER.debug(
+            "Approving reward claim %s by user %s",
+            claim_id,
+            approver_user_id,
+        )
+
+        try:
+            result = await coordinator.api_client.approve_reward(claim_id, approver_user_id)
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to approve reward claim {claim_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error approving reward: %s", err)
+            raise HomeAssistantError(f"Error approving reward: {err}") from err
+
+    async def handle_reject_reward(call: ServiceCall) -> None:
+        """Handle reject_reward service call."""
+        claim_id = call.data[ATTR_CLAIM_ID]
+        approver_user_id = call.data[ATTR_APPROVER_USER_ID]
+        reason = call.data[ATTR_REASON]
+
+        _LOGGER.debug(
+            "Rejecting reward claim %s by user %s: %s",
+            claim_id,
+            approver_user_id,
+            reason,
+        )
+
+        try:
+            result = await coordinator.api_client.reject_reward(
+                claim_id, approver_user_id, reason
+            )
+            if result is None:
+                raise HomeAssistantError(
+                    f"Failed to reject reward claim {claim_id}"
+                )
+            await coordinator.async_request_refresh()
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Error rejecting reward: %s", err)
+            raise HomeAssistantError(f"Error rejecting reward: {err}") from err
 
     async def handle_refresh_data(_call: ServiceCall) -> None:
         """Handle refresh_data service call."""
@@ -281,6 +408,20 @@ async def async_setup_services(
         SERVICE_CLAIM_REWARD,
         handle_claim_reward,
         schema=SERVICE_CLAIM_REWARD_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_APPROVE_REWARD,
+        handle_approve_reward,
+        schema=SERVICE_APPROVE_REWARD_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REJECT_REWARD,
+        handle_reject_reward,
+        schema=SERVICE_REJECT_REWARD_SCHEMA,
     )
 
     hass.services.async_register(

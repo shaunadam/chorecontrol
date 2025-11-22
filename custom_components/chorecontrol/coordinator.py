@@ -97,7 +97,7 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.error("Error fetching data from ChoreControl add-on: %s", err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
-    def _build_instances_by_user(
+    def _build_instances_by_user(  # noqa: PLR0912
         self,
         instances: list[dict[str, Any]],
         kids: list[dict[str, Any]],
