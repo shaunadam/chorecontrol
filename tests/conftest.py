@@ -1,12 +1,21 @@
 """Fixtures for ChoreControl tests."""
 from __future__ import annotations
 
+import sys
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.chorecontrol.const import DOMAIN
+# Mock homeassistant.components.webhook before any imports
+# to avoid circular import issues
+mock_webhook = MagicMock()
+mock_webhook.async_generate_url = MagicMock(
+    return_value="http://localhost:8123/api/webhook/chorecontrol_events"
+)
+mock_webhook.async_register = MagicMock()
+mock_webhook.async_unregister = MagicMock()
+sys.modules["homeassistant.components.webhook"] = mock_webhook
 
 
 @pytest.fixture

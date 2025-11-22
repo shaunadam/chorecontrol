@@ -23,6 +23,19 @@ EVENT_CHORE_REJECTED: Final = "chorecontrol_chore_rejected"
 EVENT_REWARD_CLAIMED: Final = "chorecontrol_reward_claimed"
 EVENT_POINTS_ADJUSTED: Final = "chorecontrol_points_adjusted"
 
+# Webhook
+WEBHOOK_ID: Final = f"{DOMAIN}_events"
+
+# Webhook event types (received from add-on)
+EVENT_CHORE_INSTANCE_CLAIMED: Final = "chore_instance_claimed"
+EVENT_CHORE_INSTANCE_APPROVED: Final = "chore_instance_approved"
+EVENT_CHORE_INSTANCE_REJECTED: Final = "chore_instance_rejected"
+EVENT_REWARD_CLAIM_CLAIMED: Final = "reward_claimed"
+EVENT_REWARD_CLAIM_APPROVED: Final = "reward_approved"
+EVENT_REWARD_CLAIM_REJECTED: Final = "reward_rejected"
+EVENT_POINTS_AWARDED: Final = "points_awarded"
+EVENT_INSTANCE_CREATED: Final = "chore_instance_created"
+
 # Service names
 SERVICE_CLAIM_CHORE: Final = "claim_chore"
 SERVICE_APPROVE_CHORE: Final = "approve_chore"

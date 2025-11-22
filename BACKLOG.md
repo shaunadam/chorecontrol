@@ -57,6 +57,9 @@ Future enhancements and Phase 2+ features (out of scope for current MVP)
 - [ ] **INTEG-4**: Integration with allowance/banking apps
 - [ ] **INTEG-5**: IFTTT/Zapier webhooks
 
+### Home Assistant Integration
+- [ ] **HA-INTEG-1**: Map ChoreControl users to HA users for targeted mobile notifications (currently using persistent_notification for all users)
+
 ---
 
 ## Quick Wins (Can be done anytime)
