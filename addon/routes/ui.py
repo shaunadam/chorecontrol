@@ -247,6 +247,18 @@ def calendar():
         ChoreInstance.due_date.is_(None)
     ).order_by(ChoreInstance.created_at.desc()).all()
 
+    # Add eligible kids to instances without dates for shared chores
+    for instance in instances_without_dates:
+        if instance.chore.assignment_type == 'shared':
+            # For shared chores, all assigned kids are eligible
+            instance.eligible_kids = [assignment.user for assignment in instance.chore.assignments]
+        else:
+            # For individual chores, the assignee is the eligible kid
+            if instance.assignee:
+                instance.eligible_kids = [instance.assignee]
+            else:
+                instance.eligible_kids = []
+
     return render_template('calendar.html',
                          calendar_events=calendar_events,
                          instances_without_dates=instances_without_dates)

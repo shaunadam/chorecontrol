@@ -343,9 +343,16 @@ class SeedDataGenerator:
             due_date = dates[i].date()
             status = get_random_status_distribution()
 
+            # Determine assigned_to based on assignment type
+            if chore.assignment_type == 'individual':
+                assigned_to = kid.id
+            else:  # shared
+                assigned_to = None
+
             instance = {
                 "chore_id": chore.id,
                 "due_date": due_date,
+                "assigned_to": assigned_to,
                 "status": status,
                 "claimed_by": None,
                 "claimed_at": None,

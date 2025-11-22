@@ -49,7 +49,21 @@
                     <td>
                         <span class="points-badge">{{ instance.chore.points }} pts</span>
                     </td>
-                    <td>{{ instance.assignee.username if instance.assignee else 'Unassigned' }}</td>
+                    <td>
+                        {% if instance.chore.assignment_type == 'shared' %}
+                            {% if instance.eligible_kids %}
+                                {% for kid in instance.eligible_kids %}
+                                    <span class="status status-active" style="margin-right: 0.25rem; margin-bottom: 0.25rem;">
+                                        {{ kid.username }}
+                                    </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-secondary">None</span>
+                            {% endif %}
+                        {% else %}
+                            {{ instance.assignee.username if instance.assignee else 'Unassigned' }}
+                        {% endif %}
+                    </td>
                     <td>
                         <span class="status status-{{ instance.status }}">{{ instance.status|capitalize }}</span>
                     </td>
