@@ -44,7 +44,7 @@ ChoreControl consists of two main components:
 
 ## Project Status
 
-**Current Phase**: Business Logic Complete ✅ → Web UI & HA Integration
+**Current Phase**: Web UI Complete ✅ → HA Integration
 
 **Completed:**
 - ✅ Flask app structure, config management (dev/prod/test environments)
@@ -55,20 +55,20 @@ ChoreControl consists of two main components:
 - ✅ **Background jobs (5 scheduled jobs via APScheduler)**
 - ✅ **Webhook integration (8 event types to Home Assistant)**
 - ✅ **Comprehensive test suite (245 tests, 5,325+ lines of test code)**
+- ✅ **Web UI (13 templates, mobile-first responsive design)**
 - ✅ HA integration framework (manifest, config flow structure)
 - ✅ Development tooling (pytest, ruff, black, mypy, pre-commit)
 - ✅ Seed data generator with system user support
 
 **Next Steps:**
-1. Web UI (parent dashboard accessible via HA sidebar)
-2. Complete HA integration (sensors, services, entities)
-3. Docker containerization for HA add-on
+1. Complete HA integration (sensors, services, entities)
+2. Docker containerization for HA add-on
 
 See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation guide.
 
 - **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Comprehensive project plan with architecture, data model, and roadmap
 - **[BACKLOG.md](BACKLOG.md)** - Task backlog organized by phase
-- **[DECISIONS.md](DECISIONS.md)** - Technology decisions and trade-offs
+- **[docs/architecture.md](docs/architecture.md)** - Architecture, technology decisions, and business logic
 
 ## Documentation
 
@@ -80,8 +80,8 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation guide.
 ### For Developers
 - [Project Plan](PROJECT_PLAN.md) - Complete architectural overview
 - [Task Backlog](BACKLOG.md) - Implementation tasks
-- [Technology Decisions](DECISIONS.md) - Key technical choices
-- API Documentation (Coming soon)
+- [Architecture & Decisions](docs/architecture.md) - Technology choices and business logic
+- [API Reference](docs/api-reference.md) - API endpoint documentation
 - Contributing Guide (Coming soon)
 
 ## Technology Stack

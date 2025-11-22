@@ -1,6 +1,6 @@
 # ChoreControl Architecture
 
-This document provides an overview of the ChoreControl system architecture.
+This document provides a comprehensive overview of the ChoreControl system architecture, technology decisions, and business logic.
 
 ## Overview
 
@@ -50,6 +50,112 @@ ChoreControl is a Home Assistant integrated chore management system designed to 
 └─────────────────────────────────────────────────────┘
 ```
 
+---
+
+## Technology Decisions
+
+### Web Framework: Flask
+
+**Decision**: Flask over FastAPI
+
+**Rationale**:
+- Developer familiarity and simpler learning curve
+- Extensive ecosystem and examples
+- Mature and stable for production use
+- Flask 2.0+ supports async if needed later
+
+**Consequences**:
+- Sync by default (adequate for expected load)
+- Manual API documentation (can use flask-swagger)
+- SQLAlchemy works seamlessly with Flask-SQLAlchemy
+
+### Frontend: Jinja2 + Vanilla JS
+
+**Decision**: Server-rendered templates with vanilla JavaScript
+
+**Rationale**:
+- No build step = easier for contributors
+- Simpler Docker image and deployment
+- Progressive enhancement
+
+**Consequences**:
+- Templates in `templates/` directory
+- Static files in `static/` directory
+- Mobile-first CSS with responsive design
+
+### ORM: SQLAlchemy
+
+**Decision**: SQLAlchemy ORM over raw SQL
+
+**Rationale**:
+- Better for schema evolution (migrations with Alembic)
+- Type hints and IDE support for models
+- Relationship handling (foreign keys, joins) is easier
+- Worth the investment for maintainability
+
+**Consequences**:
+- Models defined as Python classes in `models.py`
+- Query syntax: `User.query.filter_by(role='parent').all()`
+- Enables Flask-Migrate for database migrations
+
+### Authentication: Trust HA Ingress
+
+**Decision**: Trust Home Assistant ingress headers for Phase 1
+
+**Rationale**:
+- Simplest path to MVP
+- HA ingress provides auth via user session
+- Extract HA user ID from `X-Ingress-User` header
+
+**Consequences**:
+- Add-on only accessible via HA (perfect for MVP)
+- No external API access initially
+- Simple middleware to extract user from headers
+
+### Background Jobs: APScheduler
+
+**Decision**: APScheduler with SQLite jobstore
+
+**Rationale**:
+- Lightweight, no extra services needed
+- Persistent across restarts
+- Good enough for low-frequency tasks
+
+**Consequences**:
+- Jobs persist across container restarts
+- Thread-safe database sessions required
+- Jobs defined in `scheduler.py` module
+
+### Notifications: Webhook to HA Event Bus
+
+**Decision**: Push events to HA event bus via webhooks
+
+**Rationale**:
+- Real-time notifications, no polling delay
+- Reduces unnecessary API polling
+- Integration listens to custom event types
+
+**Consequences**:
+- Add-on needs HA Supervisor API access
+- Post events to HA event bus
+- Event types: `chorecontrol_chore_claimed`, etc.
+
+### Recurrence Patterns: JSON in TEXT column
+
+**Decision**: Store patterns as JSON in TEXT column
+
+**Rationale**:
+- SQLite handles JSON queries well
+- Easy to add new pattern types
+- Validate in application layer
+
+**Consequences**:
+- Validate with jsonschema library
+- Parse in Python for scheduling logic
+- Form UI converts to/from JSON
+
+---
+
 ## Component Details
 
 ### Add-on (Backend Service)
@@ -61,26 +167,18 @@ ChoreControl is a Home Assistant integrated chore management system designed to 
 - **Database**: SQLite with SQLAlchemy ORM
 - **Migrations**: Alembic (via Flask-Migrate)
 - **Task Scheduling**: APScheduler
-- **Frontend**: Jinja2 templates + HTMX
+- **Frontend**: Jinja2 templates + vanilla JS
 - **Deployment**: Docker container
-
-**Responsibilities**:
-
-- Provide REST API for all CRUD operations
-- Implement business logic (scheduling, points, notifications)
-- Serve web UI for administration
-- Generate ICS calendar feeds
-- Manage database schema and migrations
-- Run background tasks (chore generation, auto-approval)
 
 **Key Modules**:
 
 - `app.py`: Main Flask application setup
 - `models.py`: SQLAlchemy database models
 - `routes/`: API endpoint handlers
-- `services/`: Business logic (scheduler, points manager, etc.)
+- `utils/`: Business logic (recurrence, instance generator, webhooks)
+- `jobs/`: Background job implementations
 - `templates/`: Jinja2 HTML templates
-- `static/`: CSS, JavaScript, images
+- `static/`: CSS, JavaScript
 
 ### Integration (Custom Component)
 
@@ -89,15 +187,6 @@ ChoreControl is a Home Assistant integrated chore management system designed to 
 - **Language**: Python 3.11+ (HA compatible)
 - **Framework**: Home Assistant custom component structure
 - **HTTP Client**: aiohttp (async)
-
-**Responsibilities**:
-
-- Communicate with add-on REST API
-- Expose HA entities (sensors, buttons)
-- Provide HA services for automations
-- Map HA users to parent/kid roles
-- Handle HA notifications via event bus
-- Poll add-on for entity state updates
 
 **Key Modules**:
 
@@ -108,13 +197,13 @@ ChoreControl is a Home Assistant integrated chore management system designed to 
 - `button.py`: Button entity platform
 - `api_client.py`: REST API client class
 
-### Database Schema
+---
 
-For detailed database schema, see [PROJECT_PLAN.md - Data Model](../PROJECT_PLAN.md#data-model).
+## Database Schema
 
 **Core Tables**:
 
-- `users`: Parent and kid accounts
+- `users`: Parent, kid, and system accounts
 - `chores`: Chore definitions with recurrence patterns
 - `chore_assignments`: Which chores are assigned to which users
 - `chore_instances`: Individual chore occurrences with status
@@ -122,187 +211,214 @@ For detailed database schema, see [PROJECT_PLAN.md - Data Model](../PROJECT_PLAN
 - `reward_claims`: History of claimed rewards
 - `points_history`: Complete audit trail of point changes
 
-**Key Relationships**:
+**Key Fields Added for Business Logic**:
 
-- Users have many chore instances (assigned, claimed)
-- Chores have many chore instances (generated from recurrence)
-- Users have many reward claims
-- Points history references chore instances and reward claims
+```python
+# ChoreInstance
+assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+claimed_late = db.Column(db.Boolean, default=False)
 
-## Data Flow Examples
+# Chore
+allow_late_claims = db.Column(db.Boolean, default=False)
+late_points = db.Column(db.Integer, nullable=True)
 
-### Example 1: Kid Claims Chore
+# Reward
+requires_approval = db.Column(db.Boolean, default=False)
 
-```
-1. Kid clicks "Claim" button on HA dashboard
-   ↓
-2. HA integration calls service chorecontrol.claim_chore
-   ↓
-3. Integration makes POST request to /api/instances/{id}/claim
-   ↓
-4. Add-on updates database (status = 'claimed')
-   ↓
-5. Add-on fires event to HA event bus (chorecontrol_chore_claimed)
-   ↓
-6. Integration receives event, triggers HA notification
-   ↓
-7. Parent receives mobile notification
-   ↓
-8. Integration polls API, updates sensor entities
-   ↓
-9. Dashboard shows updated status ("Pending Approval")
+# RewardClaim
+expires_at = db.Column(db.DateTime, nullable=True)
 ```
 
-### Example 2: Recurring Chore Generation
+---
+
+## Business Logic
+
+### Chore Instance Lifecycle
+
+**Status Values**:
+- `assigned` - Waiting to be claimed by kid
+- `claimed` - Kid has claimed, awaiting parent approval
+- `approved` - Parent approved, points awarded
+- `rejected` - Parent rejected, no points awarded
+- `missed` - Past due_date and cannot be claimed
+
+**State Machine**:
 
 ```
-1. APScheduler triggers daily at midnight
-   ↓
-2. Chore scheduler service runs
-   ↓
-3. Query all active recurring chores
-   ↓
-4. For each chore, calculate next instances based on recurrence pattern
-   ↓
-5. Create new chore_instance records for upcoming dates
-   ↓
-6. Create chore_assignment records linking instances to users
-   ↓
-7. HA integration polls and updates entities
-   ↓
-8. New chores appear in kid dashboards
+                    ┌─────────┐
+                    │assigned │
+                    └────┬────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+    (kid claims)    (late claims     (late claims
+                       allowed)        disabled)
+         │               │               │
+         v               v               v
+    ┌────────┐      ┌─────────┐     ┌────────┐
+    │claimed │      │assigned │     │missed  │
+    └───┬────┘      └────┬────┘     └────────┘
+        │                │
+        │          (kid claims,
+        │           marked late)
+        │                │
+        └───────┬────────┘
+                │
+         ┌──────▼──────┐
+         │             │
+         v             v
+    ┌─────────┐  ┌──────────┐
+    │approved │  │rejected  │
+    └─────────┘  └─────────┘
 ```
+
+### Recurrence Patterns
+
+**Daily**:
+```json
+{"type": "daily"}
+```
+
+**Weekly**:
+```json
+{"type": "weekly", "days_of_week": [0, 2, 4]}
+```
+- 0=Sunday through 6=Saturday
+
+**Monthly**:
+```json
+{"type": "monthly", "days_of_month": [1, 15]}
+```
+- Edge case: Feb 30 → uses Feb 28/29
+
+**One-Off**:
+```json
+{"type": "none"}
+```
+- If `start_date` set: due on that date
+- If `start_date` NULL: claimable anytime
+
+### Instance Generation
+
+**Look-Ahead Window**: Generate instances through end of (current month + 2 months)
+
+**For Individual Chores**: One instance per assigned kid per due date
+**For Shared Chores**: One instance total per due date (first come, first served)
+
+### Points Calculation
+
+**On-time completion**: Award `chore.points`
+**Late completion**: Award `chore.late_points` if set, otherwise `chore.points`
+**Parent override**: Optional `points` parameter at approval time
+
+### Reward Workflow
+
+**Auto-approve rewards** (`requires_approval=False`):
+- Points deducted immediately
+- Status = 'approved'
+
+**Approval-required rewards** (`requires_approval=True`):
+- Points deducted immediately (optimistic)
+- Status = 'pending'
+- Expires after 7 days (auto-reject, refund points)
+
+---
+
+## Background Tasks (APScheduler)
+
+### 1. Daily Instance Generator
+**Schedule**: Every day at 00:00
+
+Generates missing chore instances through the look-ahead window.
+
+### 2. Auto-Approval Checker
+**Schedule**: Every 5 minutes
+
+Auto-approves claimed instances that have exceeded `auto_approve_after_hours`.
+
+### 3. Missed Instance Marker
+**Schedule**: Every hour at :30
+
+Transitions overdue assigned instances to 'missed' status (if `allow_late_claims=False`).
+
+### 4. Pending Reward Expiration
+**Schedule**: Every day at 00:01
+
+Auto-rejects pending reward claims after 7 days, refunds points.
+
+### 5. Points Balance Audit
+**Schedule**: Every day at 02:00
+
+Verifies all users' points match their transaction history.
+
+---
+
+## Webhook Events
+
+All events follow this structure:
+```json
+{
+  "event": "event_name",
+  "timestamp": "2025-01-15T14:30:00Z",
+  "data": { /* event-specific data */ }
+}
+```
+
+### Event Types
+
+1. **chore_instance_created** - New instance created (due today or NULL)
+2. **chore_instance_claimed** - Kid claims a chore
+3. **chore_instance_approved** - Parent approves (or auto-approval)
+4. **chore_instance_rejected** - Parent rejects
+5. **points_awarded** - Any point change
+6. **reward_claimed** - Kid claims a reward
+7. **reward_approved** - Parent approves reward claim
+8. **reward_rejected** - Parent rejects or claim expires
+
+---
 
 ## Authentication and Authorization
 
 **Add-on Authentication**:
-
 - Uses Home Assistant ingress headers (`X-Ingress-User`)
-- No separate authentication required
 - Trusts HA to authenticate users
 
 **Role-Based Access Control**:
+- `parent`: Create/edit chores, approve, manage rewards, adjust points
+- `kid`: View assigned chores, claim chores, claim rewards
+- `system`: Background job operations
 
-- Users are mapped to roles: `parent` or `kid`
-- Parents can: create/edit chores, approve chores, manage rewards, adjust points
-- Kids can: view assigned chores, claim chores, claim rewards
+---
 
-**Implementation**:
+## Data Flow Examples
 
-```python
-def require_role(role):
-    """Decorator to enforce role-based access"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user_id = get_current_user_id()  # From ingress header
-            user = User.query.get(user_id)
-            if user.role != role:
-                abort(403)
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-@app.route('/api/chores', methods=['POST'])
-@require_role('parent')
-def create_chore():
-    # Only parents can create chores
-    pass
-```
-
-## Scheduling and Background Tasks
-
-**APScheduler Jobs**:
-
-1. **Daily Chore Generation** (runs at midnight):
-   - Generate chore instances for recurring chores
-   - Create instances for next 7-30 days
-
-2. **Auto-Approval Check** (runs every hour):
-   - Find chores with auto_approve_after_hours set
-   - Auto-approve if timeout has passed
-   - Award points and send notifications
-
-3. **Cleanup Old Data** (runs weekly):
-   - Archive old chore instances (optional)
-   - Clean up expired sessions
-
-**Configuration**:
-
-```python
-from apscheduler.schedulers.background import BackgroundScheduler
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=generate_chore_instances,
-    trigger='cron',
-    hour=0,
-    minute=0
-)
-scheduler.start()
-```
-
-## Notification System
-
-**Event-Based Notifications**:
-
-- Add-on fires events to HA event bus via Supervisor API
-- Integration listens for `chorecontrol_*` events
-- Integration triggers HA notify service
-
-**Event Types**:
-
-- `chorecontrol_chore_claimed`: Kid claims chore
-- `chorecontrol_chore_approved`: Parent approves chore
-- `chorecontrol_chore_rejected`: Parent rejects chore
-- `chorecontrol_reward_claimed`: Kid claims reward
-- `chorecontrol_points_adjusted`: Manual point adjustment
-
-**Implementation**:
-
-```python
-# Add-on fires event
-requests.post(
-    'http://supervisor/core/api/events/chorecontrol_chore_claimed',
-    json={
-        'chore_id': 1,
-        'user_id': 1,
-        'chore_name': 'Take out trash'
-    }
-)
-
-# Integration listens for event
-async def async_setup_entry(hass, entry):
-    hass.bus.async_listen(
-        'chorecontrol_chore_claimed',
-        handle_chore_claimed
-    )
-```
-
-## Calendar Integration
-
-**ICS Feed Generation**:
-
-- Add-on exposes `/api/calendar/{user_id}.ics` endpoint
-- Generates standard ICS format with upcoming chores
-- HA calendar integration subscribes to URL
-- Chores appear in HA calendar alongside other events
-
-**ICS Format**:
+### Kid Claims Chore
 
 ```
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ChoreControl//EN
-BEGIN:VEVENT
-UID:chore-instance-1@chorecontrol
-DTSTART:20251111
-SUMMARY:Take out trash (5 points)
-DESCRIPTION:Roll both bins to curb
-STATUS:TENTATIVE
-END:VEVENT
-END:VCALENDAR
+1. Kid clicks "Claim" button on HA dashboard
+2. HA integration calls service chorecontrol.claim_chore
+3. Integration makes POST request to /api/instances/{id}/claim
+4. Add-on updates database (status = 'claimed')
+5. Add-on fires webhook (chore_instance_claimed)
+6. Integration receives event, triggers HA notification
+7. Parent receives mobile notification
+8. Integration polls API, updates sensor entities
+9. Dashboard shows "Pending Approval"
 ```
+
+### Recurring Chore Generation
+
+```
+1. APScheduler triggers daily at midnight
+2. Instance generator queries all active recurring chores
+3. For each chore, calculate instances based on recurrence pattern
+4. Create chore_instance records for upcoming dates
+5. Fire webhooks for instances due today
+6. HA integration polls and updates entities
+7. New chores appear in kid dashboards
+```
+
+---
 
 ## Deployment Architecture
 
@@ -310,111 +426,59 @@ END:VCALENDAR
 
 ```dockerfile
 FROM python:3.11-alpine
-
-# Install dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-
-# Copy application
 COPY . /app
 WORKDIR /app
-
-# Run migrations and start app
 CMD ["sh", "run.sh"]
 ```
 
 **Volume Mounts**:
-
 - `/data`: Database and persistent storage
-- `/config`: Configuration files (if needed)
 
 **Environment Variables**:
-
 - `DATABASE_URL`: SQLite database path
 - `LOG_LEVEL`: Logging verbosity
 - `SECRET_KEY`: Flask secret key
+- `HA_WEBHOOK_URL`: Home Assistant webhook endpoint
 
-## Scalability Considerations
-
-**Current Design (Phase 1)**:
-
-- Single add-on instance per HA installation
-- SQLite for simplicity
-- Expected load: 1-10 users (family size)
-- No external dependencies
-
-**Future Scalability (Phase 2+)**:
-
-- Support for PostgreSQL/MySQL for larger deployments
-- Redis for caching and session management
-- Horizontal scaling with load balancer
-- Separate worker processes for background tasks
+---
 
 ## Security Considerations
 
 **Current Implementation**:
-
 - Trust Home Assistant ingress authentication
-- No sensitive data stored (it's chore data)
 - SQL injection prevention via SQLAlchemy ORM
 - Input validation on all API endpoints
+- Role-based access control
 
 **Future Enhancements**:
-
 - Optional API key for external access
-- Encrypted database (if storing sensitive rewards)
 - Audit logging for all actions
 - Rate limiting on API endpoints
 
-## Monitoring and Logging
+---
 
-**Logging**:
+## Scalability Considerations
 
-- Flask logs to stdout (captured by Docker)
-- Log levels: DEBUG, INFO, WARNING, ERROR
-- Structured logging for easier parsing
+**Current Design (Phase 1)**:
+- Single add-on instance per HA installation
+- SQLite for simplicity
+- Expected load: 1-10 users (family size)
 
-**Health Checks**:
-
-- `/health` endpoint checks database connectivity
-- HA integration reports API connectivity via binary sensor
-
-**Metrics** (Future):
-
-- Track API response times
-- Monitor database query performance
-- Count of chores completed per day/week
-- User engagement metrics
-
-## Complete Architecture Documentation
-
-For complete architectural details including:
-
-- Full data model schema
-- API endpoint specifications
-- User experience flows
-- Phase 1 MVP implementation plan
-- Development principles
-
-See [PROJECT_PLAN.md](../PROJECT_PLAN.md)
-
-## Technology Decisions
-
-For detailed rationale on technology choices including:
-
-- Why Flask over FastAPI
-- Why SQLAlchemy ORM
-- Why APScheduler for background jobs
-- Why event-based notifications
-
-See [DECISIONS.md](../DECISIONS.md)
-
-## Implementation Roadmap
-
-For current development priorities and parallel work streams:
-
-See [NEXT_STEPS.md](../NEXT_STEPS.md)
+**Future Scalability (Phase 2+)**:
+- Support for PostgreSQL/MySQL
+- Redis for caching
+- Separate worker processes for background tasks
 
 ---
 
-**Questions about the architecture?** Open a [discussion](https://github.com/shaunadam/chorecontrol/discussions) or [issue](https://github.com/shaunadam/chorecontrol/issues)!
+## Related Documentation
+
+- [PROJECT_PLAN.md](../PROJECT_PLAN.md) - Full data model schema, API endpoints, UX flows
+- [NEXT_STEPS.md](../NEXT_STEPS.md) - Current implementation progress
+- [api-reference.md](api-reference.md) - API endpoint documentation
+
+---
+
+**Last Updated**: 2025-11-21

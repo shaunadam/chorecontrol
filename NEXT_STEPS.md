@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Phase**: Step 3 Complete ✅ → Step 4: Web UI
+**Phase**: Step 4 Complete ✅ → Step 5: HA Integration
 
 **Completed:**
 - ✅ Flask app structure with config management (dev/prod/test modes)
@@ -42,9 +42,20 @@
   - ✅ test_users.py (608 lines)
   - ✅ test_webhooks.py (359 lines)
 - ✅ Authentication middleware (`auth.py` module)
+- ✅ **Web UI (Step 4 Complete!)**
+  - ✅ Base template with mobile-first navigation and flash messages
+  - ✅ Dashboard with stats, pending approvals, kids' points, recent activity
+  - ✅ Chores management (list, detail, create/edit forms with pagination)
+  - ✅ Rewards management (list, forms, pending claims)
+  - ✅ Approval queue for chores and rewards
+  - ✅ Users management with points history
+  - ✅ Calendar view with FullCalendar integration
+  - ✅ Available chores view for claiming
+  - ✅ Local auth support with login page
+  - ✅ Mobile-responsive CSS with CSS variables
+  - ✅ JavaScript for modals and form handling
 
 **Ready to Implement:**
-- Web UI (Jinja2 templates for parent dashboard)
 - Integration with Home Assistant sensors/services
 - Docker containerization for HA add-on
 
@@ -176,119 +187,78 @@ All business logic has been fully implemented and tested:
 
 ---
 
-## Step 4: Web UI
+## Step 4: Web UI ✅ COMPLETE
 
-Build a parent-focused web interface accessible via Home Assistant sidebar.
+Parent-focused web interface accessible via Home Assistant sidebar.
 
-### Core Pages to Implement:
+### Implemented Pages:
 
-1. **Dashboard** (`/`)
-   - Today's pending approvals
-   - Recently completed chores
-   - Kids' points balances
-   - Quick actions
+1. **Dashboard** (`/`) ✅
+   - Stats overview (pending approvals, reward claims, today completed, active chores)
+   - Pending approval cards with one-click approve/reject
+   - Kids' points balances with adjust modal
+   - Recent activity feed (approved, rejected, missed)
 
-2. **Chores Management** (`/chores`)
-   - List all chores (active/inactive filter)
-   - Create new chore form
-   - Edit existing chore
-   - View generated instances
+2. **Chores Management** (`/chores`) ✅
+   - List with pagination and filters (active/inactive, assigned to)
+   - Create/edit forms with recurrence patterns
+   - Detail view with instance history
+   - Soft delete support
 
-3. **Rewards Management** (`/rewards`)
-   - List all rewards
-   - Create/edit reward forms
-   - View pending reward claims
-   - Approve/reject claims
+3. **Rewards Management** (`/rewards`) ✅
+   - List with pagination and filters
+   - Create/edit forms (points cost, cooldown, limits)
+   - Pending claims display
+   - Approve/reject workflow
 
-4. **Kids Management** (`/users`)
-   - List all users
-   - Edit user details
-   - View points history
-   - Manual points adjustment
+4. **Users Management** (`/users`) ✅
+   - List all users with role filter
+   - Create/update users with password support
+   - Kid detail with stats (completed, points earned, rewards claimed)
+   - Points history with pagination
 
-5. **Approval Queue** (`/approvals`)
-   - Pending chore approvals
-   - Pending reward claims
-   - Quick approve/reject actions
+5. **Approval Queue** (`/approvals`) ✅
+   - Combined view: pending chore instances + reward claims
+   - Quick approve/reject actions with reason modal
+
+6. **Calendar** (`/calendar`) ✅
+   - FullCalendar integration
+   - Color-coded by status (assigned, claimed, approved, rejected, missed)
+   - Instances without due dates shown in table
+
+7. **Available Chores** (`/available`) ✅
+   - Claimable instances (status='assigned')
+   - Shows eligible kids for each instance
+   - Supports shared and individual chores
 
 ### Technical Implementation:
 
-**Templates to Create** (in `addon/templates/`):
-- `base.html` - Base template with navigation
-- `dashboard.html` - Main dashboard
-- `chores/list.html` - Chore list view
-- `chores/form.html` - Create/edit chore form
-- `chores/detail.html` - Single chore with instances
-- `rewards/list.html` - Reward list view
-- `rewards/form.html` - Create/edit reward form
-- `approvals/queue.html` - Pending approvals view
-- `users/list.html` - User management
-- `users/detail.html` - User profile with points history
+**Templates** (in `addon/templates/`):
+- ✅ `base.html` - Mobile-first navigation, flash messages, auth display
+- ✅ `dashboard.html` - Stats grid, approval cards, points modals
+- ✅ `chores/list.html`, `form.html`, `detail.html`
+- ✅ `rewards/list.html`, `form.html`
+- ✅ `approvals/queue.html`
+- ✅ `users/list.html`, `detail.html`
+- ✅ `calendar.html`, `available.html`
+- ✅ `auth/login.html`
 
 **Static Assets** (in `addon/static/`):
-- `css/style.css` - Mobile-first responsive styles
-- `js/app.js` - Interactive features (HTMX or vanilla JS)
+- ✅ `css/style.css` - 500+ lines of mobile-first responsive CSS
+- ✅ `js/app.js` - Form handling, modals, JSON API calls
 
-**Routes to Add** (in `addon/routes/ui.py`):
-```python
-@ui_bp.route('/')
-def dashboard():
-    # Render dashboard with pending approvals, today's chores, etc.
+**Routes** (in `addon/routes/ui.py` - 577+ lines):
+- All UI routes with pagination, filtering, and POST handlers
+- Context processor for current user and pending count
+- User create/update endpoints
 
-@ui_bp.route('/chores')
-def chores_list():
-    # List chores with pagination
+### Design Achievements:
 
-@ui_bp.route('/chores/new')
-@ui_bp.route('/chores/<int:id>/edit')
-def chore_form():
-    # Create/edit chore form
-
-@ui_bp.route('/approvals')
-def approval_queue():
-    # Pending approvals view
-```
-
-### Key Files to Reference During UI Development:
-
-**Models & Data**: [addon/models.py](addon/models.py:1-670)
-- All models have `to_dict()` methods for easy serialization
-- Understand relationships between models
-- Use `can_claim()`, `can_approve()` validation methods
-
-**API Routes** (use these as reference for data flow):
-- [addon/routes/instances.py](addon/routes/instances.py:1-686) - Instance workflow logic
-- [addon/routes/chores.py](addon/routes/chores.py:1-520) - Chore CRUD patterns
-- [addon/routes/rewards.py](addon/routes/rewards.py:1-544) - Reward claim flow
-- [addon/routes/points.py](addon/routes/points.py:1-184) - Points history patterns
-
-**Forms & Validation**:
-- [addon/schemas.py](addon/schemas.py) - Validation helpers
-- [addon/utils/recurrence.py](addon/utils/recurrence.py) - Pattern validation
-
-**Config**: [addon/config.py](addon/config.py:1-63)
-- Environment-based configuration
-- Database and scheduler settings
-
-**App Setup**: [addon/app.py](addon/app.py:1-146)
-- See how blueprints are registered
-- Middleware setup for HA ingress authentication
-
-### UI Design Principles:
-
-- **Mobile-First**: Parents will primarily use this on phones
-- **Quick Actions**: One-click approve/reject from dashboard
-- **Clear Status**: Visual indicators for pending/approved/missed
-- **Minimal Friction**: Auto-save forms, inline editing where possible
-- **HA Native Feel**: Match Home Assistant's design language
-
-### Optional Enhancements:
-
-- HTMX for dynamic updates without full page reloads
-- Toast notifications for actions
-- Drag-and-drop chore reordering
-- Bulk approval actions
-- Inline editing of chore instances
+- ✅ **Mobile-First**: Sticky header, horizontal scroll nav, touch-friendly
+- ✅ **Quick Actions**: One-click approve from dashboard
+- ✅ **Clear Status**: Color-coded status badges
+- ✅ **Modals**: For rejection reasons and points adjustments
+- ✅ **Flash Messages**: Success/error feedback
 
 ---
 
