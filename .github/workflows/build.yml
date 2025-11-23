@@ -1,0 +1,82 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        arch: [amd64, aarch64, armv7, armhf]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from config.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' chorecontrol/config.yaml | sed 's/version: *"\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set platform for architecture
+        id: platform
+        run: |
+          case "${{ matrix.arch }}" in
+            amd64)   echo "platform=linux/amd64" >> $GITHUB_OUTPUT ;;
+            aarch64) echo "platform=linux/arm64" >> $GITHUB_OUTPUT ;;
+            armv7)   echo "platform=linux/arm/v7" >> $GITHUB_OUTPUT ;;
+            armhf)   echo "platform=linux/arm/v6" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Set base image for architecture
+        id: base
+        run: |
+          case "${{ matrix.arch }}" in
+            amd64)   echo "image=ghcr.io/home-assistant/amd64-base-python:3.11-alpine3.18" >> $GITHUB_OUTPUT ;;
+            aarch64) echo "image=ghcr.io/home-assistant/aarch64-base-python:3.11-alpine3.18" >> $GITHUB_OUTPUT ;;
+            armv7)   echo "image=ghcr.io/home-assistant/armv7-base-python:3.11-alpine3.18" >> $GITHUB_OUTPUT ;;
+            armhf)   echo "image=ghcr.io/home-assistant/armhf-base-python:3.11-alpine3.18" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./chorecontrol
+          file: ./chorecontrol/Dockerfile
+          platforms: ${{ steps.platform.outputs.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/chorecontrol-${{ matrix.arch }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/chorecontrol-${{ matrix.arch }}:latest
+          build-args: |
+            BUILD_FROM=${{ steps.base.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
