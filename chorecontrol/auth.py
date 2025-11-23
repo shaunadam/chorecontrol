@@ -97,11 +97,12 @@ def create_default_admin():
         User: The created admin user, or None if users already exist
     """
     from models import db, User
-    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.exc import OperationalError, IntegrityError
 
     try:
-        # Check if any users exist
-        if User.query.first() is not None:
+        # Check if admin user already exists
+        existing_admin = User.query.filter_by(ha_user_id='local-admin').first()
+        if existing_admin is not None:
             return None
 
         # Create default admin user
@@ -119,4 +120,8 @@ def create_default_admin():
         return admin
     except OperationalError:
         # Table doesn't exist yet (migrations not run)
+        return None
+    except IntegrityError:
+        # Race condition - another worker already created the admin
+        db.session.rollback()
         return None

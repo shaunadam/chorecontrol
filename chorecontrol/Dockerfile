@@ -4,22 +4,12 @@ FROM $BUILD_FROM
 # Set working directory
 WORKDIR /app
 
-# Install build dependencies and bashio
+# Install build dependencies
 RUN apk add --no-cache \
     gcc \
     musl-dev \
     sqlite \
-    sqlite-dev \
-    bash \
-    curl \
-    jq \
-    && curl -J -L -o /tmp/bashio.tar.gz \
-        "https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz" \
-    && mkdir /tmp/bashio \
-    && tar zxvf /tmp/bashio.tar.gz --strip 1 -C /tmp/bashio \
-    && mv /tmp/bashio/lib /usr/lib/bashio \
-    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
-    && rm -rf /tmp/bashio.tar.gz /tmp/bashio
+    sqlite-dev
 
 # Copy requirements first for better layer caching
 COPY requirements.txt .
@@ -47,8 +37,8 @@ COPY templates/ ./templates/
 COPY static/ ./static/
 COPY migrations/ ./migrations/
 
-# Make run script executable
-RUN chmod +x run.sh
+# Convert line endings and make run script executable
+RUN sed -i 's/\r$//' run.sh && chmod +x run.sh
 
 # Create data directory for SQLite database
 RUN mkdir -p /data
@@ -57,9 +47,10 @@ RUN mkdir -p /data
 EXPOSE 8099
 
 # Set environment variables
-ENV FLASK_APP=app.py
+ENV FLASK_APP=/app/app.py
 ENV FLASK_ENV=production
 ENV DATA_DIR=/data
+ENV PYTHONPATH=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
