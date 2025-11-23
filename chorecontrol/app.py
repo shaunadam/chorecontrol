@@ -5,6 +5,7 @@ from pathlib import Path
 from flask import Flask, jsonify, request, g
 from flask_migrate import Migrate
 from sqlalchemy import text
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Import db from models (models.py creates the SQLAlchemy instance)
 from models import db
@@ -39,6 +40,9 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Add reverse proxy support for Home Assistant ingress
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Register middleware
     register_middleware(app)
 
@@ -62,6 +66,14 @@ def create_app(config_name=None):
 
 def register_middleware(app):
     """Register middleware for authentication and request processing."""
+
+    @app.before_request
+    def handle_ingress_path():
+        """Set SCRIPT_NAME from X-Ingress-Path header for correct URL generation."""
+        ingress_path = request.headers.get('X-Ingress-Path', '')
+        if ingress_path:
+            # Set SCRIPT_NAME so url_for() generates URLs with the ingress prefix
+            request.environ['SCRIPT_NAME'] = ingress_path.rstrip('/')
 
     @app.before_request
     def extract_ha_user():

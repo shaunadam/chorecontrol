@@ -17,29 +17,73 @@ The core application is complete and tested:
 
 ---
 
+## Current Issue: 404 on Home Assistant Ingress Access
+
+**Status**: Add-on builds and starts successfully, but accessing via Home Assistant shows 404.
+
+**Symptoms**:
+- Local access at `localhost:8099` works fine
+- Add-on installs and starts in Home Assistant
+- Logs show `302` redirects for all requests to `/`
+- Browser ends up at 404 after redirect
+
+**Root Cause**: Flask's `url_for()` generates URLs without the Home Assistant ingress path prefix.
+
+When Home Assistant proxies a request from `/api/hassio_ingress/c1f18b53_chorecontrol/` to the app:
+1. HA strips the ingress prefix and forwards to `http://addon:8099/`
+2. App generates redirect with `url_for('ui.dashboard')` → returns `/`
+3. Browser redirects to `/` (not `/api/hassio_ingress/.../`)
+4. HA doesn't recognize `/` and returns 404
+
+**Fix Required**: Configure Flask to understand the ingress base path using `SCRIPT_NAME` or middleware.
+
+### Fix: Add Ingress Path Support
+
+Add middleware in `app.py` to handle the `X-Ingress-Path` header from Home Assistant:
+
+```python
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+def create_app():
+    app = Flask(__name__)
+
+    # ... existing config ...
+
+    # Add reverse proxy support
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+    @app.before_request
+    def set_ingress_path():
+        """Set SCRIPT_NAME from X-Ingress-Path header for correct URL generation."""
+        ingress_path = request.headers.get('X-Ingress-Path', '')
+        if ingress_path:
+            request.environ['SCRIPT_NAME'] = ingress_path
+            # Remove trailing slash to avoid double slashes
+            if request.environ.get('PATH_INFO', '').startswith(ingress_path):
+                request.environ['PATH_INFO'] = request.environ['PATH_INFO'][len(ingress_path):]
+```
+
+This makes `url_for()` generate URLs with the correct ingress prefix.
+
+**Also fix**: Hardcoded `/health` link in `templates/base.html:77` - change to `{{ url_for('ui.health') }}` or similar.
+
+---
+
 ## Deployment Tasks
 
-### 1. Create Docker Add-on Package
+### 1. Create Docker Add-on Package ✅
 
-The add-on needs Docker containerization to run in Home Assistant.
+The add-on Docker containerization is complete:
 
-**Files to create in `addon/`:**
+- [x] `Dockerfile` - Alpine-based Python container
+- [x] `config.yaml` - Home Assistant add-on configuration
+- [x] `run.sh` - Container startup script
 
-- [ ] `Dockerfile` - Alpine-based Python container
-- [ ] `config.yaml` - Home Assistant add-on configuration
-- [ ] `run.sh` - Container startup script
+### 2. Test Add-on Installation (In Progress)
 
-**Key requirements:**
-- Base image: `python:3.11-alpine`
-- Install requirements from `requirements.txt`
-- Configure ingress for sidebar access
-- Mount `/data` for database persistence
-- Set environment variables (DATABASE_URL, SECRET_KEY, etc.)
-
-### 2. Test Add-on Installation
-
-- [ ] Build and test Docker image locally
-- [ ] Install add-on on Home Assistant instance
+- [x] Build and test Docker image locally
+- [x] Install add-on on Home Assistant instance
+- [ ] **Fix ingress path handling** (see above)
 - [ ] Verify web UI accessible via sidebar
 - [ ] Confirm database initializes correctly
 - [ ] Test all API endpoints through ingress
