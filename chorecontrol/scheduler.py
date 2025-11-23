@@ -67,12 +67,15 @@ def init_scheduler(app):
     )
 
     # Auto-approval check every 5 minutes
+    # Use next_run_time to delay first run, giving migrations time to complete
+    from datetime import datetime, timedelta
     scheduler.add_job(
         with_app_context(check_auto_approvals),
         trigger=IntervalTrigger(minutes=5),
         id='auto_approval_check',
         name='Check for auto-approvals',
-        replace_existing=True
+        replace_existing=True,
+        next_run_time=datetime.now() + timedelta(minutes=1)  # Delay first run by 1 minute
     )
 
     # Mark missed instances hourly at :30

@@ -28,10 +28,22 @@ export PYTHONPATH=/app
 
 # Run database migrations
 echo "Running database migrations..."
-flask db upgrade || {
+echo "Database URI: sqlite:///${DATA_DIR}/chorecontrol.db"
+
+# Show migration status first
+echo "Checking migration status..."
+flask db current || echo "No current migration found"
+
+# Run the upgrade
+if flask db upgrade; then
+    echo "Database migrations completed successfully"
+    flask db current
+else
     echo "Error: Database migration failed!"
+    echo "Attempting to show migration history..."
+    flask db history || true
     exit 1
-}
+fi
 
 # Check database connectivity
 if [ -f "${DATA_DIR}/chorecontrol.db" ]; then

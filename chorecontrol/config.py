@@ -48,6 +48,9 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
+    # Re-evaluate DATA_DIR and database URI to ensure environment variable is picked up
+    DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATA_DIR / 'chorecontrol.db'}"
 
 
 class TestingConfig(Config):
