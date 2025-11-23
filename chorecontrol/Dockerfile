@@ -24,8 +24,18 @@ COPY models.py .
 COPY schemas.py .
 COPY seed.py .
 COPY seed_helpers.py .
+COPY auth.py .
+COPY scheduler.py .
 COPY __init__.py .
 COPY run.sh .
+
+# Copy directories
+COPY routes/ ./routes/
+COPY jobs/ ./jobs/
+COPY utils/ ./utils/
+COPY templates/ ./templates/
+COPY static/ ./static/
+COPY migrations/ ./migrations/
 
 # Make run script executable
 RUN chmod +x run.sh
