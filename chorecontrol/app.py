@@ -15,6 +15,27 @@ from auth import ha_auth_required
 migrate = Migrate()
 
 
+class IngressMiddleware:
+    """WSGI middleware to handle Home Assistant ingress path.
+
+    This middleware reads the X-Ingress-Path header and sets SCRIPT_NAME
+    before Flask processes the request, ensuring url_for() generates
+    correct URLs with the ingress prefix.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        # Get X-Ingress-Path header (WSGI converts to HTTP_X_INGRESS_PATH)
+        ingress_path = environ.get('HTTP_X_INGRESS_PATH', '')
+        if ingress_path:
+            # Set SCRIPT_NAME so Flask generates URLs with ingress prefix
+            environ['SCRIPT_NAME'] = ingress_path.rstrip('/')
+
+        return self.app(environ, start_response)
+
+
 def create_app(config_name=None):
     """Application factory pattern for Flask app creation."""
     app = Flask(__name__)
@@ -40,8 +61,11 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Add reverse proxy support for Home Assistant ingress
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    # Add WSGI middleware for Home Assistant ingress
+    # IngressMiddleware must wrap the app first to set SCRIPT_NAME before Flask sees it
+    # ProxyFix handles other reverse proxy headers (X-Forwarded-For, etc.)
+    app.wsgi_app = IngressMiddleware(app.wsgi_app)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     # Register middleware
     register_middleware(app)
@@ -66,14 +90,6 @@ def create_app(config_name=None):
 
 def register_middleware(app):
     """Register middleware for authentication and request processing."""
-
-    @app.before_request
-    def handle_ingress_path():
-        """Set SCRIPT_NAME from X-Ingress-Path header for correct URL generation."""
-        ingress_path = request.headers.get('X-Ingress-Path', '')
-        if ingress_path:
-            # Set SCRIPT_NAME so url_for() generates URLs with the ingress prefix
-            request.environ['SCRIPT_NAME'] = ingress_path.rstrip('/')
 
     @app.before_request
     def extract_ha_user():
