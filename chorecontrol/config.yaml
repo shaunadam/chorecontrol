@@ -27,4 +27,3 @@ options:
 schema:
   timezone: str
   debug: bool
-image: ghcr.io/shaunadam/chorecontrol-{arch}
