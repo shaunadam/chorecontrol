@@ -586,107 +586,54 @@ custom_components/chorecontrol/
 
 ---
 
-## Phase 1: MVP
+## Phase 1: MVP - COMPLETE
 
 ### Goal
 Basic working system: Create chores, assign to kids, claim/approve workflow, points and simple rewards.
 
-### Tasks
+### Completed Work
 
-#### Project Setup
-- [ ] **SETUP-1**: Initialize Git repository structure
-- [ ] **SETUP-2**: Create add-on directory structure and Dockerfile
-- [ ] **SETUP-3**: Create integration directory structure
-- [ ] **SETUP-4**: Set up Python virtual environment and dependencies
-- [ ] **SETUP-5**: Configure linting tools (ruff, black, mypy)
-- [ ] **SETUP-6**: Create README.md with project overview
+All Phase 1 development tasks have been implemented:
 
-#### Add-on: Database Layer
-- [ ] **DB-1**: Design and create SQLite schema (all tables from data model)
-- [ ] **DB-2**: Write database initialization script
-- [ ] **DB-3**: Create SQLAlchemy models (or raw SQL helpers)
-- [ ] **DB-4**: Write database migration strategy (for future updates)
-- [ ] **DB-5**: Create seed data script for testing
+**Add-on (Backend)**
+- Flask application with config management (dev/prod/test)
+- SQLite database with 7 tables (SQLAlchemy ORM)
+- Database migrations (Alembic)
+- 28 REST API endpoints across 5 route modules
+- Business logic: recurrence patterns, instance generation, points, rewards
+- 5 background jobs (APScheduler): instance generation, auto-approval, missed marking, reward expiration, points audit
+- Webhook integration (8 event types)
+- Full web UI (13 templates, mobile-responsive)
+- Authentication middleware
+- Comprehensive test suite (245 tests)
 
-#### Add-on: REST API - Core
-- [ ] **API-1**: Set up FastAPI/Flask application structure
-- [ ] **API-2**: Implement health check endpoint
-- [ ] **API-3**: Implement user endpoints (CRUD)
-- [ ] **API-4**: Implement chore endpoints (CRUD)
-- [ ] **API-5**: Implement chore instance endpoints (list, get, claim, approve, reject)
-- [ ] **API-6**: Implement basic reward endpoints (CRUD, claim)
-- [ ] **API-7**: Implement points adjustment endpoint
-- [ ] **API-8**: Implement points history endpoint
-- [ ] **API-9**: Add API authentication/authorization (check HA user role)
-- [ ] **API-10**: Generate OpenAPI documentation
+**Integration (Custom Component)**
+- Manifest and config flow
+- API client (aiohttp)
+- Data update coordinator
+- Sensors: global (pending approvals, total kids, active chores) + per-kid (points, pending, claimed, completed today/week)
+- Dynamic claim buttons
+- 8 services: claim_chore, approve_chore, reject_chore, adjust_points, claim_reward, approve_reward, reject_reward, refresh_data
+- Webhook handler with event firing and notifications
 
-#### Add-on: Business Logic
-- [ ] **LOGIC-1**: Implement simple chore scheduler (daily/weekly recurrence)
-- [ ] **LOGIC-2**: Implement points calculation and awarding
-- [ ] **LOGIC-3**: Implement reward claim validation (points, cooldown, limits)
-- [ ] **LOGIC-4**: Implement notification event system (hooks for integration)
-- [ ] **LOGIC-5**: Create background task runner for scheduled jobs
+**Documentation**
+- API reference
+- Architecture overview
+- Entity reference
+- Dashboard setup guide
+- Example dashboard YAML files
+- Development guide
 
-#### Add-on: Web UI
-- [ ] **UI-1**: Set up Jinja2 templates and static files
-- [ ] **UI-2**: Create base layout and navigation
-- [ ] **UI-3**: Build chores list page
-- [ ] **UI-4**: Build create/edit chore form (simple recurrence only)
-- [ ] **UI-5**: Build kids management page
-- [ ] **UI-6**: Build rewards management page
-- [ ] **UI-7**: Build parent dashboard (pending approvals, overview)
-- [ ] **UI-8**: Build points adjustment interface
-- [ ] **UI-9**: Make UI mobile-responsive
-- [ ] **UI-10**: Add basic styling (CSS framework like Bootstrap/Tailwind)
+### Remaining for Deployment
 
-#### Add-on: Deployment
-- [ ] **DEPLOY-1**: Create Dockerfile for add-on
-- [ ] **DEPLOY-2**: Create add-on config.json (HA add-on metadata)
-- [ ] **DEPLOY-3**: Configure ingress for sidebar access
-- [ ] **DEPLOY-4**: Test add-on installation in HA
-- [ ] **DEPLOY-5**: Document add-on installation and setup
+- [ ] Create Docker add-on package (Dockerfile, config.yaml, run.sh)
+- [ ] Test add-on installation on real HA instance
+- [ ] Test integration installation and full workflow
 
-#### Integration: Core
-- [ ] **INT-1**: Create custom component scaffold
-- [ ] **INT-2**: Implement manifest.json
-- [ ] **INT-3**: Implement config_flow.py (UI setup)
-- [ ] **INT-4**: Create REST API client class
-- [ ] **INT-5**: Implement data update coordinator
-- [ ] **INT-6**: Create sensor platform (points, counts)
-- [ ] **INT-7**: Create button platform (claim buttons)
-- [ ] **INT-8**: Implement services (claim, approve, reject, adjust_points)
-- [ ] **INT-9**: Add error handling and logging
-- [ ] **INT-10**: Test integration installation in HA
+### Not Implemented (Deferred to Phase 2+)
 
-#### Integration: HA User Mapping
-- [ ] **INT-11**: Implement parent/kid role detection
-- [ ] **INT-12**: Create user mapping configuration
-- [ ] **INT-13**: Filter entities based on current user context
-
-#### Dashboards
-- [ ] **DASH-1**: Create example kid dashboard YAML
-- [ ] **DASH-2**: Create example parent dashboard YAML
-- [ ] **DASH-3**: Document dashboard setup instructions
-- [ ] **DASH-4**: Test dashboard with real data
-
-#### Calendar Integration (Simple)
-- [ ] **CAL-1**: Implement ICS feed generation for user's chores
-- [ ] **CAL-2**: Test ICS feed with HA calendar integration
-- [ ] **CAL-3**: Document calendar setup
-
-#### Testing & Documentation
-- [ ] **TEST-1**: Write unit tests for API endpoints
-- [ ] **TEST-2**: Write unit tests for business logic
-- [ ] **TEST-3**: Write integration tests (add-on + integration)
-- [ ] **TEST-4**: Perform end-to-end testing (full workflow)
-- [ ] **DOC-1**: Write user documentation (setup, usage)
-- [ ] **DOC-2**: Write developer documentation (architecture, API)
-- [ ] **DOC-3**: Create demo video/screenshots
-
-#### Final MVP Release
-- [ ] **RELEASE-1**: Version tagging and release notes
-- [ ] **RELEASE-2**: Publish to GitHub
-- [ ] **RELEASE-3**: Submit to HA community add-on repository (optional)
+- ICS calendar feed (see BACKLOG.md)
+- HA user mapping for targeted notifications (using persistent_notification for now)
 
 ---
 
@@ -870,14 +817,18 @@ Basic working system: Create chores, assign to kids, claim/approve workflow, poi
 
 ## Next Steps
 
-1. **Review this plan** - Ensure alignment with vision
-2. **Make technology decisions** - Choose frameworks and tools
-3. **Set up project structure** - Create repos, directories, initial files
-4. **Begin Phase 1 implementation** - Start with database and API
-5. **Iterate with testing** - Test early and often with real family use
+**Phase 1 MVP is complete.** All development tasks have been implemented and tested.
+
+Current focus: **First Deployment**
+1. Create Docker add-on package (Dockerfile, config.yaml, run.sh)
+2. Install and test on real Home Assistant instance
+3. Test full workflow end-to-end
+4. Address any issues discovered during testing
+
+See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed deployment tasks.
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-11
-**Status**: Draft - Awaiting Approval
+**Document Version**: 1.1
+**Last Updated**: 2025-11-22
+**Status**: Phase 1 Complete - Ready for Deployment Testing

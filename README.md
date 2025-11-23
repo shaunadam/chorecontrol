@@ -1,244 +1,174 @@
 # ChoreControl
 
-> A comprehensive chore management system for Home Assistant
+A comprehensive chore management system for Home Assistant that helps families track chores, manage points, and reward kids for completing tasks.
 
-## Overview
+## Features
 
-ChoreControl is a Home Assistant integration that helps families manage chores, track points, and reward kids for completing tasks. Unlike existing solutions that rely on entity-based storage, ChoreControl uses a proper database structure for reliability and scalability.
+### Chore Management
+- **Flexible Scheduling**: Create one-off or recurring chores (daily, weekly, monthly)
+- **Assignment Options**: Assign chores to individual kids or make them shared (first-come, first-served)
+- **Late Claim Support**: Optionally allow late completion with reduced points
+- **Auto-Approval**: Configure chores to auto-approve after a set time
 
-### Key Features
+### Points & Rewards
+- **Points System**: Kids earn points for completing chores
+- **Reward Marketplace**: Create rewards kids can claim with their points
+- **Approval Workflow**: Optional parent approval for high-value rewards
+- **Cooldowns & Limits**: Set cooldown periods and claim limits on rewards
+- **Points Auditing**: Automatic nightly verification of point balances
 
-#### Implemented ✅
-- **Chore Management**: Create recurring (daily/weekly/monthly) or one-off chores with flexible scheduling
-- **Multi-User Support**: Parent, kid, and system roles with appropriate permissions
-- **Points & Rewards**: Kids earn points for completing chores, redeem for rewards with approval workflow
-- **Approval Workflow**: Claim → Approve → Award points with late claim detection
-- **Background Automation**: Auto-approval after timeout, missed chore detection, reward expiration
-- **Late Claim Support**: Optional late completion with reduced points
-- **Reward Approval**: Optional parent approval for reward claims with 7-day expiration
-- **Points Auditing**: Nightly verification of points balances against transaction history
-- **Webhook Integration**: Real-time event notifications to Home Assistant
-- **REST API**: 28 endpoints for full programmatic control
+### Approval Workflow
+- **Claim → Approve Flow**: Kids claim chores, parents approve
+- **Rejection with Feedback**: Provide reasons when rejecting claims
+- **Mobile Notifications**: Get notified when kids claim chores
 
-#### Planned
-- **Calendar Integration**: ICS feed showing upcoming chores
-- **Mobile-First Admin UI**: Manage everything from your phone via HA sidebar
-- **Dashboard Integration**: Native HA dashboards for kids and parents
+### Home Assistant Integration
+- **Native Entities**: Sensors for points, chore counts, and pending approvals
+- **Dynamic Buttons**: Claim buttons appear automatically for available chores
+- **Services**: Full API access through HA services for automations
+- **Real-time Events**: Webhook integration for instant updates
+
+### Web Interface
+- **Mobile-First Design**: Manage everything from your phone via HA sidebar
+- **Dashboard**: View pending approvals, kid stats, and recent activity
+- **Calendar View**: See all scheduled chores at a glance
+- **Points History**: Track all point transactions
 
 ## Architecture
 
-ChoreControl consists of two main components:
+ChoreControl consists of two components:
 
 1. **Add-on** (Backend Service)
-   - Flask/FastAPI web application
-   - SQLite database for proper data storage
-   - REST API for all operations
+   - Flask web application with SQLite database
+   - REST API (28 endpoints) for all operations
    - Web UI for parent administration
+   - Background jobs for automation (auto-approval, instance generation)
    - Accessible via HA sidebar (ingress)
 
 2. **Integration** (Custom Component)
-   - Python custom component for Home Assistant
-   - Exposes entities (sensors, buttons) to HA
+   - Exposes entities (sensors, buttons) to Home Assistant
    - Provides services for automations
-   - Polls add-on API for updates
+   - Handles real-time event notifications via webhooks
 
-## Project Status
+## Installation
 
-**Current Phase**: Web UI Complete ✅ → HA Integration
+### Prerequisites
+- Home Assistant 2024.1.0 or higher
+- HACS (for easy integration installation)
 
-**Completed:**
-- ✅ Flask app structure, config management (dev/prod/test environments)
-- ✅ Database models (7 tables with full relationships and validation)
-- ✅ Database migrations (2 migrations including business logic fields)
-- ✅ **REST API (28 endpoints across 5 route modules)**
-- ✅ **Business logic layer (recurrence, instances, points, rewards)**
-- ✅ **Background jobs (5 scheduled jobs via APScheduler)**
-- ✅ **Webhook integration (8 event types to Home Assistant)**
-- ✅ **Comprehensive test suite (245 tests, 5,325+ lines of test code)**
-- ✅ **Web UI (13 templates, mobile-first responsive design)**
-- ✅ HA integration framework (manifest, config flow structure)
-- ✅ Development tooling (pytest, ruff, black, mypy, pre-commit)
-- ✅ Seed data generator with system user support
+### Install the Integration via HACS
 
-**Next Steps:**
-1. Complete HA integration (sensors, services, entities)
-2. Docker containerization for HA add-on
+1. Open HACS in Home Assistant
+2. Go to **Integrations**
+3. Click **+ Explore & Download Repositories**
+4. Add custom repository: `https://github.com/shaunadam/chorecontrol`
+5. Search for "ChoreControl" and install
+6. Restart Home Assistant
 
-See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation guide.
+### Install the Add-on
 
-- **[PROJECT_PLAN.md](PROJECT_PLAN.md)** - Comprehensive project plan with architecture, data model, and roadmap
-- **[BACKLOG.md](BACKLOG.md)** - Task backlog organized by phase
-- **[docs/architecture.md](docs/architecture.md)** - Architecture, technology decisions, and business logic
+1. Go to **Settings** → **Add-ons** → **Add-on Store**
+2. Click the menu (⋮) → **Repositories**
+3. Add: `https://github.com/shaunadam/chorecontrol`
+4. Find "ChoreControl" and click **Install**
+5. Start the add-on and enable **Start on boot**
+
+### Configure the Integration
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **+ Add Integration**
+3. Search for "ChoreControl"
+4. Enter the add-on URL (usually auto-detected)
+5. Configure update interval (default: 30 seconds)
+
+## Quick Start
+
+### 1. Create Users
+
+Open the ChoreControl sidebar in Home Assistant and add your family members:
+- Create parent accounts (can approve chores, manage rewards)
+- Create kid accounts (earn points, claim chores and rewards)
+
+### 2. Set Up Chores
+
+Create chores with:
+- Name and description
+- Point value
+- Recurrence pattern (one-time, daily, weekly, monthly)
+- Assignment (specific kids or shared)
+- Approval requirements
+
+### 3. Create Rewards
+
+Set up rewards kids can claim:
+- Name and description
+- Point cost
+- Optional cooldown period
+- Optional claim limits
+
+### 4. Set Up Dashboards
+
+Use the example dashboard configurations in [docs/examples/](docs/examples/) to create:
+- Kid dashboards (view chores, claim completion, see points)
+- Parent dashboards (approve chores, adjust points, overview)
 
 ## Documentation
 
-### For Users
-- Installation Guide (Coming soon)
-- User Manual (Coming soon)
-- FAQ (Coming soon)
-
-### For Developers
-- [Project Plan](PROJECT_PLAN.md) - Complete architectural overview
-- [Task Backlog](BACKLOG.md) - Implementation tasks
-- [Architecture & Decisions](docs/architecture.md) - Technology choices and business logic
-- [API Reference](docs/api-reference.md) - API endpoint documentation
-- Contributing Guide (Coming soon)
+- [Installation Guide](docs/installation.md) - Detailed setup instructions
+- [User Guide](docs/user-guide.md) - How to use ChoreControl
+- [API Reference](docs/api-reference.md) - REST API documentation
+- [Entity Reference](docs/entity-reference.md) - HA entity naming and attributes
+- [Dashboard Setup](docs/dashboard-setup.md) - Creating HA dashboards
+- [Integration Setup](docs/integration-setup.md) - Configuring the HA integration
+- [Architecture](docs/architecture.md) - Technical details and design decisions
+- [Development Guide](docs/development.md) - Contributing to ChoreControl
 
 ## Technology Stack
 
-**Backend (Add-on)** - Implemented ✅
+**Backend**
 - Python 3.11+
-- Flask 3.0+ with SQLAlchemy ORM
-- SQLite database with Alembic migrations
+- Flask with SQLAlchemy ORM
+- SQLite database
 - APScheduler for background jobs
-- Requests for webhook delivery
-- Comprehensive pytest test suite (245 tests)
+- Alembic for migrations
 
-**Planned**
-- Jinja2 + HTMX/Alpine.js (web UI)
-- Docker containerization
+**Integration**
+- Python custom component
+- aiohttp for async API calls
+- DataUpdateCoordinator pattern
 
-**Frontend (Integration)** - Framework Ready
-- Python 3.11+ (HA custom component)
-- Manifest and config flow structure in place
-- Ready for sensor/service implementation
+**Testing**
+- pytest with 245+ tests
+- Comprehensive coverage of business logic
 
-**Development** - Fully Configured ✅
-- pytest with fixtures and mocking (245 tests, 100% critical path coverage)
-- ruff for linting
-- black for formatting
-- mypy for type checking
-- pre-commit hooks
-- Git version control
+## Future Enhancements
 
-## Getting Started
-
-### Prerequisites
-- Home Assistant instance (2024.1.0+)
-- Basic understanding of HA add-ons and integrations
-- (For development) Python 3.11+, Docker
-
-### Installation
-
-Not yet available as a Home Assistant add-on. See Development Setup below to run locally.
-
-### Development Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/chorecontrol.git
-   cd chorecontrol
-   ```
-
-2. **Set up Python environment:**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install -r addon/requirements.txt
-   pip install -r addon/requirements-dev.txt
-   ```
-
-3. **Initialize the database:**
-   ```bash
-   cd addon
-   export FLASK_APP=app.py
-   export FLASK_ENV=development
-   flask db upgrade
-   ```
-
-4. **Seed test data:**
-   ```bash
-   python seed_db.py
-   # Creates: 2 parents, 2 kids, 5 chores, 4 rewards, sample instances
-   ```
-
-5. **Run the Flask app:**
-   ```bash
-   python app.py
-   # Server starts on http://localhost:8099
-   ```
-
-6. **Run tests:**
-   ```bash
-   pytest -v
-   # Runs 245 tests across 7 test modules
-   ```
-
-7. **Test API endpoints:**
-   ```bash
-   curl http://localhost:8099/health
-   curl -H "X-Ingress-User: test-parent-1" http://localhost:8099/api/user
-   ```
-
-For more details, see [NEXT_STEPS.md](NEXT_STEPS.md).
-
-## Roadmap
-
-### Phase 1: Core Backend ✅ COMPLETE
-- ✅ Database models and migrations
-- ✅ REST API (28 endpoints)
-- ✅ Business logic (recurrence, points, rewards)
-- ✅ Background jobs (5 scheduled tasks)
-- ✅ Webhook integration (8 event types)
-- ✅ Comprehensive test suite (245 tests)
-
-### Phase 2: Frontend & Integration (In Progress)
-- **Web UI** (Current Focus)
-  - Parent dashboard with approval queue
-  - Chore/reward management forms
-  - User management and points history
-  - Mobile-responsive design
-- **Home Assistant Integration**
-  - Sensor entities (points, pending approvals)
-  - Service calls (claim, approve, reject)
-  - Button entities for chore instances
-  - Event listeners for webhooks
-- **Docker Add-on**
-  - Dockerfile and build configuration
-  - Add-on manifest and documentation
-  - HA ingress configuration
-
-### Phase 3: Enhancements
+See [BACKLOG.md](BACKLOG.md) for planned features including:
 - Complex scheduling (cron-like patterns)
 - Photo proof of completion
 - Achievements and gamification
-- Advanced analytics
-- Custom Lovelace cards
+- Analytics and reporting
 - ICS calendar integration
-
-### Phase 4: Advanced Features
-- Multi-family support
-- Mobile app
 - Voice assistant integration
-- External calendar sync (Google, Apple)
 
-Full feature list in [PROJECT_PLAN.md](PROJECT_PLAN.md).
-
-## Comparison to Existing Solutions
+## Comparison to Alternatives
 
 ### vs kidschores-ha
-ChoreControl improves on [kidschores-ha](https://github.com/ad-ha/kidschores-ha) by:
-- Using proper database structure instead of entity-based storage
+ChoreControl improves on existing solutions by:
+- Using proper database storage instead of entity-based storage
 - Providing a dedicated admin UI via add-on
 - Offering more robust scheduling and workflow options
-- Better separation of concerns (add-on + integration architecture)
+- Better separation of concerns (add-on + integration)
 
 ### vs Skylight Chore Chart
-Inspired by [Skylight's chore features](https://myskylight.com/lp/chore-chart/), but:
-- Fully integrated with Home Assistant ecosystem
+- Fully integrated with Home Assistant
 - Self-hosted and private
 - Extensible via HA automations
 - Open source
 
 ## Contributing
 
-Contributions welcome! This project is in early stages, so now is a great time to get involved.
-
-### How to Contribute
-1. Review [PROJECT_PLAN.md](PROJECT_PLAN.md) to understand the vision
-2. Check [BACKLOG.md](BACKLOG.md) for available tasks
-3. Comment on issues or create new ones for discussion
-4. Submit PRs (once development begins)
+Contributions welcome! See [docs/development.md](docs/development.md) for setup instructions.
 
 ### Development Principles
 - Mobile-first design
@@ -249,26 +179,15 @@ Contributions welcome! This project is in early stages, so now is a great time t
 
 ## License
 
-MIT License (TBD - to be added once project structure is finalized)
+MIT License - See LICENSE file for details.
 
 ## Support
 
-- **Issues**: GitHub Issues (for bugs and feature requests)
-- **Discussions**: GitHub Discussions (for questions and ideas)
-- **Documentation**: See docs/ folder (coming soon)
+- **Issues**: [GitHub Issues](https://github.com/shaunadam/chorecontrol/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/shaunadam/chorecontrol/discussions)
 
 ## Acknowledgments
 
 - Inspired by [kidschores-ha](https://github.com/ad-ha/kidschores-ha)
 - UI/UX ideas from [Skylight Chore Chart](https://myskylight.com/lp/chore-chart/)
 - Built for the Home Assistant community
-
-## Contact
-
-Project maintained by [Your Name] - [Your Email/GitHub]
-
----
-
-**Status**: Backend Complete, Frontend In Progress
-**Last Updated**: 2025-11-19
-**Version**: 0.2.0-alpha (backend functional, UI pending)

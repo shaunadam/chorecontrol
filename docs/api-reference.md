@@ -4,13 +4,15 @@ This document provides a complete reference for the ChoreControl REST API.
 
 ## Base URL
 
-When running in Home Assistant, the API is available at:
-
+When running locally for development:
 ```
-http://homeassistant.local:PORT/api
+http://localhost:8099/api
 ```
 
-> **TODO**: Update with actual base URL when add-on is deployed
+When running as a Home Assistant add-on:
+```
+http://homeassistant.local:8099/api
+```
 
 ## Authentication
 
@@ -18,10 +20,12 @@ ChoreControl uses Home Assistant ingress authentication. All requests must inclu
 
 **Headers**:
 
-- `X-Ingress-User`: Home Assistant user ID
-- `X-Ingress-Name`: User's display name
+- `X-Ingress-User`: Home Assistant user ID (required)
 
-> **TODO**: Complete when authentication is implemented
+For local development/testing, you can set this header manually:
+```bash
+curl -H "X-Ingress-User: test-parent-1" http://localhost:8099/api/users
+```
 
 ## Response Format
 
@@ -78,8 +82,6 @@ Check if the API is running and database is accessible.
 }
 ```
 
-> **TODO**: Implement health check endpoint
-
 ---
 
 ## Users
@@ -112,8 +114,6 @@ Get a list of all users.
   ]
 }
 ```
-
-> **TODO**: Implement GET /api/users
 
 ### Create User
 
@@ -148,8 +148,6 @@ Create a new user.
 }
 ```
 
-> **TODO**: Implement POST /api/users
-
 ### Get User
 
 #### `GET /api/users/{id}`
@@ -157,8 +155,6 @@ Create a new user.
 Get details for a specific user.
 
 **Response**: Same as create user response
-
-> **TODO**: Implement GET /api/users/{id}
 
 ### Update User
 
@@ -169,8 +165,6 @@ Update user details.
 **Request Body**: Same as create user
 
 **Response**: Same as create user response
-
-> **TODO**: Implement PUT /api/users/{id}
 
 ### Get User Points
 
@@ -196,8 +190,6 @@ Get user's current points and recent history.
   }
 }
 ```
-
-> **TODO**: Implement GET /api/users/{id}/points
 
 ---
 
@@ -226,7 +218,7 @@ Get a list of all chores.
       "description": "Roll both bins to curb",
       "points": 5,
       "recurrence_type": "simple",
-      "recurrence_pattern": "{\"type\": \"weekly\", \"days\": [1]}",
+      "recurrence_pattern": "{\"type\": \"weekly\", \"days_of_week\": [1]}",
       "assignment_type": "individual",
       "requires_approval": true,
       "is_active": true,
@@ -235,8 +227,6 @@ Get a list of all chores.
   ]
 }
 ```
-
-> **TODO**: Implement GET /api/chores
 
 ### Create Chore
 
@@ -251,8 +241,7 @@ Create a new chore.
   "name": "Take out trash",
   "description": "Roll both bins to curb",
   "points": 5,
-  "recurrence_type": "simple",
-  "recurrence_pattern": "{\"type\": \"weekly\", \"days\": [1]}",
+  "recurrence_pattern": {"type": "weekly", "days_of_week": [1]},
   "assignment_type": "individual",
   "requires_approval": true,
   "assigned_users": [1, 2]
@@ -261,8 +250,6 @@ Create a new chore.
 
 **Response**: Same as list chores item
 
-> **TODO**: Implement POST /api/chores
-
 ### Get Chore
 
 #### `GET /api/chores/{id}`
@@ -270,8 +257,6 @@ Create a new chore.
 Get details for a specific chore.
 
 **Response**: Same as list chores item
-
-> **TODO**: Implement GET /api/chores/{id}
 
 ### Update Chore
 
@@ -282,8 +267,6 @@ Update chore details.
 **Request Body**: Same as create chore
 
 **Response**: Same as list chores item
-
-> **TODO**: Implement PUT /api/chores/{id}
 
 ### Delete Chore
 
@@ -300,7 +283,18 @@ Soft delete a chore (sets `is_active = false`).
 }
 ```
 
-> **TODO**: Implement DELETE /api/chores/{id}
+### Get Chore Instances
+
+#### `GET /api/chores/{id}/instances`
+
+Get all instances for a specific chore.
+
+**Query Parameters**:
+
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 20)
+
+**Response**: Paginated list of instances
 
 ---
 
@@ -314,8 +308,9 @@ Get a list of chore instances.
 
 **Query Parameters**:
 
-- `status` (optional): Filter by status (`assigned`, `claimed`, `approved`, `rejected`)
+- `status` (optional): Filter by status (`assigned`, `claimed`, `approved`, `rejected`, `missed`)
 - `user_id` (optional): Filter by assigned user
+- `chore_id` (optional): Filter by chore
 - `start_date` (optional): Filter instances due on or after this date
 - `end_date` (optional): Filter instances due on or before this date
 
@@ -333,13 +328,12 @@ Get a list of chore instances.
       "status": "claimed",
       "claimed_by": 1,
       "claimed_at": "2025-11-11T08:00:00Z",
+      "claimed_late": false,
       "points_awarded": null
     }
   ]
 }
 ```
-
-> **TODO**: Implement GET /api/instances
 
 ### Get Instance
 
@@ -348,8 +342,6 @@ Get a list of chore instances.
 Get details for a specific instance.
 
 **Response**: Same as list instances item
-
-> **TODO**: Implement GET /api/instances/{id}
 
 ### Claim Instance
 
@@ -366,18 +358,25 @@ Kid claims a chore as completed.
     "id": 1,
     "status": "claimed",
     "claimed_by": 1,
-    "claimed_at": "2025-11-11T08:00:00Z"
+    "claimed_at": "2025-11-11T08:00:00Z",
+    "claimed_late": false
   }
 }
 ```
-
-> **TODO**: Implement POST /api/instances/{id}/claim
 
 ### Approve Instance
 
 #### `POST /api/instances/{id}/approve`
 
 Parent approves a claimed chore.
+
+**Request Body** (optional):
+
+```json
+{
+  "points": 10
+}
+```
 
 **Response**:
 
@@ -393,8 +392,6 @@ Parent approves a claimed chore.
   }
 }
 ```
-
-> **TODO**: Implement POST /api/instances/{id}/approve
 
 ### Reject Instance
 
@@ -425,7 +422,37 @@ Parent rejects a claimed chore.
 }
 ```
 
-> **TODO**: Implement POST /api/instances/{id}/reject
+### Unclaim Instance
+
+#### `POST /api/instances/{id}/unclaim`
+
+Unclaim a previously claimed chore (returns to assigned status).
+
+**Response**: Updated instance data
+
+### Reassign Instance
+
+#### `POST /api/instances/{id}/reassign`
+
+Reassign an instance to a different user.
+
+**Request Body**:
+
+```json
+{
+  "user_id": 2
+}
+```
+
+**Response**: Updated instance data
+
+### Get Due Today
+
+#### `GET /api/instances/due-today`
+
+Get all instances due today.
+
+**Response**: List of instances
 
 ---
 
@@ -453,13 +480,12 @@ Get a list of all rewards.
       "description": "Go get ice cream together",
       "points_cost": 20,
       "cooldown_days": 7,
+      "requires_approval": false,
       "is_active": true
     }
   ]
 }
 ```
-
-> **TODO**: Implement GET /api/rewards
 
 ### Create Reward
 
@@ -474,13 +500,20 @@ Create a new reward.
   "name": "Ice cream trip",
   "description": "Go get ice cream together",
   "points_cost": 20,
-  "cooldown_days": 7
+  "cooldown_days": 7,
+  "requires_approval": false
 }
 ```
 
 **Response**: Same as list rewards item
 
-> **TODO**: Implement POST /api/rewards
+### Get Reward
+
+#### `GET /api/rewards/{id}`
+
+Get details for a specific reward.
+
+**Response**: Same as list rewards item
 
 ### Update Reward
 
@@ -491,8 +524,6 @@ Update reward details.
 **Request Body**: Same as create reward
 
 **Response**: Same as list rewards item
-
-> **TODO**: Implement PUT /api/rewards/{id}
 
 ### Delete Reward
 
@@ -508,8 +539,6 @@ Soft delete a reward.
   "message": "Reward deleted successfully"
 }
 ```
-
-> **TODO**: Implement DELETE /api/rewards/{id}
 
 ### Claim Reward
 
@@ -527,6 +556,7 @@ Kid claims a reward.
     "reward_id": 1,
     "user_id": 1,
     "points_spent": 20,
+    "status": "approved",
     "claimed_at": "2025-11-11T12:00:00Z"
   }
 }
@@ -538,7 +568,37 @@ Kid claims a reward.
 - `REWARD_ON_COOLDOWN`: Must wait before claiming again
 - `REWARD_LIMIT_REACHED`: Max claims exceeded
 
-> **TODO**: Implement POST /api/rewards/{id}/claim
+### Unclaim Reward
+
+#### `POST /api/rewards/claims/{claim_id}/unclaim`
+
+Unclaim a pending reward (refunds points).
+
+**Response**: Updated claim data
+
+### Approve Reward Claim
+
+#### `POST /api/rewards/claims/{claim_id}/approve`
+
+Approve a pending reward claim.
+
+**Response**: Updated claim data
+
+### Reject Reward Claim
+
+#### `POST /api/rewards/claims/{claim_id}/reject`
+
+Reject a pending reward claim (refunds points).
+
+**Request Body**:
+
+```json
+{
+  "reason": "Not available this week"
+}
+```
+
+**Response**: Updated claim data
 
 ---
 
@@ -574,8 +634,6 @@ Manually adjust a user's points (parent only).
 }
 ```
 
-> **TODO**: Implement POST /api/points/adjust
-
 ### Get Points History
 
 #### `GET /api/points/history/{user_id}`
@@ -604,87 +662,40 @@ Get points history for a user.
 }
 ```
 
-> **TODO**: Implement GET /api/points/history/{user_id}
-
----
-
-## Calendar
-
-### Get ICS Feed
-
-#### `GET /api/calendar/{user_id}.ics`
-
-Get ICS calendar feed for a user's chores.
-
-**Response**: ICS format calendar file
-
-```
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ChoreControl//EN
-...
-END:VCALENDAR
-```
-
-> **TODO**: Implement GET /api/calendar/{user_id}.ics
-
----
-
-## Dashboard
-
-### Kid Dashboard
-
-#### `GET /api/dashboard/kid/{user_id}`
-
-Get dashboard data for a kid.
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "Kid1",
-      "points": 45
-    },
-    "chores_today": [...],
-    "upcoming_chores": [...],
-    "available_rewards": [...],
-    "recent_activity": [...]
-  }
-}
-```
-
-> **TODO**: Implement GET /api/dashboard/kid/{user_id}
-
-### Parent Dashboard
-
-#### `GET /api/dashboard/parent`
-
-Get dashboard data for parents.
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "pending_approvals": [...],
-    "kids_overview": [...],
-    "recent_activity": [...]
-  }
-}
-```
-
-> **TODO**: Implement GET /api/dashboard/parent
-
 ---
 
 ## Webhooks and Events
 
-> **TODO**: Document webhook/event system when implemented
+ChoreControl sends webhook events to Home Assistant for real-time updates.
+
+### Event Types
+
+| Event | Description |
+|-------|-------------|
+| `chore_instance_created` | New instance created (due today or NULL) |
+| `chore_instance_claimed` | Kid claims a chore |
+| `chore_instance_approved` | Parent approves (or auto-approval) |
+| `chore_instance_rejected` | Parent rejects |
+| `points_awarded` | Any point change |
+| `reward_claimed` | Kid claims a reward |
+| `reward_approved` | Parent approves reward claim |
+| `reward_rejected` | Parent rejects or claim expires |
+
+### Event Format
+
+```json
+{
+  "event": "chore_instance_claimed",
+  "timestamp": "2025-01-15T14:30:00Z",
+  "data": {
+    "instance_id": 42,
+    "chore_name": "Take out trash",
+    "user_id": 3,
+    "username": "Emma",
+    "points": 5
+  }
+}
+```
 
 ---
 
@@ -701,60 +712,6 @@ Get dashboard data for parents.
 | `REWARD_LIMIT_REACHED` | Reward claim limit exceeded |
 | `INVALID_STATUS_TRANSITION` | Invalid chore status change |
 | `DATABASE_ERROR` | Database operation failed |
-
-> **TODO**: Add more error codes as they're defined
-
----
-
-## Rate Limiting
-
-> **TODO**: Document rate limiting when implemented
-
----
-
-## Versioning
-
-The API follows semantic versioning. Breaking changes will result in a new major version.
-
-Current version: `v1` (implicit in all endpoints)
-
-> **TODO**: Implement API versioning
-
----
-
-## OpenAPI / Swagger
-
-Interactive API documentation is available at:
-
-```
-http://homeassistant.local:PORT/docs
-```
-
-> **TODO**: Generate and link OpenAPI spec
-
----
-
-## Examples
-
-### Python Example
-
-```python
-import requests
-
-# TODO: Add Python example
-```
-
-### JavaScript Example
-
-```javascript
-// TODO: Add JavaScript example
-```
-
-### Home Assistant Automation Example
-
-```yaml
-# TODO: Add HA automation example using REST commands
-```
 
 ---
 
