@@ -68,6 +68,7 @@ if command -v gunicorn > /dev/null 2>&1; then
         --bind 0.0.0.0:8099 \
         --workers 2 \
         --timeout 120 \
+        --log-level info \
         --access-logfile - \
         --error-logfile - \
         app:app

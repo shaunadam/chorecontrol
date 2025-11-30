@@ -2,6 +2,13 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.4] - 2025-11-30
+
+### Fixed
+- Enable INFO level logging in Gunicorn to see application logs
+- This reveals HA API calls and user fetching diagnostics
+- Previously only WARNING+ logs were visible, hiding useful debug info
+
 ## [0.2.3] - 2025-11-30
 
 ### Fixed
