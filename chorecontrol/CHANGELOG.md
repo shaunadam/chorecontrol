@@ -2,6 +2,14 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.2] - 2025-11-30
+
+### Fixed
+- **CRITICAL**: Use `/usr/bin/with-contenv bashio` shebang in run.sh
+- This fixes SUPERVISOR_TOKEN not being available at runtime
+- Environment variables are now properly injected by s6-overlay
+- HA API integration now works correctly to fetch user information
+
 ## [0.2.1] - 2025-11-30
 
 ### Fixed
