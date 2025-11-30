@@ -41,8 +41,11 @@ def mapping_page():
     # Build combined list of HA users with their ChoreControl status
     ha_users_with_status = []
     for ha_user in ha_users_list:
-        ha_user_id = ha_user.get('id')
+        # Supervisor API returns 'username' as the unique identifier
+        # This matches what HA sends in X-Ingress-User header
+        ha_user_id = ha_user.get('username')
         if not ha_user_id:
+            logger.warning(f"HA user missing 'username' field: {ha_user}")
             continue
 
         # Skip system users

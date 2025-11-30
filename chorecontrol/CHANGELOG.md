@@ -2,6 +2,14 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.6] - 2025-11-30
+
+### Fixed
+- **CRITICAL**: Use 'username' instead of 'id' to identify HA users
+- Supervisor API returns 'username' as unique identifier, not 'id'
+- All 3 HA users were being skipped due to missing 'id' field
+- Now HA users should appear in user mapping UI
+
 ## [0.2.5] - 2025-11-30
 
 ### Fixed
