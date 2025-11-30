@@ -80,8 +80,12 @@ def get_all_ha_users() -> Optional[List[Dict[str, str]]]:
         HAAPIError: If API request fails
     """
     if not SUPERVISOR_TOKEN:
-        logger.warning("SUPERVISOR_TOKEN not available")
+        logger.warning("SUPERVISOR_TOKEN not available - HA API calls will fail")
+        logger.info("In Home Assistant addon environment, SUPERVISOR_TOKEN should be auto-provided")
         return None
+
+    logger.debug(f"SUPERVISOR_TOKEN is set, attempting HA API calls")
+    logger.debug(f"API Base URL: {SUPERVISOR_API_BASE}")
 
     try:
         headers = {
@@ -97,38 +101,47 @@ def get_all_ha_users() -> Optional[List[Dict[str, str]]]:
 
         for endpoint in endpoints:
             try:
-                logger.debug(f"Trying HA API endpoint: {endpoint}")
+                logger.info(f"Trying HA API endpoint: {endpoint}")
                 response = requests.get(endpoint, headers=headers, timeout=5)
+                logger.info(f"Response status: {response.status_code}")
 
                 if response.status_code == 200:
                     data = response.json()
+                    logger.debug(f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'list'}")
 
                     # Extract users list from response
                     if 'data' in data and 'users' in data['data']:
                         users = data['data']['users']
+                        logger.info(f"Found users in data.users structure")
                     elif 'users' in data:
                         users = data['users']
+                        logger.info(f"Found users in direct users structure")
                     elif isinstance(data, list):
                         users = data
+                        logger.info(f"Response is direct list of users")
                     else:
-                        logger.warning(f"Unexpected API response structure: {data}")
+                        logger.warning(f"Unexpected API response structure. Keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                        logger.debug(f"Full response: {data}")
                         continue
 
-                    logger.info(f"Successfully fetched {len(users)} HA users")
+                    logger.info(f"Successfully fetched {len(users)} HA users from {endpoint}")
+                    if users:
+                        logger.debug(f"Sample user structure: {users[0]}")
                     return users
 
                 elif response.status_code == 404:
-                    logger.debug(f"Endpoint not found: {endpoint}")
+                    logger.info(f"Endpoint not found (404): {endpoint}")
                     continue
                 else:
-                    logger.warning(f"API returned {response.status_code}: {response.text}")
+                    logger.warning(f"API returned {response.status_code}: {response.text[:200]}")
                     continue
 
             except requests.exceptions.RequestException as e:
-                logger.debug(f"Request to {endpoint} failed: {e}")
+                logger.warning(f"Request to {endpoint} failed: {type(e).__name__}: {e}")
                 continue
 
-        logger.warning("All HA API endpoints failed")
+        logger.error("All HA API endpoints failed - no users retrieved")
+        logger.info("Possible causes: wrong endpoint URLs, API structure changed, or network issues")
         return None
 
     except Exception as e:

@@ -3,7 +3,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from auth import parent_required, get_current_user
 from models import db, User
-from utils.ha_api import clear_ha_user_cache
+from utils.ha_api import clear_ha_user_cache, get_all_ha_users
+import logging
+
+logger = logging.getLogger(__name__)
 
 user_mapping_bp = Blueprint('user_mapping', __name__, url_prefix='/users')
 
@@ -15,13 +18,55 @@ def mapping_page():
     Display user mapping interface for assigning roles to HA users.
 
     Shows:
+    - All HA users from Home Assistant
     - Unmapped users prominently at top (need attention)
     - All users below for review/changes
+
+    If HA API is unavailable, falls back to showing only ChoreControl database users.
     """
-    # Get unmapped users (need attention)
+    # Fetch all HA users from the Supervisor API
+    ha_users_list = get_all_ha_users()
+    ha_api_available = ha_users_list is not None
+
+    if ha_api_available:
+        logger.info(f"Fetched {len(ha_users_list)} users from HA API")
+    else:
+        logger.warning("HA API unavailable, showing only existing ChoreControl users")
+        ha_users_list = []
+
+    # Get existing ChoreControl users by ha_user_id
+    all_cc_users = User.query.all()
+    cc_users_by_ha_id = {user.ha_user_id: user for user in all_cc_users}
+
+    # Build combined list of HA users with their ChoreControl status
+    ha_users_with_status = []
+    for ha_user in ha_users_list:
+        ha_user_id = ha_user.get('id')
+        if not ha_user_id:
+            continue
+
+        # Skip system users
+        if ha_user.get('system_generated', False):
+            continue
+
+        # Get corresponding ChoreControl user if exists
+        cc_user = cc_users_by_ha_id.get(ha_user_id)
+
+        ha_users_with_status.append({
+            'ha_user_id': ha_user_id,
+            'ha_username': ha_user.get('username', ha_user_id),
+            'ha_name': ha_user.get('name', ha_user.get('username', ha_user_id)),
+            'is_owner': ha_user.get('is_owner', False),
+            'is_active': ha_user.get('is_active', True),
+            'cc_user': cc_user,  # None if not yet created
+            'cc_role': cc_user.role if cc_user else None,
+            'cc_id': cc_user.id if cc_user else None
+        })
+
+    # Get unmapped users (need attention) - only from ChoreControl DB
     unmapped_users = User.query.filter_by(role='unmapped').order_by(User.created_at.desc()).all()
 
-    # Get all users grouped by role
+    # Get all users grouped by role - only from ChoreControl DB
     parents = User.query.filter_by(role='parent').order_by(User.username).all()
     kids = User.query.filter_by(role='kid').order_by(User.username).all()
     system_users = User.query.filter_by(role='system').order_by(User.username).all()
@@ -30,7 +75,9 @@ def mapping_page():
                          unmapped_users=unmapped_users,
                          parents=parents,
                          kids=kids,
-                         system_users=system_users)
+                         system_users=system_users,
+                         ha_users=ha_users_with_status,
+                         ha_api_available=ha_api_available)
 
 
 @user_mapping_bp.route('/mapping/update', methods=['POST'])
