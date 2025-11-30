@@ -1,0 +1,255 @@
+# ChoreControl Notification Automation Examples
+#
+# Copy these automations to your Home Assistant configuration
+# Customize the notify services to match your setup
+
+# ============================================================================
+# USER MAPPING CONFIGURATION
+# ============================================================================
+# Update these mappings to match your family's devices
+
+# Option 1: Define as variables in each automation (shown in examples below)
+# Option 2: Create input_text helpers for dynamic mapping
+# Option 3: Use customize in configuration.yaml
+
+# ============================================================================
+# CHORE NOTIFICATIONS
+# ============================================================================
+
+- alias: "ChoreControl: Parent Notification - Chore Claimed"
+  description: "Notify parent when any kid claims a chore for approval"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_claimed
+  action:
+    - service: notify.mobile_app_parent  # CUSTOMIZE: Change to your parent's device
+      data:
+        message: "{{ trigger.event.data.kid_name }} claimed: {{ trigger.event.data.chore_name }}"
+        title: "✋ Chore Claimed"
+        data:
+          tag: "chore_{{ trigger.event.data.instance_id }}"
+          group: "chorecontrol_approvals"
+
+- alias: "ChoreControl: Kid Notification - Chore Approved"
+  description: "Notify kid when their chore is approved"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_approved
+  variables:
+    # CUSTOMIZE: Map your kids to their notify services
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+      Charlie: notify.mobile_app_charlie
+
+    kid_name: "{{ trigger.event.data.kid_name }}"
+    notify_service: "{{ kid_notify_services.get(kid_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          Great job! You earned {{ trigger.event.data.points_awarded }} points
+          for "{{ trigger.event.data.chore_name }}".
+        title: "✅ Chore Approved!"
+        data:
+          tag: "chore_{{ trigger.event.data.instance_id }}"
+
+- alias: "ChoreControl: Kid Notification - Chore Rejected"
+  description: "Notify kid when chore needs to be redone"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_rejected
+  variables:
+    # CUSTOMIZE: Map your kids
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+
+    kid_name: "{{ trigger.event.data.kid_name }}"
+    notify_service: "{{ kid_notify_services.get(kid_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          Your chore "{{ trigger.event.data.chore_name }}" needs to be redone.
+          Reason: {{ trigger.event.data.rejection_reason }}
+        title: "❌ Chore Needs Work"
+        data:
+          tag: "chore_{{ trigger.event.data.instance_id }}"
+
+- alias: "ChoreControl: Kid Notification - New Chore Assigned"
+  description: "Notify kid when a new chore is assigned with due date"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_assigned
+  condition:
+    - condition: template
+      value_template: "{{ trigger.event.data.due_date is not none }}"
+  variables:
+    # CUSTOMIZE: Map your kids
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+
+    assignee_name: "{{ trigger.event.data.assignee_name }}"
+    notify_service: "{{ kid_notify_services.get(assignee_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          {{ trigger.event.data.chore_name }}
+          Due: {{ trigger.event.data.due_date | as_datetime | as_local | strftime('%b %d at %I:%M %p') }}
+        title: "📋 New Chore Assigned"
+        data:
+          tag: "chore_{{ trigger.event.data.instance_id }}"
+
+- alias: "ChoreControl: Kid Notification - Chore Overdue"
+  description: "Notify kid when they miss a chore deadline"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_missed
+  variables:
+    # CUSTOMIZE: Map your kids
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+
+    assignee_name: "{{ trigger.event.data.assignee_name }}"
+    notify_service: "{{ kid_notify_services.get(assignee_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          You missed: {{ trigger.event.data.chore_name }}
+          (Due: {{ trigger.event.data.due_date | as_datetime | as_local | strftime('%b %d at %I:%M %p') }})
+        title: "⏰ Missed Chore"
+        data:
+          tag: "chore_{{ trigger.event.data.instance_id }}"
+
+# ============================================================================
+# REWARD NOTIFICATIONS
+# ============================================================================
+
+- alias: "ChoreControl: Parent Notification - Reward Claimed"
+  description: "Notify parent when kid claims a reward"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_reward_claimed
+  action:
+    - service: notify.mobile_app_parent  # CUSTOMIZE
+      data:
+        message: >
+          {{ trigger.event.data.kid_name }} wants to claim:
+          {{ trigger.event.data.reward_name }}
+          ({{ trigger.event.data.points_cost }} points)
+        title: "🎁 Reward Claim"
+        data:
+          tag: "reward_{{ trigger.event.data.claim_id }}"
+          group: "chorecontrol_approvals"
+
+- alias: "ChoreControl: Kid Notification - Reward Approved"
+  description: "Notify kid when reward is approved"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_reward_approved
+  variables:
+    # CUSTOMIZE: Map your kids
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+
+    kid_name: "{{ trigger.event.data.kid_name }}"
+    notify_service: "{{ kid_notify_services.get(kid_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          Your reward "{{ trigger.event.data.reward_name }}" has been approved!
+        title: "🎉 Reward Approved!"
+        data:
+          tag: "reward_{{ trigger.event.data.claim_id }}"
+
+- alias: "ChoreControl: Kid Notification - Reward Rejected"
+  description: "Notify kid when reward claim is rejected"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_reward_rejected
+  variables:
+    # CUSTOMIZE: Map your kids
+    kid_notify_services:
+      Alice: notify.mobile_app_alice
+      Bob: notify.mobile_app_bob
+
+    kid_name: "{{ trigger.event.data.kid_name }}"
+    notify_service: "{{ kid_notify_services.get(kid_name, 'notify.persistent_notification') }}"
+  action:
+    - service: "{{ notify_service }}"
+      data:
+        message: >
+          Your reward claim "{{ trigger.event.data.reward_name }}" was not approved.
+          Reason: {{ trigger.event.data.rejection_reason }}
+        title: "Reward Not Approved"
+        data:
+          tag: "reward_{{ trigger.event.data.claim_id }}"
+
+# ============================================================================
+# DIGEST & REMINDERS
+# ============================================================================
+
+- alias: "ChoreControl: Parent Daily Digest"
+  description: "Send parent a daily summary of pending items"
+  trigger:
+    - platform: time
+      at: "20:00:00"  # CUSTOMIZE: Adjust time
+  condition:
+    - condition: or
+      conditions:
+        - condition: numeric_state
+          entity_id: sensor.chorecontrol_pending_approvals
+          above: 0
+        - condition: numeric_state
+          entity_id: sensor.chorecontrol_pending_rewards
+          above: 0
+  action:
+    - service: notify.mobile_app_parent  # CUSTOMIZE
+      data:
+        message: >
+          Pending: {{ states('sensor.chorecontrol_pending_approvals') }} chores,
+          {{ states('sensor.chorecontrol_pending_rewards') }} rewards
+        title: "ChoreControl Daily Digest"
+
+# ============================================================================
+# ADVANCED: CONDITIONAL NOTIFICATIONS
+# ============================================================================
+
+- alias: "ChoreControl: High Value Chore Completed"
+  description: "Celebrate when kid completes high-value chore (10+ points)"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_approved
+  condition:
+    - condition: template
+      value_template: "{{ trigger.event.data.points_awarded >= 10 }}"
+  action:
+    # Notify everyone!
+    - service: notify.family_group  # CUSTOMIZE
+      data:
+        message: >
+          🎉 {{ trigger.event.data.kid_name }} earned {{ trigger.event.data.points_awarded }}
+          points for {{ trigger.event.data.chore_name }}!
+        title: "Big Achievement!"
+
+- alias: "ChoreControl: Quiet Hours Filter"
+  description: "Only send chore claim notifications during waking hours"
+  trigger:
+    - platform: event
+      event_type: chorecontrol_chore_claimed
+  condition:
+    - condition: time
+      after: "07:00:00"  # CUSTOMIZE
+      before: "21:00:00"  # CUSTOMIZE
+  action:
+    - service: notify.mobile_app_parent  # CUSTOMIZE
+      data:
+        message: "{{ trigger.event.data.kid_name }} claimed a chore"
+        title: "Chore Claimed"

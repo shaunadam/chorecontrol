@@ -50,10 +50,16 @@
                     <span class="nav-icon">🎁</span>
                     <span class="nav-text">Rewards</span>
                 </a>
-                <a href="{{ url_for('ui.users_list') }}" class="nav-link {% if 'users' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('ui.users_list') }}" class="nav-link {% if request.endpoint == 'ui.users_list' or request.endpoint == 'ui.user_detail' %}active{% endif %}">
                     <span class="nav-icon">👥</span>
                     <span class="nav-text">Users</span>
                 </a>
+                {% if current_user and current_user.role == 'parent' %}
+                <a href="{{ url_for('user_mapping.mapping_page') }}" class="nav-link {% if request.endpoint == 'user_mapping.mapping_page' %}active{% endif %}">
+                    <span class="nav-icon">🔗</span>
+                    <span class="nav-text">User Mapping</span>
+                </a>
+                {% endif %}
             </nav>
         </header>
 

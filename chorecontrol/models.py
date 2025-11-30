@@ -40,7 +40,7 @@ class User(db.Model):
 
     # Constraints
     __table_args__ = (
-        CheckConstraint("role IN ('parent', 'kid', 'system')", name='check_user_role'),
+        CheckConstraint("role IN ('parent', 'kid', 'system', 'unmapped')", name='check_user_role'),
     )
 
     def __repr__(self):

@@ -561,11 +561,17 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     def test_requires_auth_nonexistent_user(self, client):
-        """Test requires_auth with HA user not in database."""
-        response = client.get('/api/users', headers={'X-Ingress-User': 'nonexistent-user'})
-        assert response.status_code == 401
-        data = response.get_json()
-        assert 'User not found in database' in data['message'] or 'Please create a user account first' in data['message']
+        """Test requires_auth with HA user not in database - auto-creates user."""
+        # With auto-create enabled, nonexistent HA users are created automatically
+        response = client.get('/api/users', headers={'X-Ingress-User': 'new-ha-user'})
+        # Should succeed now that user is auto-created
+        assert response.status_code == 200
+
+        # Verify user was auto-created with unmapped role
+        from models import User
+        user = User.query.filter_by(ha_user_id='new-ha-user').first()
+        assert user is not None
+        assert user.role == 'unmapped'
 
     def test_requires_parent_decorator(self, client, kid_user, parent_user):
         """Test that requires_parent decorator works correctly."""

@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}User Mapping - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="card-header mb-lg">
+    <h1 class="card-title">User Mapping</h1>
+    <form method="POST" action="{{ url_for('user_mapping.refresh_user_cache') }}" style="display: inline;">
+        <button type="submit" class="btn btn-outline">🔄 Refresh Cache</button>
+    </form>
+</div>
+
+<p class="mb-md">
+    Assign roles to Home Assistant users. Users auto-created from HA ingress start as "unmapped" and need role assignment.
+</p>
+
+<form method="POST" action="{{ url_for('user_mapping.update_mappings') }}">
+    <!-- Unmapped Users - Needs Attention -->
+    {% if unmapped_users %}
+    <div class="card mb-lg">
+        <div class="card-header">
+            <h2 class="card-title">⚠️ Unmapped Users ({{ unmapped_users|length }})</h2>
+            <span class="text-muted">These users need role assignment</span>
+        </div>
+        <div class="card-body">
+            <ul class="list">
+                {% for user in unmapped_users %}
+                <li class="list-item unmapped-item">
+                    <div class="list-item-header">
+                        <div class="list-item-title">
+                            <strong>{{ user.username }}</strong>
+                        </div>
+                        <span class="role-badge role-unmapped">unmapped</span>
+                    </div>
+
+                    <div class="list-item-meta">
+                        <strong>HA User ID:</strong> {{ user.ha_user_id }}
+                    </div>
+
+                    <div class="list-item-meta">
+                        <strong>Created:</strong> {{ user.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                    </div>
+
+                    <div class="list-item-actions">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" for="role_{{ user.id }}">Assign Role:</label>
+                            <select name="role_{{ user.id }}" id="role_{{ user.id }}" class="form-select role-select">
+                                <option value="unmapped" selected>Unmapped</option>
+                                <option value="parent">Parent</option>
+                                <option value="kid">Kid</option>
+                            </select>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Users - Grouped by Role -->
+    <div class="card mb-lg">
+        <div class="card-header">
+            <h2 class="card-title">All Users</h2>
+        </div>
+        <div class="card-body">
+            <!-- Parents -->
+            {% if parents %}
+            <div class="user-group mb-md">
+                <h3 class="user-group-title">Parents ({{ parents|length }})</h3>
+                <ul class="list">
+                    {% for user in parents %}
+                    <li class="list-item">
+                        <div class="list-item-header">
+                            <div class="list-item-title">
+                                <a href="{{ url_for('ui.user_detail', id=user.id) }}">{{ user.username }}</a>
+                            </div>
+                            <span class="role-badge role-parent">parent</span>
+                        </div>
+
+                        <div class="list-item-meta">
+                            <strong>HA User ID:</strong> {{ user.ha_user_id }}
+                        </div>
+
+                        <div class="list-item-actions">
+                            {% if user.ha_user_id.startswith('local-') %}
+                                <span class="text-muted">Local account (role locked)</span>
+                            {% else %}
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" for="role_{{ user.id }}">Change Role:</label>
+                                    <select name="role_{{ user.id }}" id="role_{{ user.id }}" class="form-select role-select">
+                                        <option value="parent" selected>Parent</option>
+                                        <option value="kid">Kid</option>
+                                        <option value="unmapped">Unmapped</option>
+                                    </select>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Kids -->
+            {% if kids %}
+            <div class="user-group mb-md">
+                <h3 class="user-group-title">Kids ({{ kids|length }})</h3>
+                <ul class="list">
+                    {% for user in kids %}
+                    <li class="list-item">
+                        <div class="list-item-header">
+                            <div class="list-item-title">
+                                <a href="{{ url_for('ui.user_detail', id=user.id) }}">{{ user.username }}</a>
+                            </div>
+                            <span class="role-badge role-kid">kid</span>
+                        </div>
+
+                        <div class="list-item-meta">
+                            <strong>HA User ID:</strong> {{ user.ha_user_id }}
+                        </div>
+
+                        <div class="list-item-meta">
+                            <strong>Points:</strong>
+                            <span class="points-badge">{{ user.points }}</span>
+                        </div>
+
+                        <div class="list-item-actions">
+                            {% if user.ha_user_id.startswith('local-') %}
+                                <span class="text-muted">Local account (role locked)</span>
+                            {% else %}
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" for="role_{{ user.id }}">Change Role:</label>
+                                    <select name="role_{{ user.id }}" id="role_{{ user.id }}" class="form-select role-select">
+                                        <option value="kid" selected>Kid</option>
+                                        <option value="parent">Parent</option>
+                                        <option value="unmapped">Unmapped</option>
+                                    </select>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- System Users -->
+            {% if system_users %}
+            <div class="user-group">
+                <h3 class="user-group-title">System ({{ system_users|length }})</h3>
+                <ul class="list">
+                    {% for user in system_users %}
+                    <li class="list-item">
+                        <div class="list-item-header">
+                            <div class="list-item-title">
+                                {{ user.username }}
+                            </div>
+                            <span class="role-badge role-system">system</span>
+                        </div>
+
+                        <div class="list-item-meta">
+                            <strong>HA User ID:</strong> {{ user.ha_user_id }}
+                        </div>
+
+                        <div class="list-item-actions">
+                            <span class="text-muted">System account (role locked)</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if not parents and not kids and not system_users %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <div class="empty-state-title">No mapped users</div>
+                    <p class="empty-state-text">When Home Assistant users access the addon, they'll appear here.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="flex-gap-sm">
+        <button type="submit" class="btn btn-primary btn-lg">💾 Save Changes</button>
+        <a href="{{ url_for('ui.users_list') }}" class="btn btn-secondary btn-lg">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.unmapped-item {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.user-group {
+    margin-bottom: 2rem;
+}
+
+.user-group-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.role-parent {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.role-kid {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.role-unmapped {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.role-system {
+    background-color: #e0e0e0;
+    color: #616161;
+}
+
+.points-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.role-select {
+    min-width: 150px;
+}
+
+.text-muted {
+    color: #757575;
+    font-style: italic;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Highlight changed dropdowns
+document.querySelectorAll('.role-select').forEach(select => {
+    const originalValue = select.value;
+    select.addEventListener('change', function() {
+        if (this.value !== originalValue) {
+            this.style.backgroundColor = '#fff3cd';
+            this.style.borderColor = '#ffc107';
+        } else {
+            this.style.backgroundColor = '';
+            this.style.borderColor = '';
+        }
+    });
+});
+
+// Confirm before saving if no changes made
+document.querySelector('form').addEventListener('submit', function(e) {
+    const changedSelects = Array.from(document.querySelectorAll('.role-select')).filter(select => {
+        return select.value !== select.querySelector('option[selected]')?.value;
+    });
+
+    if (changedSelects.length === 0) {
+        const proceed = confirm('No changes detected. Save anyway?');
+        if (!proceed) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,111 +1,102 @@
 # Next Steps
 
-## Current Milestone: First Deployment
+## Current Milestone: Home Assistant Integration ✅ COMPLETE
 
-**Goal**: Get ChoreControl running on a real Home Assistant instance with the add-on accessible via sidebar and the integration installed via HACS.
+**Goal**: Tighter Home Assistant integration with user mapping and notifications.
+
+All phases of HA user integration have been completed and tested!
 
 ---
 
-## Completed Development
+## Completed ✅
 
-The core application is complete and tested:
-
-- **Backend Add-on**: Flask app with 28 REST API endpoints, SQLite database, business logic, 5 background jobs, webhook integration, and full web UI (13 templates, mobile-responsive)
+### Core Application
+- **Backend Add-on**: Flask app with 28 REST API endpoints, SQLite database, business logic, 5 background jobs, webhook integration, and full web UI (13+ templates, mobile-responsive)
 - **HA Integration**: Sensors (global + per-kid), dynamic buttons, 8 services, config flow, coordinator, and webhook handling
-- **Test Suite**: 245 tests covering all critical functionality
-- **Documentation**: API reference, architecture, entity reference, dashboard examples
+- **Test Suite**: 295+ tests covering all critical functionality (including 50 new tests for user management and access control)
+- **Ingress Support**: Working with Home Assistant ingress authentication
+- **Database Migrations**: Alembic migrations functional with 'unmapped' role support
+- **Default Admin User**: admin:admin created on first run
+
+### HA User Integration (NEW ✅)
+- **Phase E**: Documentation updated to reflect current state
+- **Phase A**: Integration installation documentation complete
+- **Phase B**: Auto-create HA users with role='unmapped'
+  - HA Supervisor API client for fetching display names
+  - Auto-creation middleware on every request
+  - User mapping UI for role assignment
+  - Comprehensive test coverage (17 tests)
+- **Phase C**: Access control implementation
+  - Parent-only access to addon UI
+  - Beautiful access_restricted.html for kids/unmapped users
+  - API routes remain accessible for HA integration
+  - Comprehensive test coverage (33 tests)
+- **Phase D**: Notification architecture documented
+  - Complete notification guide with examples
+  - Example automation templates
+  - Event payload reference
 
 ---
 
-## Current Issue: 404 on Home Assistant Ingress Access
+## Ready for Production Testing
 
-**Status**: Add-on builds and starts successfully, but accessing via Home Assistant shows 404.
+The addon is now feature-complete for initial deployment:
 
-**Symptoms**:
-- Local access at `localhost:8099` works fine
-- Add-on installs and starts in Home Assistant
-- Logs show `302` redirects for all requests to `/`
-- Browser ends up at 404 after redirect
+### What's Ready
+✅ User auto-creation from HA ingress
+✅ User role mapping interface
+✅ Access control (parent-only UI, kid lockout)
+✅ Comprehensive test coverage (295+ tests)
+✅ Documentation (installation, user management, notifications)
+✅ Example notification automations
 
-**Root Cause**: Flask's `url_for()` generates URLs without the Home Assistant ingress path prefix.
+### Testing Checklist
 
-When Home Assistant proxies a request from `/api/hassio_ingress/c1f18b53_chorecontrol/` to the app:
-1. HA strips the ingress prefix and forwards to `http://addon:8099/`
-2. App generates redirect with `url_for('ui.dashboard')` → returns `/`
-3. Browser redirects to `/` (not `/api/hassio_ingress/.../`)
-4. HA doesn't recognize `/` and returns 404
+#### 1. Add-on Installation ✅
+- [x] Docker container builds successfully
+- [x] Runs on Home Assistant with ingress
+- [x] Database migrations apply correctly
+- [x] Default admin user created
+- [x] Web UI accessible via HA sidebar
 
-**Fix Required**: Configure Flask to understand the ingress base path using `SCRIPT_NAME` or middleware.
-
-### Fix: Add Ingress Path Support
-
-Add middleware in `app.py` to handle the `X-Ingress-Path` header from Home Assistant:
-
-```python
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-def create_app():
-    app = Flask(__name__)
-
-    # ... existing config ...
-
-    # Add reverse proxy support
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-
-    @app.before_request
-    def set_ingress_path():
-        """Set SCRIPT_NAME from X-Ingress-Path header for correct URL generation."""
-        ingress_path = request.headers.get('X-Ingress-Path', '')
-        if ingress_path:
-            request.environ['SCRIPT_NAME'] = ingress_path
-            # Remove trailing slash to avoid double slashes
-            if request.environ.get('PATH_INFO', '').startswith(ingress_path):
-                request.environ['PATH_INFO'] = request.environ['PATH_INFO'][len(ingress_path):]
-```
-
-This makes `url_for()` generate URLs with the correct ingress prefix.
-
-**Also fix**: Hardcoded `/health` link in `templates/base.html:77` - change to `{{ url_for('ui.health') }}` or similar.
-
----
-
-## Deployment Tasks
-
-### 1. Create Docker Add-on Package ✅
-
-The add-on Docker containerization is complete:
-
-- [x] `Dockerfile` - Alpine-based Python container
-- [x] `config.yaml` - Home Assistant add-on configuration
-- [x] `run.sh` - Container startup script
-
-### 2. Test Add-on Installation (In Progress)
-
-- [x] Build and test Docker image locally
-- [x] Install add-on on Home Assistant instance
-- [ ] **Fix ingress path handling** (see above)
-- [ ] Verify web UI accessible via sidebar
-- [ ] Confirm database initializes correctly
-- [ ] Test all API endpoints through ingress
-
-### 3. Test Integration Installation
-
+#### 2. Integration Installation
 - [ ] Copy `custom_components/chorecontrol/` to HA config
 - [ ] Restart Home Assistant
 - [ ] Add integration via Settings → Devices & Services
-- [ ] Verify sensors, buttons, and services appear
-- [ ] Test service calls (claim, approve, reject, etc.)
-- [ ] Confirm webhook events are received
+- [ ] Verify sensors appear
+- [ ] Verify buttons appear
+- [ ] Test service calls
+- [ ] Confirm webhook events fire
 
-### 4. End-to-End Testing
+#### 3. User Management Testing
+- [ ] Access addon as HA user (auto-creates with role='unmapped')
+- [ ] Verify unmapped user sees "needs mapping" message
+- [ ] Login as admin (admin:admin)
+- [ ] Navigate to User Mapping page
+- [ ] Assign roles to HA users (parent/kid)
+- [ ] Verify parent can access addon UI
+- [ ] Verify kid sees lockout page with friendly message
+- [ ] Test cache refresh functionality
 
-- [ ] Create users (parent, kids) via web UI
-- [ ] Create chores with different recurrence patterns
-- [ ] Create rewards
-- [ ] Test full workflow: assign → claim → approve → points awarded
-- [ ] Verify HA sensors update correctly
-- [ ] Test claim buttons appear/disappear dynamically
-- [ ] Confirm notifications fire for events
+#### 4. End-to-End Workflow
+- [ ] Parent creates chore via addon
+- [ ] Kid sees chore in HA sensors
+- [ ] Kid claims chore via HA button
+- [ ] Parent sees claim notification (if automation setup)
+- [ ] Parent approves chore via addon
+- [ ] Kid receives approval notification (if automation setup)
+- [ ] Points updated in sensor
+- [ ] Kid claims reward
+- [ ] Parent approves reward
+- [ ] Test rejection workflow
+
+#### 5. Notification Testing
+- [ ] Copy example automations to HA
+- [ ] Customize notify services for your family
+- [ ] Test each event type manually
+- [ ] Verify notifications sent to correct users
+- [ ] Test quiet hours filtering
+- [ ] Test digest automation
 
 ---
 
@@ -114,11 +105,12 @@ The add-on Docker containerization is complete:
 ### Running the Add-on Locally
 
 ```bash
-cd addon
+cd chorecontrol
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
+export PYTHONPATH=/path/to/chorecontrol/chorecontrol
 export FLASK_APP=app.py
 export FLASK_ENV=development
 flask db upgrade
@@ -134,35 +126,93 @@ Copy the integration to your HA config:
 cp -r custom_components/chorecontrol /path/to/ha/config/custom_components/
 ```
 
-Restart Home Assistant and add the integration via the UI.
+Restart Home Assistant and add the integration via Settings → Devices & Services.
 
 ### Running Tests
 
 ```bash
-cd addon
-pytest -v
-# Runs 245 tests
+cd chorecontrol
+PYTHONPATH=/path/to/chorecontrol/chorecontrol pytest -v
+# Runs 295+ tests
 ```
 
----
-
-## After First Deployment
-
-Once the add-on and integration are working together:
-
-1. **Dashboard Testing** - Try the example dashboards in `docs/examples/`
-2. **Bug Fixes** - Address any issues discovered during real-world use
-3. **Enhancements** - Prioritize items from `BACKLOG.md` based on user feedback
+**New test files**:
+- `tests/test_user_mapping.py` - Auto-create and mapping functionality (17 tests)
+- `tests/test_access_control.py` - Role-based access control (33 tests)
 
 ---
 
-## Reference
+## Future Enhancements
 
-- [Project Plan](PROJECT_PLAN.md) - Architecture and data model
+See [BACKLOG.md](BACKLOG.md) for prioritized feature backlog including:
+- ICS calendar feed
+- Photo proof of completion
+- Bonus points for streaks
+- Custom Lovelace card
+- Analytics and reporting
+- Built-in notification service mapping UI
+- Two-factor authentication for parents
+
+---
+
+## Reference Documentation
+
+### User Guides
+- [Installation Guide](docs/installation.md) - Deployment instructions
+- [User Management](docs/USER_MANAGEMENT.md) - HA user mapping approach
+- [Notifications](docs/notifications.md) - Notification architecture and examples ✨ NEW
+- [Integration Setup](docs/integration-setup.md) - HA integration configuration
+
+### Technical Reference
+- [Project Plan](PROJECT_PLAN.md) - Full architecture and data model
 - [API Reference](docs/api-reference.md) - REST API documentation
 - [Entity Reference](docs/entity-reference.md) - HA entities and services
 - [Development Guide](docs/development.md) - Contributing guide
 
+### Examples
+- [Notification Automations](examples/notification-automations.yaml) - Ready-to-use HA automations ✨ NEW
+
 ---
 
-**Last Updated**: 2025-11-22
+## Implementation Summary
+
+### What Was Built (This Session)
+
+**Database**:
+- Migration `7b8c9d4e5f6a` - Added 'unmapped' role to CHECK constraint
+
+**Backend**:
+- `utils/ha_api.py` - HA Supervisor API client (~200 lines)
+- `auth.py` - `auto_create_unmapped_user()` function
+- `auth.py` - Updated `ha_auth_required` decorator with access control
+- `app.py` - Middleware integration for auto-create
+
+**Routes**:
+- `routes/user_mapping.py` - User mapping UI routes (3 endpoints)
+
+**Templates**:
+- `templates/users/mapping.html` - User mapping interface
+- `templates/access_restricted.html` - Beautiful lockout page for kids/unmapped
+
+**Tests**:
+- `tests/test_user_mapping.py` - 17 tests
+- `tests/test_access_control.py` - 33 tests
+- All 50 tests passing ✅
+
+**Documentation**:
+- Updated: `NEXT_STEPS.md`, `README.md`, `docs/installation.md`, `docs/USER_MANAGEMENT.md`
+- NEW: `docs/notifications.md` - Complete notification guide
+- NEW: `examples/notification-automations.yaml` - 15+ ready-to-use automations
+
+### Files Changed
+- 13 files modified
+- 6 files created
+- 1 database migration applied
+- 50 tests added
+- ~1500 lines of code and documentation
+
+---
+
+**Status**: ✅ **READY FOR PRODUCTION TESTING**
+
+**Last Updated**: 2025-11-29

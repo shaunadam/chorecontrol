@@ -94,7 +94,7 @@ def register_middleware(app):
     @app.before_request
     def extract_ha_user():
         """Extract Home Assistant user from ingress headers or session."""
-        from auth import get_session_user_id
+        from auth import get_session_user_id, auto_create_unmapped_user
         from models import User
 
         ha_user = request.headers.get('X-Ingress-User')
@@ -105,6 +105,10 @@ def register_middleware(app):
             # - No HA header at all (g.ha_user = None)
             # - HA header present but user not in database (g.ha_user set, but user lookup fails)
             g.ha_user = ha_user
+
+            # Auto-create user if doesn't exist (with role='unmapped')
+            # This is safe to call on every request - it returns None if user exists
+            auto_create_unmapped_user(ha_user)
         else:
             # No HA header - check session for local login
             session_user_id = get_session_user_id()
@@ -122,12 +126,16 @@ def register_routes(app):
     from routes.instances import instances_bp
     from routes.rewards import rewards_bp
     from routes.points import points_bp
+    from routes.user_mapping import user_mapping_bp
 
     # Register auth blueprint first (handles login/logout)
     app.register_blueprint(auth_bp)
 
     # Register UI blueprint (so it handles the root route)
     app.register_blueprint(ui_bp)
+
+    # Register user mapping blueprint (UI for role assignment)
+    app.register_blueprint(user_mapping_bp)
 
     # Register API blueprints
     app.register_blueprint(users_bp)

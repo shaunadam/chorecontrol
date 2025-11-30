@@ -1,216 +1,267 @@
 # ChoreControl Installation Guide
 
-This guide will help you install and configure ChoreControl in your Home Assistant instance.
+Complete installation instructions for ChoreControl in Home Assistant.
 
 ## Prerequisites
 
-- Home Assistant OS, Supervised, or Container installation
-- Python 3.11 or higher (for add-on)
+- Home Assistant OS 2024.1.0 or higher
+- Supervisor access (for add-on installation)
+- Terminal/SSH access (for manual installation)
 - Basic familiarity with Home Assistant configuration
 
-## Installation Methods
+## Installation Overview
 
-### Method 1: HACS (Recommended)
+ChoreControl requires installing two components:
+1. **Add-on** - Backend service with web UI
+2. **Integration** - HA entities, sensors, and services
 
-> **TODO**: Complete when HACS repository is set up
+**Note:** HACS support and public repository coming soon. For now, manual installation required.
 
-1. Open HACS in your Home Assistant instance
-2. Go to "Integrations"
-3. Click the "+" button
-4. Search for "ChoreControl"
-5. Click "Install"
+## Part 1: Install the Add-on
 
-### Method 2: Manual Installation
+### Option A: Local Add-on (Development)
 
-#### Step 1: Install the Add-on
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/shaunadam/chorecontrol.git
+   cd chorecontrol
+   ```
 
-> **TODO**: Complete when add-on is ready for distribution
+2. **Copy to HA add-ons directory**:
+   ```bash
+   # For HA OS / Supervised
+   cp -r chorecontrol/addon /usr/share/hassio/addons/local/chorecontrol
+
+   # Or via Samba/SSH, copy to:
+   # \\homeassistant\addons\chorecontrol\
+   ```
+
+3. **Restart Home Assistant** to detect the new local add-on
+
+4. **Install the add-on**:
+   - Go to **Settings** → **Add-ons**
+   - Look under "Local Add-ons"
+   - Find "ChoreControl"
+   - Click **Install**
+
+5. **Start the add-on**:
+   - Click **Start**
+   - Enable **Start on boot**
+   - Enable **Watchdog** (recommended)
+
+6. **Verify installation**:
+   - Check add-on logs for "Running on http://0.0.0.0:8099"
+   - Click "Open Web UI" or access via HA sidebar
+
+### Option B: Repository Add-on (Coming Soon)
+
+When published to add-on repository:
 
 1. Navigate to **Settings** → **Add-ons** → **Add-on Store**
-2. Click the menu (three dots) in the top right
-3. Select "Repositories"
-4. Add this repository URL: `https://github.com/shaunadam/chorecontrol`
-5. Find "ChoreControl" in the list
-6. Click "Install"
-7. Wait for installation to complete
-8. Click "Start"
-9. Enable "Start on boot" and "Watchdog"
+2. Click menu (⋮) → **Repositories**
+3. Add: `https://github.com/shaunadam/chorecontrol`
+4. Find "ChoreControl" and click **Install**
 
-#### Step 2: Install the Integration
+## Part 2: Install the Integration
 
-> **TODO**: Complete when integration is ready
+### Manual Installation
 
-1. Copy the `custom_components/chorecontrol` directory to your Home Assistant `config/custom_components/` folder
-2. Restart Home Assistant
-3. Navigate to **Settings** → **Devices & Services**
-4. Click "+ Add Integration"
-5. Search for "ChoreControl"
-6. Follow the configuration steps
+1. **Copy integration files**:
+   ```bash
+   # Via terminal/SSH
+   cd /config
+   mkdir -p custom_components
+   cp -r /path/to/chorecontrol/custom_components/chorecontrol custom_components/
 
-## Initial Configuration
+   # Or via Samba, copy to:
+   # \\homeassistant\config\custom_components\chorecontrol\
+   ```
 
-### Add-on Configuration
+2. **Restart Home Assistant**:
+   - **Settings** → **System** → **Restart**
+   - Wait for restart to complete
 
-> **TODO**: Complete when add-on config options are implemented
+3. **Add the integration**:
+   - Go to **Settings** → **Devices & Services**
+   - Click **+ Add Integration**
+   - Search for "ChoreControl"
+   - Click to configure
 
-The add-on can be configured via the Configuration tab in the add-on UI.
+4. **Configure integration**:
+   - **Add-on URL**: `http://chorecontrol` (auto-detected for add-on)
+   - **Scan Interval**: 30 seconds (recommended)
+   - Click **Submit**
 
-Available options:
-
-- **Database Path**: Path to SQLite database (default: `/data/chorecontrol.db`)
-- **Log Level**: Logging verbosity (default: `info`)
-- **Port**: Internal port for the web UI (default: `5000`)
-
-Example configuration:
-
-```yaml
-database_path: /data/chorecontrol.db
-log_level: info
-port: 5000
-```
-
-### Integration Configuration
-
-> **TODO**: Complete when integration config flow is implemented
-
-1. Enter the add-on URL (usually auto-detected)
-2. Configure the update interval (default: 30 seconds)
-3. Map Home Assistant users to roles (parent or kid)
+5. **Verify integration**:
+   - Check **Developer Tools** → **States**
+   - Filter for "chorecontrol"
+   - Verify `binary_sensor.chorecontrol_api_connected` shows "on"
 
 ## First-Time Setup
 
-### 1. Create Users
+### Step 1: Initial Login
 
-> **TODO**: Complete when user management is implemented
+1. **Access the addon**:
+   - Click ChoreControl in HA sidebar
+   - Or navigate to add-on and click "Open Web UI"
 
-1. Open the ChoreControl sidebar in Home Assistant
-2. Navigate to **Kids** section
-3. Click "Add Kid"
-4. Map each Home Assistant user to a ChoreControl user
-5. Assign roles (parent or kid)
+2. **Login with default credentials**:
+   ```
+   Username: admin
+   Password: admin
+   ```
 
-### 2. Create Your First Chore
+3. **Important**: Change this password immediately via User settings
 
-> **TODO**: Complete when chore management is implemented
+### Step 2: User Mapping
+
+ChoreControl auto-discovers Home Assistant users:
+
+1. **Have family members access the addon**:
+   - Each HA user who accesses gets auto-created
+   - Initial role: 'unmapped' (needs assignment)
+
+2. **Map users to roles**:
+   - Login as admin/parent
+   - Navigate to **Users** → **Mapping**
+   - Assign each unmapped user to:
+     - **parent** - Full addon access, can approve chores
+     - **kid** - Locked out of addon, uses HA dashboards only
+
+3. **Save changes**
+
+See [User Management Guide](USER_MANAGEMENT.md) for detailed information.
+
+### Step 3: Create Chores
 
 1. Navigate to **Chores** section
-2. Click "New Chore"
+2. Click **New Chore**
 3. Fill in the form:
-   - Name: e.g., "Take out trash"
-   - Description: e.g., "Roll bins to curb on Monday night"
-   - Points: e.g., 5
-   - Recurrence: e.g., Weekly on Mondays
-   - Assigned to: Select kid(s)
-4. Click "Save"
+   - **Name**: e.g., "Take out trash"
+   - **Description**: e.g., "Roll bins to curb Monday night"
+   - **Points**: e.g., 5
+   - **Recurrence**: Daily, Weekly, Monthly, or One-time
+   - **Assignment**: Specific kid(s) or shared (first to claim)
+   - **Requires Approval**: Yes/No
+4. Click **Create**
 
-### 3. Create Rewards
-
-> **TODO**: Complete when reward management is implemented
+### Step 4: Create Rewards
 
 1. Navigate to **Rewards** section
-2. Click "New Reward"
-3. Fill in the form:
-   - Name: e.g., "Ice cream trip"
-   - Description: e.g., "Go get ice cream together"
-   - Points cost: e.g., 20
-   - Optional: Set cooldown period
-4. Click "Save"
+2. Click **New Reward**
+3. Fill in:
+   - **Name**: e.g., "Ice cream trip"
+   - **Description**: e.g., "Family trip to ice cream shop"
+   - **Points Cost**: e.g., 20
+   - **Cooldown**: Optional (days between claims)
+   - **Max Claims**: Optional (total or per-kid limits)
+4. Click **Create**
 
-### 4. Set Up Dashboards
+### Step 5: Set Up HA Dashboards
 
-> **TODO**: Complete when dashboard examples are ready
+Create dashboards for kids to interact with chores:
 
-See the [User Guide](user-guide.md) for dashboard configuration examples.
+1. **Copy example dashboards** from [docs/examples/](examples/)
+2. **Customize** for your family
+3. **Add to HA** via dashboard editor
+
+See [Dashboard Setup Guide](dashboard-setup.md) for examples.
+
+## Verification Checklist
+
+After installation, verify:
+
+- [ ] Add-on starts successfully
+- [ ] Web UI accessible via HA sidebar
+- [ ] Database migrations applied (check logs)
+- [ ] Default admin user created
+- [ ] Integration shows in Devices & Services
+- [ ] `binary_sensor.chorecontrol_api_connected` is "on"
+- [ ] Global sensors appear (pending_approvals, total_kids, etc.)
+- [ ] HA users auto-create when accessing addon
+- [ ] User mapping interface works
+- [ ] Can create chores and rewards
+- [ ] Services available in Developer Tools → Services
 
 ## Troubleshooting
 
-### Add-on won't start
+### Add-on Won't Start
 
-> **TODO**: Add common troubleshooting steps
+**Check logs**:
+```bash
+ha addons logs chorecontrol
+```
 
-- Check the add-on logs for errors
-- Verify database file permissions
-- Ensure no port conflicts
+**Common issues**:
+- Port 8099 already in use
+- Database permissions
+- Missing dependencies
 
-### Integration not discovered
+**Solutions**:
+- Stop conflicting services
+- Check `/data` permissions
+- Restart add-on
 
-> **TODO**: Add troubleshooting steps
+### Integration Not Found
 
-- Restart Home Assistant after copying integration files
-- Check Home Assistant logs for errors
-- Verify integration files are in correct directory
+**Symptoms**: Can't find "ChoreControl" in Add Integration
 
-### Database errors
+**Solutions**:
+- Verify files in `/config/custom_components/chorecontrol/`
+- Check `manifest.json` exists
+- Clear browser cache
+- Restart Home Assistant
+- Check logs for errors
 
-> **TODO**: Add database troubleshooting
+### API Connection Failed
 
-- Check database file permissions
-- Verify database migrations have run
-- Restore from backup if corrupted
+**Symptoms**: `binary_sensor.chorecontrol_api_connected` shows "off"
 
-## Upgrading
+**Solutions**:
+- Verify add-on is running
+- Check add-on URL in integration config
+- Try `http://chorecontrol` or `http://localhost:8099`
+- Review add-on logs for errors
+- Verify network connectivity
 
-### Upgrading the Add-on
+### Users Not Auto-Creating
 
-> **TODO**: Complete when versioning is implemented
+**Symptoms**: HA users don't appear in ChoreControl
 
-1. Go to the add-on page
-2. Click "Update" if available
-3. Review changelog
-4. Click "Update" to confirm
-5. Restart the add-on
+**Solutions**:
+- Ensure users actually accessed the addon (not just HA)
+- Check add-on logs for auto-create messages
+- Verify database connectivity
+- Manually create users via Users page
 
-### Upgrading the Integration
+### Can't Login with admin:admin
 
-> **TODO**: Complete when versioning is implemented
+**Symptoms**: Default credentials rejected
 
-1. Update the files in `custom_components/chorecontrol/`
-2. Restart Home Assistant
-3. Check for any breaking changes in the changelog
+**Possible causes**:
+- Password was changed
+- Database not initialized
+- Admin user not created
 
-## Uninstallation
-
-### Removing the Integration
-
-1. Go to **Settings** → **Devices & Services**
-2. Find ChoreControl
-3. Click the menu (three dots)
-4. Select "Delete"
-
-### Removing the Add-on
-
-1. Stop the add-on
-2. Click "Uninstall"
-3. Confirm deletion
-
-**Note**: Your data will remain in the database file unless you manually delete it.
-
-## Backup and Restore
-
-### Backing Up
-
-> **TODO**: Complete when backup procedures are defined
-
-1. Stop the add-on
-2. Copy `/addon/data/chorecontrol.db` to a safe location
-3. Restart the add-on
-
-### Restoring
-
-> **TODO**: Complete when backup procedures are defined
-
-1. Stop the add-on
-2. Replace `/addon/data/chorecontrol.db` with backup file
-3. Restart the add-on
+**Solutions**:
+- Check add-on logs for "Created default admin user"
+- Verify database file exists in `/data/`
+- Reset database (caution: loses all data)
 
 ## Next Steps
 
-- Read the [User Guide](user-guide.md) to learn how to use ChoreControl
-- Check out the [API Reference](api-reference.md) for integration details
-- Join our community for support and feature requests
+- [User Management Guide](USER_MANAGEMENT.md) - Understanding roles and mapping
+- [Integration Setup](integration-setup.md) - Advanced integration configuration
+- [Dashboard Setup](dashboard-setup.md) - Creating kid and parent dashboards
+- [User Guide](user-guide.md) - Daily usage instructions
 
-## Getting Help
+## Support
 
-- **Documentation**: [https://github.com/shaunadam/chorecontrol/docs](https://github.com/shaunadam/chorecontrol/docs)
-- **Issues**: [https://github.com/shaunadam/chorecontrol/issues](https://github.com/shaunadam/chorecontrol/issues)
-- **Discussions**: [https://github.com/shaunadam/chorecontrol/discussions](https://github.com/shaunadam/chorecontrol/discussions)
+For issues and questions:
+- GitHub Issues: https://github.com/shaunadam/chorecontrol/issues
+- Documentation: See [docs/](.) directory
+- Logs: Add-on logs and Home Assistant logs
+
+---
+
+**Last Updated**: 2025-11-29

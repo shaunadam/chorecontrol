@@ -54,42 +54,55 @@ ChoreControl consists of two components:
 
 ### Prerequisites
 - Home Assistant 2024.1.0 or higher
-- HACS (for easy integration installation)
+- Supervisor access (for add-on installation)
 
-### Install the Integration via HACS
+### Quick Start
 
-1. Open HACS in Home Assistant
-2. Go to **Integrations**
-3. Click **+ Explore & Download Repositories**
-4. Add custom repository: `https://github.com/shaunadam/chorecontrol`
-5. Search for "ChoreControl" and install
-6. Restart Home Assistant
+**Note:** ChoreControl is currently in development. HACS integration and add-on repository publishing coming soon.
 
-### Install the Add-on
+#### 1. Install the Add-on (Manual)
 
-1. Go to **Settings** → **Add-ons** → **Add-on Store**
-2. Click the menu (⋮) → **Repositories**
-3. Add: `https://github.com/shaunadam/chorecontrol`
-4. Find "ChoreControl" and click **Install**
+For now, install as a local add-on:
+
+1. Clone or download this repository
+2. Copy the `addon` directory to your HA add-ons folder
+3. Restart Home Assistant
+4. Install from **Settings** → **Add-ons** → **Local Add-ons**
 5. Start the add-on and enable **Start on boot**
+6. Access via HA sidebar
 
-### Configure the Integration
+#### 2. Install the Integration (Manual)
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **+ Add Integration**
-3. Search for "ChoreControl"
-4. Enter the add-on URL (usually auto-detected)
+1. Copy `custom_components/chorecontrol` to your HA config:
+   ```bash
+   cp -r custom_components/chorecontrol /config/custom_components/
+   ```
+2. Restart Home Assistant
+3. Go to **Settings** → **Devices & Services** → **Add Integration**
+4. Search for "ChoreControl"
+4. Enter the add-on URL: `http://chorecontrol` (or auto-detected)
 5. Configure update interval (default: 30 seconds)
+
+See [docs/installation.md](docs/installation.md) for detailed instructions.
 
 ## Quick Start
 
-### 1. Create Users
+### 1. First Login
 
-Open the ChoreControl sidebar in Home Assistant and add your family members:
-- Create parent accounts (can approve chores, manage rewards)
-- Create kid accounts (earn points, claim chores and rewards)
+1. Access ChoreControl via the HA sidebar
+2. Login with default credentials: `admin` / `admin`
+3. **Important:** Change the admin password immediately
 
-### 2. Set Up Chores
+### 2. User Management
+
+ChoreControl integrates with Home Assistant users:
+- When HA users access the addon, they're auto-created with role='unmapped'
+- Parents use the User Mapping page to assign roles (parent/kid)
+- Parents get full addon access; kids see their chores via HA dashboards only
+
+See [docs/USER_MANAGEMENT.md](docs/USER_MANAGEMENT.md) (coming soon) for details.
+
+### 3. Set Up Chores
 
 Create chores with:
 - Name and description
@@ -98,7 +111,7 @@ Create chores with:
 - Assignment (specific kids or shared)
 - Approval requirements
 
-### 3. Create Rewards
+### 4. Create Rewards
 
 Set up rewards kids can claim:
 - Name and description
@@ -106,7 +119,7 @@ Set up rewards kids can claim:
 - Optional cooldown period
 - Optional claim limits
 
-### 4. Set Up Dashboards
+### 5. Set Up Dashboards
 
 Use the example dashboard configurations in [docs/examples/](docs/examples/) to create:
 - Kid dashboards (view chores, claim completion, see points)

@@ -5,7 +5,11 @@ from flask import g, jsonify, session, redirect, url_for, request
 
 
 def ha_auth_required(f):
-    """Decorator to ensure user is authenticated via HA ingress or session."""
+    """Decorator to ensure user is authenticated via HA ingress or session.
+
+    For UI routes: Only parents can access (kids/unmapped see access_restricted page)
+    For API routes: All authenticated users can access (needed for HA integration)
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not hasattr(g, 'ha_user') or g.ha_user is None:
@@ -17,6 +21,37 @@ def ha_auth_required(f):
                 'error': 'Unauthorized',
                 'message': 'Authentication required'
             }), 401
+
+        # Get current user to check role
+        user = get_current_user()
+
+        # If user doesn't exist in database, redirect to login
+        if user is None:
+            if request.accept_mimetypes.accept_html:
+                return redirect(url_for('auth.login'))
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'User not found in database'
+            }), 401
+
+        # Check if this is an API route (starts with /api/)
+        is_api_route = request.path.startswith('/api/')
+
+        # For API routes, allow all authenticated users (kids need access for HA integration)
+        if is_api_route:
+            return f(*args, **kwargs)
+
+        # For UI routes, only allow parents
+        # Kids and unmapped users should use HA integration only
+        if user.role != 'parent':
+            # Show access restricted page
+            from flask import render_template
+            return render_template('access_restricted.html',
+                                 username=user.username,
+                                 user_role=user.role,
+                                 ha_user_id=user.ha_user_id,
+                                 points=user.points if user.role == 'kid' else 0), 403
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -87,6 +122,70 @@ def logout_user():
 def get_session_user_id():
     """Get the ha_user_id from session if logged in."""
     return session.get('ha_user_id')
+
+
+def auto_create_unmapped_user(ha_user_id: str):
+    """
+    Auto-create an unmapped user entry when a HA user accesses the addon via ingress.
+
+    This function is called on every request from middleware. It:
+    1. Skips local- prefix accounts (they use password login)
+    2. Checks if user already exists (returns None if exists)
+    3. Fetches HA user display name from Supervisor API
+    4. Creates new user with role='unmapped' (parent will map them later)
+    5. Handles race conditions gracefully
+
+    Args:
+        ha_user_id: The Home Assistant user ID from X-Ingress-User header
+
+    Returns:
+        User: The created user object, or None if user already exists or creation failed
+    """
+    from models import db, User
+    from sqlalchemy.exc import IntegrityError
+    from utils.ha_api import get_ha_user_display_name
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Skip local accounts (they use password-based login)
+    if ha_user_id.startswith('local-'):
+        return None
+
+    try:
+        # Check if user already exists
+        existing_user = User.query.filter_by(ha_user_id=ha_user_id).first()
+        if existing_user:
+            return None
+
+        # Fetch display name from HA API (falls back to ha_user_id if unavailable)
+        username = get_ha_user_display_name(ha_user_id)
+
+        # Create new unmapped user
+        new_user = User(
+            ha_user_id=ha_user_id,
+            username=username,
+            role='unmapped',  # Parent will assign actual role via mapping UI
+            points=0
+        )
+        # No password_hash - HA users authenticate via ingress only
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        logger.info(f"Auto-created unmapped user: {username} (ha_user_id={ha_user_id})")
+        return new_user
+
+    except IntegrityError:
+        # Race condition - another request created the user simultaneously
+        db.session.rollback()
+        logger.debug(f"User {ha_user_id} already exists (race condition)")
+        return None
+    except Exception as e:
+        # Log error but don't fail the request
+        db.session.rollback()
+        logger.error(f"Failed to auto-create user {ha_user_id}: {e}", exc_info=True)
+        return None
 
 
 def create_default_admin():
