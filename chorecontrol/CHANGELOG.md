@@ -2,6 +2,13 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.1] - 2025-11-30
+
+### Fixed
+- Enhanced logging to diagnose SUPERVISOR_TOKEN availability at module load time
+- Added helpful diagnostics when token is not available
+- Improved log messages to help identify Python bytecode cache issues
+
 ## [0.2.0] - 2025-11-30
 
 ### Added

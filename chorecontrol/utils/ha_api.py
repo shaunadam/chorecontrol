@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 SUPERVISOR_TOKEN = os.environ.get('SUPERVISOR_TOKEN')
 SUPERVISOR_API_BASE = 'http://supervisor/core/api'
 
+# Log token availability at module load time for debugging
+if SUPERVISOR_TOKEN:
+    logger.info(f"ha_api module loaded: SUPERVISOR_TOKEN is available (length: {len(SUPERVISOR_TOKEN)})")
+else:
+    logger.warning("ha_api module loaded: SUPERVISOR_TOKEN is NOT available")
+    logger.info("Check that Home Assistant addon config has 'homeassistant_api: true' and 'hassio_api: true'")
+
 
 class HAAPIError(Exception):
     """Exception raised for HA API errors."""
@@ -82,10 +89,12 @@ def get_all_ha_users() -> Optional[List[Dict[str, str]]]:
     if not SUPERVISOR_TOKEN:
         logger.warning("SUPERVISOR_TOKEN not available - HA API calls will fail")
         logger.info("In Home Assistant addon environment, SUPERVISOR_TOKEN should be auto-provided")
+        logger.info("Verify addon config has: homeassistant_api: true, hassio_api: true, hassio_role: admin")
+        logger.info("If config is correct, try rebuilding the addon to clear Python bytecode cache")
         return None
 
-    logger.debug(f"SUPERVISOR_TOKEN is set, attempting HA API calls")
-    logger.debug(f"API Base URL: {SUPERVISOR_API_BASE}")
+    logger.info(f"SUPERVISOR_TOKEN is set (length: {len(SUPERVISOR_TOKEN)}), attempting HA API calls")
+    logger.info(f"API Base URL: {SUPERVISOR_API_BASE}")
 
     try:
         headers = {

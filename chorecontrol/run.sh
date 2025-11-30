@@ -26,6 +26,12 @@ mkdir -p "${DATA_DIR}"
 cd /app
 export PYTHONPATH=/app
 
+# Clear Python bytecode cache to ensure latest code is loaded
+# This prevents issues with cached .pyc files from previous versions
+echo "Clearing Python bytecode cache..."
+find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+find /app -type f -name "*.pyc" -delete 2>/dev/null || true
+
 # Run database migrations
 echo "Running database migrations..."
 echo "Database URI: sqlite:///${DATA_DIR}/chorecontrol.db"
