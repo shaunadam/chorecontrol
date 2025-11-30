@@ -1,11 +1,20 @@
 """ChoreControl Flask application - Main entry point."""
 
 import os
+import sys
+import logging
 from pathlib import Path
 from flask import Flask, jsonify, request, g
 from flask_migrate import Migrate
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+# Configure logging for the entire application
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
 # Import db from models (models.py creates the SQLAlchemy instance)
 from models import db

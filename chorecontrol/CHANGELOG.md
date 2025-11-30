@@ -2,6 +2,14 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.5] - 2025-11-30
+
+### Fixed
+- **CRITICAL**: Add logging.basicConfig() to Flask app initialization
+- Gunicorn's --log-level flag only controls Gunicorn logs, not application logs
+- Now application INFO logs are properly visible in addon logs
+- Confirmed working: HA API successfully fetches 3 users from /auth/list endpoint
+
 ## [0.2.4] - 2025-11-30
 
 ### Fixed
