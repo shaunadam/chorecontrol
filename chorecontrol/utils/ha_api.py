@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Supervisor API configuration
 SUPERVISOR_TOKEN = os.environ.get('SUPERVISOR_TOKEN')
-SUPERVISOR_API_BASE = 'http://supervisor/core/api'
+SUPERVISOR_API_BASE = 'http://supervisor'
 
 # Log token availability at module load time for debugging
 if SUPERVISOR_TOKEN:
@@ -102,10 +102,10 @@ def get_all_ha_users() -> Optional[List[Dict[str, str]]]:
             'Content-Type': 'application/json'
         }
 
-        # Try different API endpoints (HA API structure may vary)
+        # Use the Supervisor API auth endpoint (requires admin role)
+        # Reference: https://developers.home-assistant.io/docs/api/supervisor/endpoints/
         endpoints = [
-            f'{SUPERVISOR_API_BASE}/auth',  # Primary endpoint
-            f'{SUPERVISOR_API_BASE}/users',  # Alternative
+            f'{SUPERVISOR_API_BASE}/auth/list',  # Supervisor API endpoint for user list
         ]
 
         for endpoint in endpoints:
@@ -209,7 +209,7 @@ def is_supervisor_api_available() -> bool:
             'Authorization': f'Bearer {SUPERVISOR_TOKEN}',
         }
         response = requests.get(
-            f'http://supervisor/core/info',
+            f'{SUPERVISOR_API_BASE}/supervisor/info',
             headers=headers,
             timeout=2
         )

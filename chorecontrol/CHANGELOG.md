@@ -2,6 +2,14 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
+## [0.2.3] - 2025-11-30
+
+### Fixed
+- Use correct Supervisor API endpoint: `/auth/list` instead of `/core/api/auth`
+- Updated API base URL from `http://supervisor/core/api` to `http://supervisor`
+- Fixed health check endpoint to use `/supervisor/info`
+- HA user list should now be successfully retrieved
+
 ## [0.2.2] - 2025-11-30
 
 ### Fixed
