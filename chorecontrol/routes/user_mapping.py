@@ -98,6 +98,10 @@ def update_mappings():
 
     current_user = get_current_user()
 
+    # Log form data for debugging
+    logger.info(f"Processing mapping update with {len(request.form)} form fields")
+    logger.debug(f"Form data keys: {list(request.form.keys())}")
+
     # Track changes for flash message
     updated_count = 0
     created_count = 0

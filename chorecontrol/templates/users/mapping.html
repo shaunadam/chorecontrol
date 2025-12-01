@@ -21,70 +21,69 @@
 </div>
 {% endif %}
 
-{% if ha_api_available and ha_users %}
-<!-- Home Assistant Users Section -->
-<div class="card mb-lg">
-    <div class="card-header">
-        <h2 class="card-title">🏠 Home Assistant Users ({{ ha_users|length }})</h2>
-        <span class="text-muted">All users from Home Assistant</span>
-    </div>
-    <div class="card-body">
-        <ul class="list">
-            {% for ha_user in ha_users %}
-            <li class="list-item {% if not ha_user.cc_user %}ha-not-synced{% elif ha_user.cc_role == 'unmapped' %}unmapped-item{% endif %}">
-                <div class="list-item-header">
-                    <div class="list-item-title">
-                        <strong>{{ ha_user.ha_name }}</strong>
-                        {% if ha_user.is_owner %}
-                            <span class="badge-owner">👑 Owner</span>
+<form method="POST" action="{{ url_for('user_mapping.update_mappings') }}">
+    {% if ha_api_available and ha_users %}
+    <!-- Home Assistant Users Section -->
+    <div class="card mb-lg">
+        <div class="card-header">
+            <h2 class="card-title">🏠 Home Assistant Users ({{ ha_users|length }})</h2>
+            <span class="text-muted">All users from Home Assistant</span>
+        </div>
+        <div class="card-body">
+            <ul class="list">
+                {% for ha_user in ha_users %}
+                <li class="list-item {% if not ha_user.cc_user %}ha-not-synced{% elif ha_user.cc_role == 'unmapped' %}unmapped-item{% endif %}">
+                    <div class="list-item-header">
+                        <div class="list-item-title">
+                            <strong>{{ ha_user.ha_name }}</strong>
+                            {% if ha_user.is_owner %}
+                                <span class="badge-owner">👑 Owner</span>
+                            {% endif %}
+                        </div>
+                        {% if ha_user.cc_user %}
+                            <span class="role-badge role-{{ ha_user.cc_role }}">{{ ha_user.cc_role }}</span>
+                        {% else %}
+                            <span class="badge-not-synced">Not yet synced</span>
                         {% endif %}
                     </div>
-                    {% if ha_user.cc_user %}
-                        <span class="role-badge role-{{ ha_user.cc_role }}">{{ ha_user.cc_role }}</span>
-                    {% else %}
-                        <span class="badge-not-synced">Not yet synced</span>
+
+                    <div class="list-item-meta">
+                        <strong>HA User ID:</strong> {{ ha_user.ha_user_id }}
+                    </div>
+
+                    <div class="list-item-meta">
+                        <strong>Username:</strong> {{ ha_user.ha_username }}
+                    </div>
+
+                    {% if not ha_user.is_active %}
+                    <div class="list-item-meta">
+                        <span class="text-danger">⚠️ Inactive in Home Assistant</span>
+                    </div>
                     {% endif %}
-                </div>
 
-                <div class="list-item-meta">
-                    <strong>HA User ID:</strong> {{ ha_user.ha_user_id }}
-                </div>
-
-                <div class="list-item-meta">
-                    <strong>Username:</strong> {{ ha_user.ha_username }}
-                </div>
-
-                {% if not ha_user.is_active %}
-                <div class="list-item-meta">
-                    <span class="text-danger">⚠️ Inactive in Home Assistant</span>
-                </div>
-                {% endif %}
-
-                <div class="list-item-actions">
-                    {% if ha_user.cc_user %}
-                        <span class="text-success">✓ Synced to ChoreControl</span>
-                        <!-- If already synced, use regular role update (handled in "All Users" section below) -->
-                    {% else %}
-                        <!-- Not yet synced - allow creating with a role -->
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label" for="ha_role_{{ ha_user.ha_user_id }}">Assign Role:</label>
-                            <select name="ha_role_{{ ha_user.ha_user_id }}" id="ha_role_{{ ha_user.ha_user_id }}" class="form-select role-select">
-                                <option value="" selected>-- Not synced --</option>
-                                <option value="parent">Parent</option>
-                                <option value="kid">Kid</option>
-                                <option value="unmapped">Unmapped</option>
-                            </select>
-                        </div>
-                    {% endif %}
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
+                    <div class="list-item-actions">
+                        {% if ha_user.cc_user %}
+                            <span class="text-success">✓ Synced to ChoreControl</span>
+                            <!-- If already synced, use regular role update (handled in "All Users" section below) -->
+                        {% else %}
+                            <!-- Not yet synced - allow creating with a role -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label" for="ha_role_{{ ha_user.ha_user_id }}">Assign Role:</label>
+                                <select name="ha_role_{{ ha_user.ha_user_id }}" id="ha_role_{{ ha_user.ha_user_id }}" class="form-select role-select">
+                                    <option value="" selected>-- Not synced --</option>
+                                    <option value="parent">Parent</option>
+                                    <option value="kid">Kid</option>
+                                    <option value="unmapped">Unmapped</option>
+                                </select>
+                            </div>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
-</div>
-{% endif %}
-
-<form method="POST" action="{{ url_for('user_mapping.update_mappings') }}">
+    {% endif %}
     <!-- Unmapped Users - Needs Attention -->
     {% if unmapped_users %}
     <div class="card mb-lg">
