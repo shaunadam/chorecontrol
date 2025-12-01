@@ -11,7 +11,7 @@
 </div>
 
 <p class="mb-md">
-    Assign roles to Home Assistant users. Users auto-created from HA ingress start as "unmapped" and need role assignment.
+    Assign roles to Home Assistant users. You can proactively assign roles to any HA user, even before they access the addon.
 </p>
 
 {% if not ha_api_available %}
@@ -60,11 +60,21 @@
                 </div>
                 {% endif %}
 
-                <div class="list-item-meta">
+                <div class="list-item-actions">
                     {% if ha_user.cc_user %}
                         <span class="text-success">✓ Synced to ChoreControl</span>
+                        <!-- If already synced, use regular role update (handled in "All Users" section below) -->
                     {% else %}
-                        <span class="text-muted">Will be created on first addon access</span>
+                        <!-- Not yet synced - allow creating with a role -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" for="ha_role_{{ ha_user.ha_user_id }}">Assign Role:</label>
+                            <select name="ha_role_{{ ha_user.ha_user_id }}" id="ha_role_{{ ha_user.ha_user_id }}" class="form-select role-select">
+                                <option value="" selected>-- Not synced --</option>
+                                <option value="parent">Parent</option>
+                                <option value="kid">Kid</option>
+                                <option value="unmapped">Unmapped</option>
+                            </select>
+                        </div>
                     {% endif %}
                 </div>
             </li>

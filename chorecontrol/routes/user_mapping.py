@@ -89,16 +89,21 @@ def update_mappings():
     """
     Bulk update user role mappings.
 
-    Accepts form data with user IDs and their new roles.
-    Format: role_{user_id} = 'parent' | 'kid' | 'unmapped'
+    Accepts form data with:
+    - role_{user_id} = 'parent' | 'kid' | 'unmapped' (existing users)
+    - ha_role_{ha_user_id} = 'parent' | 'kid' | 'unmapped' (new HA users to create)
     """
+    from utils.ha_api import get_ha_user_display_name
+    from sqlalchemy.exc import IntegrityError
+
     current_user = get_current_user()
 
     # Track changes for flash message
     updated_count = 0
+    created_count = 0
     errors = []
 
-    # Process all role updates from form
+    # Process role updates for EXISTING users (role_{user_id})
     for key, new_role in request.form.items():
         if not key.startswith('role_'):
             continue
@@ -138,6 +143,48 @@ def update_mappings():
 
         updated_count += 1
 
+    # Process role assignments for NEW HA users (ha_role_{ha_user_id})
+    for key, new_role in request.form.items():
+        if not key.startswith('ha_role_'):
+            continue
+
+        ha_user_id = key.replace('ha_role_', '')
+
+        # Skip if no role selected (empty value means "not synced")
+        if not new_role or new_role == '':
+            continue
+
+        # Validate role
+        if new_role not in ('parent', 'kid', 'unmapped'):
+            errors.append(f'Invalid role for HA user {ha_user_id}')
+            continue
+
+        # Check if user already exists (shouldn't happen, but be safe)
+        existing_user = User.query.filter_by(ha_user_id=ha_user_id).first()
+        if existing_user:
+            logger.warning(f"User {ha_user_id} already exists, skipping creation")
+            continue
+
+        # Get display name from HA API (falls back to formatted ha_user_id if API unavailable)
+        username = get_ha_user_display_name(ha_user_id)
+
+        # Create new user with assigned role
+        try:
+            new_user = User(
+                ha_user_id=ha_user_id,
+                username=username,
+                role=new_role,
+                points=0 if new_role == 'kid' else None
+            )
+            db.session.add(new_user)
+            created_count += 1
+            logger.info(f"Created user {username} (ha_user_id={ha_user_id}) with role={new_role}")
+        except IntegrityError as e:
+            db.session.rollback()
+            logger.warning(f"Failed to create user {ha_user_id}: {e}")
+            errors.append(f'User {ha_user_id} already exists (possible race condition)')
+            continue
+
     # Commit all changes
     try:
         db.session.commit()
@@ -145,8 +192,15 @@ def update_mappings():
         # Clear HA user cache to refresh display names
         clear_ha_user_cache()
 
+        # Build success message
+        messages = []
         if updated_count > 0:
-            flash(f'Successfully updated {updated_count} user(s).', 'success')
+            messages.append(f'Updated {updated_count} user(s)')
+        if created_count > 0:
+            messages.append(f'Created {created_count} user(s)')
+
+        if messages:
+            flash(f'Successfully {", ".join(messages)}.', 'success')
         else:
             flash('No changes were made.', 'info')
 
@@ -156,6 +210,7 @@ def update_mappings():
 
     except Exception as e:
         db.session.rollback()
+        logger.exception(f"Failed to update user mappings: {e}")
         flash(f'Failed to update user mappings: {str(e)}', 'error')
 
     return redirect(url_for('user_mapping.mapping_page'))
