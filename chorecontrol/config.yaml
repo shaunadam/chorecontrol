@@ -1,5 +1,5 @@
 name: ChoreControl
-version: "0.2.8"
+version: "0.2.9"
 slug: chorecontrol
 description: Home Assistant chore management system with kids, parents, points, and rewards
 url: https://github.com/shaunadam/chorecontrol
@@ -19,9 +19,9 @@ homeassistant_api: true
 hassio_api: true
 hassio_role: admin
 ports:
-  8099/tcp: null
+  8099/tcp: 8099
 ports_description:
-  8099/tcp: Web interface (use ingress for secure access)
+  8099/tcp: Web interface and API access
 map:
   - data:rw
 options:
