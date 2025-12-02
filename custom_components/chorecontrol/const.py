@@ -9,7 +9,7 @@ CONF_ADDON_URL: Final = "addon_url"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
 
 # Defaults
-DEFAULT_ADDON_URL: Final = "http://chorecontrol:8099"
+DEFAULT_ADDON_URL: Final = "http://localhost:8099"
 DEFAULT_SCAN_INTERVAL: Final = 30  # seconds
 
 # Platforms

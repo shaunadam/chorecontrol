@@ -9,7 +9,7 @@
           "scan_interval": "Update interval (seconds)"
         },
         "data_description": {
-          "addon_url": "The URL where the ChoreControl add-on is running (default: http://chorecontrol:8099)",
+          "addon_url": "URL to the ChoreControl add-on. Use http://localhost:PORT where PORT matches your add-on configuration (default: 8099)",
           "scan_interval": "How often to poll the add-on for updates (10-300 seconds)"
         }
       }
