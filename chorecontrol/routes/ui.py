@@ -574,3 +574,21 @@ def update_user():
 
     flash(f'User "{user.username}" updated successfully.', 'success')
     return redirect(url_for('ui.users_list'))
+
+
+@ui_bp.route('/settings')
+@ha_auth_required
+def settings():
+    """Settings page with integration configuration."""
+    from auth import get_or_create_api_token
+    from models import Settings as SettingsModel
+
+    current_user = get_current_user()
+    if not current_user or current_user.role != 'parent':
+        flash('Only parents can access settings.', 'error')
+        return redirect(url_for('ui.dashboard'))
+
+    # Get or create API token
+    api_token = get_or_create_api_token()
+
+    return render_template('settings.html', api_token=api_token)

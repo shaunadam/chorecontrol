@@ -6,6 +6,7 @@ DOMAIN: Final = "chorecontrol"
 
 # Configuration
 CONF_ADDON_URL: Final = "addon_url"
+CONF_API_TOKEN: Final = "api_token"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
 
 # Defaults

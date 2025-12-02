@@ -25,10 +25,11 @@ _LOGGER = logging.getLogger(__name__)
 class ChoreControlApiClient:
     """API client for ChoreControl add-on."""
 
-    def __init__(self, hass: HomeAssistant, addon_url: str) -> None:
+    def __init__(self, hass: HomeAssistant, addon_url: str, api_token: str) -> None:
         """Initialize the API client."""
         self.hass = hass
         self.addon_url = addon_url.rstrip("/")
+        self.api_token = api_token
         self.session = async_get_clientsession(hass)
 
     async def _request(
@@ -39,12 +40,14 @@ class ChoreControlApiClient:
     ) -> dict[str, Any]:
         """Make a request to the add-on API."""
         url = f"{self.addon_url}{endpoint}"
+        headers = {"Authorization": f"Bearer {self.api_token}"}
 
         try:
             async with self.session.request(
                 method,
                 url,
                 json=data,
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
                 response.raise_for_status()

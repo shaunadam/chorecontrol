@@ -14,6 +14,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import (
     CONF_ADDON_URL,
+    CONF_API_TOKEN,
     CONF_SCAN_INTERVAL,
     DEFAULT_ADDON_URL,
     DEFAULT_SCAN_INTERVAL,
@@ -26,6 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_ADDON_URL, default=DEFAULT_ADDON_URL): cv.string,
+        vol.Required(CONF_API_TOKEN): cv.string,
         vol.Optional(
             CONF_SCAN_INTERVAL,
             default=DEFAULT_SCAN_INTERVAL,
@@ -43,18 +45,25 @@ async def validate_input(
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
     addon_url = data[CONF_ADDON_URL].rstrip("/")
+    api_token = data[CONF_API_TOKEN].strip()
 
-    # Test connection to add-on
+    # Test connection to add-on with API token
     async with aiohttp.ClientSession() as session:
         try:
+            headers = {"Authorization": f"Bearer {api_token}"}
             async with session.get(
                 f"{addon_url}/health",
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
+                if response.status == 401:
+                    raise InvalidAuth("Invalid API token")
                 if response.status != 200:
                     raise CannotConnect(
                         f"Add-on returned status {response.status}"
                     )
+        except InvalidAuth:
+            raise
         except aiohttp.ClientError as err:
             _LOGGER.error("Cannot connect to ChoreControl add-on: %s", err)
             raise CannotConnect(f"Cannot connect to add-on: {err}") from err
@@ -66,6 +75,7 @@ async def validate_input(
     return {
         "title": "ChoreControl",
         CONF_ADDON_URL: addon_url,
+        CONF_API_TOKEN: api_token,
     }
 
 
@@ -84,6 +94,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
@@ -106,3 +118,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate authentication failed."""

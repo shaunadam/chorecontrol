@@ -6,16 +6,19 @@
         "description": "Set up ChoreControl integration to connect to your ChoreControl add-on.",
         "data": {
           "addon_url": "Add-on URL",
+          "api_token": "API Token",
           "scan_interval": "Update interval (seconds)"
         },
         "data_description": {
           "addon_url": "URL to the ChoreControl add-on. Use http://localhost:PORT where PORT matches your add-on configuration (default: 8099)",
+          "api_token": "API token from the ChoreControl add-on Settings page",
           "scan_interval": "How often to poll the add-on for updates (10-300 seconds)"
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to the ChoreControl add-on. Please check the URL and ensure the add-on is running.",
+      "invalid_auth": "Invalid API token. Please check the token from the ChoreControl add-on Settings page.",
       "unknown": "Unexpected error occurred. Please check the logs."
     },
     "abort": {

@@ -25,6 +25,7 @@ from .const import (
     ATTR_REWARD_ID,
     ATTR_USER_ID,
     CONF_ADDON_URL,
+    CONF_API_TOKEN,
     CONF_SCAN_INTERVAL,
     COORDINATOR,
     DOMAIN,
@@ -117,9 +118,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Create API client
     addon_url = entry.data[CONF_ADDON_URL]
+    api_token = entry.data[CONF_API_TOKEN]
     scan_interval = entry.data.get(CONF_SCAN_INTERVAL)
 
-    api_client = ChoreControlApiClient(hass, addon_url)
+    api_client = ChoreControlApiClient(hass, addon_url, api_token)
 
     # Create data update coordinator
     coordinator = ChoreControlDataUpdateCoordinator(

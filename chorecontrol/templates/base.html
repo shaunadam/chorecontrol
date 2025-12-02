@@ -59,6 +59,10 @@
                     <span class="nav-icon">🔗</span>
                     <span class="nav-text">User Mapping</span>
                 </a>
+                <a href="{{ url_for('ui.settings') }}" class="nav-link {% if request.endpoint == 'ui.settings' %}active{% endif %}">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
                 {% endif %}
             </nav>
         </header>

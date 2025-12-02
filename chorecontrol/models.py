@@ -683,3 +683,37 @@ class PointsHistory(db.Model):
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class Settings(db.Model):
+    """System settings and configuration."""
+
+    __tablename__ = 'settings'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    key = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<Settings {self.key}>'
+
+    @staticmethod
+    def get(key: str, default: Optional[str] = None) -> Optional[str]:
+        """Get a setting value by key."""
+        setting = Settings.query.filter_by(key=key).first()
+        return setting.value if setting else default
+
+    @staticmethod
+    def set(key: str, value: str) -> 'Settings':
+        """Set a setting value (creates or updates)."""
+        setting = Settings.query.filter_by(key=key).first()
+        if setting:
+            setting.value = value
+            setting.updated_at = datetime.utcnow()
+        else:
+            setting = Settings(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+        return setting

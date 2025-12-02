@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Settings</h1>
+    <p class="subtitle">Configuration and integration settings</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Home Assistant Integration</h2>
+    </div>
+    <div class="card-body">
+        <p>Use this API token to configure the ChoreControl integration in Home Assistant.</p>
+
+        <div class="form-group">
+            <label for="api_token">API Token:</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input
+                    type="text"
+                    id="api_token"
+                    value="{{ api_token }}"
+                    readonly
+                    class="form-control"
+                    style="font-family: monospace; flex: 1;"
+                    onclick="this.select()"
+                >
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    onclick="copyToken()"
+                    id="copy_btn"
+                >
+                    Copy
+                </button>
+            </div>
+            <small class="form-text text-muted">
+                Click the token to select it, or click the Copy button to copy to clipboard.
+            </small>
+        </div>
+
+        <div class="alert alert-info" style="margin-top: 1rem;">
+            <strong>Setup Instructions:</strong>
+            <ol style="margin: 0.5rem 0 0 1.5rem;">
+                <li>Go to Home Assistant Settings → Devices & Services</li>
+                <li>Click "Add Integration" and search for "ChoreControl"</li>
+                <li>Enter the addon URL (e.g., <code>http://localhost:8099</code> or <code>http://homeassistant.local:8099</code>)</li>
+                <li>Paste this API token when prompted</li>
+            </ol>
+        </div>
+
+        <div class="alert alert-warning" style="margin-top: 1rem;">
+            <strong>Security Note:</strong> Keep this token secret! Anyone with this token can access your ChoreControl data through the Home Assistant integration.
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToken() {
+    const tokenInput = document.getElementById('api_token');
+    const copyBtn = document.getElementById('copy_btn');
+
+    // Select and copy
+    tokenInput.select();
+    document.execCommand('copy');
+
+    // Update button text
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = 'Copied!';
+    copyBtn.classList.add('btn-success');
+    copyBtn.classList.remove('btn-primary');
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.classList.add('btn-primary');
+        copyBtn.classList.remove('btn-success');
+    }, 2000);
+}
+</script>
+{% endblock %}

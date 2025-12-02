@@ -88,11 +88,17 @@ def create_app(config_name=None):
 
     # Create default admin user on first run
     with app.app_context():
-        from auth import create_default_admin
+        from auth import create_default_admin, get_or_create_api_token
         admin = create_default_admin()
         if admin:
             import logging
             logging.getLogger(__name__).info(f"Created default admin user: {admin.username}")
+
+        # Initialize API token for Home Assistant integration
+        api_token = get_or_create_api_token()
+        import logging
+        logging.getLogger(__name__).info(f"API Token for Home Assistant Integration: {api_token}")
+        logging.getLogger(__name__).info("Configure this token in the ChoreControl integration settings")
 
     return app
 
@@ -102,8 +108,8 @@ def register_middleware(app):
 
     @app.before_request
     def extract_ha_user():
-        """Extract Home Assistant user from ingress headers or session."""
-        from auth import get_session_user_id, auto_create_unmapped_user
+        """Extract Home Assistant user from ingress headers, API token, or session."""
+        from auth import get_session_user_id, auto_create_unmapped_user, verify_api_token
         from models import User
 
         ha_user = request.headers.get('X-Ingress-User')
@@ -118,13 +124,45 @@ def register_middleware(app):
             # Auto-create user if doesn't exist (with role='unmapped')
             # This is safe to call on every request - it returns None if user exists
             auto_create_unmapped_user(ha_user)
+            g.api_authenticated = False
         else:
-            # No HA header - check session for local login
-            session_user_id = get_session_user_id()
-            if session_user_id:
-                g.ha_user = session_user_id
+            # Check for API token authentication (for HA integration)
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header[7:]  # Remove 'Bearer ' prefix
+                if verify_api_token(token):
+                    # API token is valid - set g.ha_user to a system user
+                    # This allows the integration to access all data
+                    g.ha_user = 'api-integration'
+                    g.api_authenticated = True
+
+                    # Ensure the api-integration system user exists
+                    api_user = User.query.filter_by(ha_user_id='api-integration').first()
+                    if not api_user:
+                        from models import db
+                        api_user = User(
+                            ha_user_id='api-integration',
+                            username='HA Integration',
+                            role='system',
+                            points=0
+                        )
+                        db.session.add(api_user)
+                        try:
+                            db.session.commit()
+                        except:
+                            db.session.rollback()
+                else:
+                    g.ha_user = None
+                    g.api_authenticated = False
             else:
-                g.ha_user = None
+                # No API token - check session for local login
+                session_user_id = get_session_user_id()
+                if session_user_id:
+                    g.ha_user = session_user_id
+                    g.api_authenticated = False
+                else:
+                    g.ha_user = None
+                    g.api_authenticated = False
 
 
 def register_routes(app):

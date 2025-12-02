@@ -1,5 +1,6 @@
 """Authentication utilities for ChoreControl."""
 
+import secrets
 from functools import wraps
 from flask import g, jsonify, session, redirect, url_for, request
 
@@ -224,3 +225,64 @@ def create_default_admin():
         # Race condition - another worker already created the admin
         db.session.rollback()
         return None
+
+
+def get_or_create_api_token() -> str:
+    """
+    Get or create the API token for Home Assistant integration.
+
+    Returns:
+        str: The API token
+    """
+    from models import Settings
+    from sqlalchemy.exc import OperationalError
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Check if token already exists
+        token = Settings.get('api_token')
+        if token:
+            return token
+
+        # Generate new secure token (32 bytes = 64 hex characters)
+        token = secrets.token_hex(32)
+        Settings.set('api_token', token)
+        logger.info("Generated new API token for Home Assistant integration")
+        return token
+
+    except OperationalError:
+        # Table doesn't exist yet (migrations not run)
+        # Return a temporary token that will be regenerated on next startup
+        logger.warning("Settings table not ready, using temporary token")
+        return "TEMPORARY_TOKEN_RUN_MIGRATIONS"
+
+
+def verify_api_token(token: str) -> bool:
+    """
+    Verify if the provided API token is valid.
+
+    Args:
+        token: The API token to verify
+
+    Returns:
+        bool: True if token is valid
+    """
+    from models import Settings
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        stored_token = Settings.get('api_token')
+        if not stored_token:
+            logger.warning("No API token found in database")
+            return False
+
+        # Use constant-time comparison to prevent timing attacks
+        return secrets.compare_digest(token, stored_token)
+
+    except Exception as e:
+        logger.error(f"Error verifying API token: {e}")
+        return False
