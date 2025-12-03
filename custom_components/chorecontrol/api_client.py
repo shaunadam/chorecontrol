@@ -74,15 +74,18 @@ class ChoreControlApiClient:
     # User endpoints
     async def get_users(self) -> list[dict[str, Any]]:
         """Get all users."""
-        return await self._request("GET", API_USERS)
+        response = await self._request("GET", API_USERS)
+        return response.get("data", [])
 
     async def get_user(self, user_id: int) -> dict[str, Any]:
         """Get user by ID."""
-        return await self._request("GET", f"{API_USERS}/{user_id}")
+        response = await self._request("GET", f"{API_USERS}/{user_id}")
+        return response.get("data", {})
 
     async def get_user_points(self, user_id: int) -> dict[str, Any]:
         """Get user points and history."""
-        return await self._request("GET", f"{API_USERS}/{user_id}/points")
+        response = await self._request("GET", f"{API_USERS}/{user_id}/points")
+        return response.get("data", {})
 
     # Chore endpoints
     async def get_chores(self, active_only: bool = True) -> list[dict[str, Any]]:
@@ -90,11 +93,13 @@ class ChoreControlApiClient:
         endpoint = API_CHORES
         if active_only:
             endpoint = f"{API_CHORES}?is_active=true"
-        return await self._request("GET", endpoint)
+        response = await self._request("GET", endpoint)
+        return response.get("data", [])
 
     async def get_chore(self, chore_id: int) -> dict[str, Any]:
         """Get chore by ID."""
-        return await self._request("GET", f"{API_CHORES}/{chore_id}")
+        response = await self._request("GET", f"{API_CHORES}/{chore_id}")
+        return response.get("data", {})
 
     # Chore instance endpoints
     async def get_instances(
@@ -115,11 +120,13 @@ class ChoreControlApiClient:
         endpoint = API_INSTANCES
         if params:
             endpoint = f"{API_INSTANCES}?{'&'.join(params)}"
-        return await self._request("GET", endpoint)
+        response = await self._request("GET", endpoint)
+        return response.get("data", [])
 
     async def get_due_today(self) -> list[dict[str, Any]]:
         """Get instances due today."""
-        return await self._request("GET", f"{API_INSTANCES}/due-today")
+        response = await self._request("GET", f"{API_INSTANCES}/due-today")
+        return response.get("data", [])
 
     async def claim_chore(
         self,
@@ -127,18 +134,20 @@ class ChoreControlApiClient:
         user_id: int,
     ) -> dict[str, Any]:
         """Claim a chore instance."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_INSTANCES}/{instance_id}/claim",
             data={"user_id": user_id},
         )
+        return response.get("data", {})
 
     async def unclaim_chore(self, instance_id: int) -> dict[str, Any]:
         """Unclaim a chore instance."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_INSTANCES}/{instance_id}/unclaim",
         )
+        return response.get("data", {})
 
     async def approve_chore(
         self,
@@ -150,11 +159,12 @@ class ChoreControlApiClient:
         data: dict[str, Any] = {"approver_user_id": approver_id}
         if points is not None:
             data["points"] = points
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_INSTANCES}/{instance_id}/approve",
             data=data,
         )
+        return response.get("data", {})
 
     async def reject_chore(
         self,
@@ -163,7 +173,7 @@ class ChoreControlApiClient:
         reason: str,
     ) -> dict[str, Any]:
         """Reject a claimed chore."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_INSTANCES}/{instance_id}/reject",
             data={
@@ -171,6 +181,7 @@ class ChoreControlApiClient:
                 "reason": reason,
             },
         )
+        return response.get("data", {})
 
     # Reward endpoints
     async def get_rewards(self, active_only: bool = True) -> list[dict[str, Any]]:
@@ -178,7 +189,8 @@ class ChoreControlApiClient:
         endpoint = API_REWARDS
         if active_only:
             endpoint = f"{API_REWARDS}?is_active=true"
-        return await self._request("GET", endpoint)
+        response = await self._request("GET", endpoint)
+        return response.get("data", [])
 
     async def claim_reward(
         self,
@@ -186,18 +198,20 @@ class ChoreControlApiClient:
         user_id: int,
     ) -> dict[str, Any]:
         """Claim a reward."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_REWARDS}/{reward_id}/claim",
             data={"user_id": user_id},
         )
+        return response.get("data", {})
 
     async def unclaim_reward(self, claim_id: int) -> dict[str, Any]:
         """Unclaim a reward."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_REWARD_CLAIMS}/{claim_id}/unclaim",
         )
+        return response.get("data", {})
 
     async def approve_reward(
         self,
@@ -205,11 +219,12 @@ class ChoreControlApiClient:
         approver_id: int,
     ) -> dict[str, Any]:
         """Approve a reward claim."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_REWARD_CLAIMS}/{claim_id}/approve",
             data={"approver_user_id": approver_id},
         )
+        return response.get("data", {})
 
     async def reject_reward(
         self,
@@ -218,7 +233,7 @@ class ChoreControlApiClient:
         reason: str,
     ) -> dict[str, Any]:
         """Reject a reward claim."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_REWARD_CLAIMS}/{claim_id}/reject",
             data={
@@ -226,6 +241,7 @@ class ChoreControlApiClient:
                 "reason": reason,
             },
         )
+        return response.get("data", {})
 
     # Points endpoints
     async def adjust_points(
@@ -235,7 +251,7 @@ class ChoreControlApiClient:
         reason: str,
     ) -> dict[str, Any]:
         """Adjust user points."""
-        return await self._request(
+        response = await self._request(
             "POST",
             f"{API_POINTS}/adjust",
             data={
@@ -244,13 +260,15 @@ class ChoreControlApiClient:
                 "reason": reason,
             },
         )
+        return response.get("data", {})
 
     async def get_points_history(
         self,
         user_id: int,
     ) -> list[dict[str, Any]]:
         """Get points history for a user."""
-        return await self._request("GET", f"{API_POINTS}/history/{user_id}")
+        response = await self._request("GET", f"{API_POINTS}/history/{user_id}")
+        return response.get("data", [])
 
     # Dashboard endpoints
     async def get_kid_dashboard(
@@ -258,8 +276,10 @@ class ChoreControlApiClient:
         user_id: int,
     ) -> dict[str, Any]:
         """Get dashboard data for a kid."""
-        return await self._request("GET", f"{API_DASHBOARD}/kid/{user_id}")
+        response = await self._request("GET", f"{API_DASHBOARD}/kid/{user_id}")
+        return response.get("data", {})
 
     async def get_parent_dashboard(self) -> dict[str, Any]:
         """Get dashboard data for parents."""
-        return await self._request("GET", f"{API_DASHBOARD}/parent")
+        response = await self._request("GET", f"{API_DASHBOARD}/parent")
+        return response.get("data", {})
