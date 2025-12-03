@@ -335,28 +335,97 @@ function parseExistingPattern(pattern) {
 // Build recurrence pattern before form submission
 document.querySelector('form').addEventListener('submit', function(e) {
     const type = document.getElementById('recurrence_type').value;
-    let pattern = '';
+    let pattern = null;
 
     if (type === 'daily') {
-        const interval = document.getElementById('daily_interval').value;
-        pattern = interval === '1' ? 'daily' : `every ${interval} days`;
+        const interval = parseInt(document.getElementById('daily_interval').value, 10) || 1;
+        pattern = {
+            type: 'simple',
+            interval: 'daily',
+            every_n: interval
+        };
     } else if (type === 'weekly') {
         const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const dayMap = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6};
         const selected = days.filter(day => document.getElementById(day).checked)
-            .map(day => day.toUpperCase());
+            .map(day => dayMap[day]);
         if (selected.length > 0) {
-            pattern = `weekly on ${selected.join(', ')}`;
+            pattern = {
+                type: 'complex',
+                days_of_week: selected
+            };
         }
     } else if (type === 'monthly') {
-        const day = document.getElementById('monthly_day').value;
+        const day = parseInt(document.getElementById('monthly_day').value, 10);
         if (day) {
-            pattern = `monthly on day ${day}`;
+            pattern = {
+                type: 'complex',
+                days_of_month: [day]
+            };
         }
     } else if (type === 'custom') {
-        pattern = document.getElementById('custom_pattern').value;
+        const customPattern = document.getElementById('custom_pattern').value;
+        if (customPattern) {
+            // Parse custom pattern text into proper JSON structure
+            pattern = parseCustomPattern(customPattern);
+        }
     }
 
-    document.getElementById('recurrence_pattern').value = pattern;
+    // Convert pattern to JSON string for hidden field
+    document.getElementById('recurrence_pattern').value = pattern ? JSON.stringify(pattern) : '';
 });
+
+// Parse custom pattern text into JSON structure
+function parseCustomPattern(text) {
+    const lower = text.toLowerCase().trim();
+
+    // Daily patterns
+    if (lower === 'daily' || lower === 'every day') {
+        return { type: 'simple', interval: 'daily', every_n: 1 };
+    }
+    const dailyMatch = lower.match(/every (\d+) days?/);
+    if (dailyMatch) {
+        return { type: 'simple', interval: 'daily', every_n: parseInt(dailyMatch[1], 10) };
+    }
+
+    // Weekly patterns
+    if (lower === 'weekly') {
+        return { type: 'simple', interval: 'weekly', every_n: 1 };
+    }
+    const weeklyMatch = lower.match(/every (\d+) weeks?/);
+    if (weeklyMatch) {
+        return { type: 'simple', interval: 'weekly', every_n: parseInt(weeklyMatch[1], 10) };
+    }
+
+    // Monthly patterns
+    if (lower === 'monthly') {
+        return { type: 'simple', interval: 'monthly', every_n: 1 };
+    }
+
+    // Days of week pattern
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayIndices = [];
+    dayNames.forEach((name, index) => {
+        if (lower.includes(name) || lower.includes(name.substring(0, 3))) {
+            dayIndices.push(index);
+        }
+    });
+    if (dayIndices.length > 0) {
+        return { type: 'complex', days_of_week: dayIndices };
+    }
+
+    // Days of month pattern (e.g., "on the 1st and 15th")
+    const dayOfMonthMatches = text.match(/\b(\d+)(?:st|nd|rd|th)?\b/g);
+    if (dayOfMonthMatches) {
+        const days = dayOfMonthMatches.map(d => parseInt(d, 10)).filter(d => d >= 1 && d <= 31);
+        if (days.length > 0) {
+            return { type: 'complex', days_of_month: days };
+        }
+    }
+
+    // Fallback: treat as simple daily if we can't parse it
+    console.warn('Could not parse custom pattern, defaulting to daily:', text);
+    return { type: 'simple', interval: 'daily', every_n: 1 };
+}
 </script>
 {% endblock %}

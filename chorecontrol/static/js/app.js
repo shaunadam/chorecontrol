@@ -232,6 +232,8 @@ async function submitJsonForm(form, options = {}) {
     const intFields = ['user_id', 'points_delta', 'approver_id', 'points', 'late_points', 'auto_approve_delay_hours', 'points_cost', 'cooldown_days', 'max_claims_total', 'max_claims_per_kid'];
     // Fields that are booleans (checkboxes)
     const boolFields = ['is_active', 'requires_approval'];
+    // Fields that are JSON objects (stored as stringified JSON in hidden fields)
+    const jsonFields = ['recurrence_pattern'];
 
     // Initialize array fields
     arrayFields.forEach(field => {
@@ -250,6 +252,18 @@ async function submitJsonForm(form, options = {}) {
         } else if (boolFields.includes(key)) {
             // Handle boolean - presence means true
             data[key] = true;
+        } else if (jsonFields.includes(key)) {
+            // Parse JSON string to object
+            if (value && value.trim()) {
+                try {
+                    data[key] = JSON.parse(value);
+                } catch (e) {
+                    console.error(`Failed to parse JSON field ${key}:`, value, e);
+                    data[key] = null;
+                }
+            } else {
+                data[key] = null;
+            }
         } else {
             data[key] = value;
         }
