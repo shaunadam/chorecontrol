@@ -1,25 +1,47 @@
 {% extends "base.html" %}
+{% from "_components/macros.html" import glass_card, status_badge, btn_primary, btn_secondary, btn_danger, btn_sm, empty_state %}
 
 {% block title %}Chores - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="card-header mb-lg">
-    <h1 class="card-title">Chores</h1>
-    <a href="{{ url_for('ui.chore_form') }}" class="btn btn-primary">+ Add Chore</a>
+<!-- Page Header -->
+<div class="mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+            Chores
+        </h1>
+        <a href="{{ url_for('ui.chore_form') }}"
+           class="inline-flex items-center justify-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
+            <span class="text-xl mr-2">+</span> Add Chore
+        </a>
+    </div>
 </div>
 
-<!-- Filters -->
-<div class="card mb-md">
-    <form method="GET" class="flex flex-gap-sm" style="flex-wrap: wrap;">
-        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-            <select name="active" class="form-select" onchange="this.form.submit()">
+<!-- Filters Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-6">
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Active Filter -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Status
+            </label>
+            <select name="active"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                    onchange="this.form.submit()">
                 <option value="">All Chores</option>
                 <option value="true" {% if request.args.get('active') == 'true' %}selected{% endif %}>Active Only</option>
                 <option value="false" {% if request.args.get('active') == 'false' %}selected{% endif %}>Inactive Only</option>
             </select>
         </div>
-        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-            <select name="assigned_to" class="form-select" onchange="this.form.submit()">
+
+        <!-- Assignment Filter -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assigned To
+            </label>
+            <select name="assigned_to"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                    onchange="this.form.submit()">
                 <option value="">All Assignments</option>
                 {% for kid in kids %}
                 <option value="{{ kid.id }}" {% if request.args.get('assigned_to') == kid.id|string %}selected{% endif %}>
@@ -33,100 +55,136 @@
 
 <!-- Chores List -->
 {% if chores %}
-    <ul class="list">
+    <div class="space-y-4">
         {% for chore in chores %}
-        <li class="list-item">
-            <div class="list-item-header">
-                <div class="list-item-title">
-                    <a href="{{ url_for('ui.chore_detail', id=chore.id) }}">{{ chore.name }}</a>
+        <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 transition-all duration-300 hover:bg-white/15 hover:shadow-xl">
+            <!-- Chore Header -->
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <a href="{{ url_for('ui.chore_detail', id=chore.id) }}"
+                       class="font-display text-2xl font-semibold text-gray-900 dark:text-white hover:text-green-500 dark:hover:text-green-400 transition-colors duration-200">
+                        {{ chore.name }}
+                    </a>
                 </div>
-                <span class="status status-{{ 'active' if chore.is_active else 'inactive' }}">
-                    {{ 'Active' if chore.is_active else 'Inactive' }}
-                </span>
+                {{ status_badge('active' if chore.is_active else 'inactive') }}
             </div>
 
+            <!-- Description -->
             {% if chore.description %}
-            <div class="list-item-meta">{{ chore.description }}</div>
+            <p class="text-gray-700 dark:text-gray-300 mb-4">
+                {{ chore.description }}
+            </p>
             {% endif %}
 
-            <div class="list-item-meta">
-                <strong>Points:</strong> {{ chore.points }}
-                {% if chore.late_points %}
-                    | <strong>Late Points:</strong> {{ chore.late_points }}
-                {% endif %}
-            </div>
-
-            <div class="list-item-meta">
-                <strong>Recurrence:</strong>
-                {% if chore.recurrence_pattern %}
-                    {{ chore.recurrence_pattern }}
-                {% else %}
-                    One-time
-                {% endif %}
-                |
-                <strong>Type:</strong>
-                {% if chore.assignment_type == 'shared' %}
-                    <span class="status status-claimed">Shared</span>
-                {% else %}
-                    Individual
-                {% endif %}
-            </div>
-
-            {% if chore.assigned_users %}
-            <div class="list-item-meta">
-                <strong>Assigned to:</strong>
-                {% for assignment in chore.assignments %}
-                    <span class="status status-active" style="margin-right: 0.25rem;">
-                        {{ assignment.user.username }}
+            <!-- Chore Details Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <!-- Points -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Points:</span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30 backdrop-blur-sm">
+                        {{ chore.points }}
                     </span>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="list-item-meta">
-                <span class="status status-pending">Unassigned</span>
-            </div>
-            {% endif %}
+                    {% if chore.late_points %}
+                    <span class="text-sm text-gray-600 dark:text-gray-400">|</span>
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Late:</span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 backdrop-blur-sm">
+                        {{ chore.late_points }}
+                    </span>
+                    {% endif %}
+                </div>
 
-            <div class="list-item-actions">
-                <a href="{{ url_for('ui.chore_detail', id=chore.id) }}" class="btn btn-sm btn-primary">View Details</a>
-                <a href="{{ url_for('ui.chore_form', id=chore.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                <!-- Recurrence -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Recurrence:</span>
+                    <span class="text-sm text-gray-900 dark:text-white font-medium">
+                        {% if chore.recurrence_pattern %}
+                            {{ chore.recurrence_pattern }}
+                        {% else %}
+                            One-time
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Type -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Type:</span>
+                    {% if chore.assignment_type == 'shared' %}
+                        {{ status_badge('claimed', 'Shared') }}
+                    {% else %}
+                        <span class="text-sm text-gray-900 dark:text-white font-medium">Individual</span>
+                    {% endif %}
+                </div>
+
+                <!-- Assigned Users -->
+                <div class="flex items-start gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned:</span>
+                    <div class="flex flex-wrap gap-2">
+                        {% if chore.assigned_users %}
+                            {% for assignment in chore.assignments %}
+                                {{ status_badge('active', assignment.user.username) }}
+                            {% endfor %}
+                        {% else %}
+                            {{ status_badge('pending', 'Unassigned') }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-3 pt-4 border-t border-white/10 dark:border-white/5">
+                <a href="{{ url_for('ui.chore_detail', id=chore.id) }}"
+                   class="inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm shadow-md shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                    View Details
+                </a>
+                <a href="{{ url_for('ui.chore_form', id=chore.id) }}"
+                   class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                    Edit
+                </a>
                 {% if chore.is_active %}
-                <form method="POST" action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}" style="display: inline;" data-json-form onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
-                    <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                <form method="POST"
+                      action="{{ url_for('chores.delete_chore', chore_id=chore.id) }}"
+                      class="inline-block"
+                      data-json-form
+                      onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
+                    <button type="submit"
+                            class="inline-flex items-center bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-red-500/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                        Deactivate
+                    </button>
                 </form>
                 {% endif %}
             </div>
-        </li>
+        </div>
         {% endfor %}
-    </ul>
+    </div>
 
     <!-- Pagination -->
     {% if pagination %}
-    <div class="flex-between mt-lg">
-        <div class="text-secondary">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
             Showing {{ pagination.start }} - {{ pagination.end }} of {{ pagination.total }}
         </div>
-        <div class="flex flex-gap-sm">
+        <div class="flex gap-2">
             {% if pagination.has_prev %}
-            <a href="?page={{ pagination.prev_page }}" class="btn btn-sm btn-outline">Previous</a>
+            <a href="?page={{ pagination.prev_page }}"
+               class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                Previous
+            </a>
             {% endif %}
-            <span class="btn btn-sm btn-outline" style="cursor: default;">Page {{ pagination.page }}</span>
+            <span class="inline-flex items-center bg-green-500/20 text-green-700 dark:text-green-300 font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-green-500/30 text-sm">
+                Page {{ pagination.page }}
+            </span>
             {% if pagination.has_next %}
-            <a href="?page={{ pagination.next_page }}" class="btn btn-sm btn-outline">Next</a>
+            <a href="?page={{ pagination.next_page }}"
+               class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                Next
+            </a>
             {% endif %}
         </div>
     </div>
     {% endif %}
 
 {% else %}
-    <div class="card">
-        <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
-            <div class="empty-state-title">No chores found</div>
-            <p class="empty-state-text">Get started by creating your first chore!</p>
-            <a href="{{ url_for('ui.chore_form') }}" class="btn btn-primary">Create Chore</a>
-        </div>
-    </div>
+    {{ empty_state('📋', 'No chores found', 'Get started by creating your first chore!', 'Create Chore', url_for('ui.chore_form')) }}
 {% endif %}
 
 {% endblock %}

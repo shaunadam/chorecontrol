@@ -3,126 +3,161 @@
 {% block title %}{{ 'Edit' if reward else 'Create' }} Reward - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="mb-md">
-    <a href="{{ url_for('ui.rewards_list') }}" class="btn btn-sm btn-outline">← Back to Rewards</a>
+<!-- Back Button -->
+<div class="mb-6">
+    <a href="{{ url_for('ui.rewards_list') }}"
+       class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+        ← Back to Rewards
+    </a>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h1 class="card-title">{{ 'Edit' if reward else 'Create New' }} Reward</h1>
+<!-- Form Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
+    <!-- Header -->
+    <div class="mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+        <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+            {{ 'Edit' if reward else 'Create New' }} Reward
+        </h1>
     </div>
 
     <form method="POST" action="{{ url_for('rewards.create_reward') if not reward else url_for('rewards.update_reward', reward_id=reward.id) }}" data-json-form>
-        <div class="form-group">
-            <label class="form-label" for="name">Name *</label>
-            <input
-                type="text"
-                id="name"
-                name="name"
-                class="form-input"
-                required
-                maxlength="255"
-                value="{{ reward.name if reward else '' }}"
-                placeholder="e.g., Extra screen time"
-            >
+        <!-- Name -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="name">
+                Name *
+            </label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   required
+                   maxlength="255"
+                   value="{{ reward.name if reward else '' }}"
+                   placeholder="e.g., Extra screen time">
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="description">Description</label>
-            <textarea
-                id="description"
-                name="description"
-                class="form-textarea"
-                rows="3"
-                placeholder="Describe the reward..."
-            >{{ reward.description if reward else '' }}</textarea>
+        <!-- Description -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="description">
+                Description
+            </label>
+            <textarea id="description"
+                      name="description"
+                      class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 resize-none"
+                      rows="3"
+                      placeholder="Describe the reward...">{{ reward.description if reward else '' }}</textarea>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="points_cost">Points Cost *</label>
-            <input
-                type="number"
-                id="points_cost"
-                name="points_cost"
-                class="form-input"
-                required
-                min="1"
-                value="{{ reward.points_cost if reward else '50' }}"
-            >
-            <div class="form-help">How many points this reward costs to claim</div>
+        <!-- Points Cost -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="points_cost">
+                Points Cost *
+            </label>
+            <input type="number"
+                   id="points_cost"
+                   name="points_cost"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   required
+                   min="1"
+                   value="{{ reward.points_cost if reward else '50' }}">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                How many points this reward costs to claim
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="cooldown_days">Cooldown (days)</label>
-            <input
-                type="number"
-                id="cooldown_days"
-                name="cooldown_days"
-                class="form-input"
-                min="0"
-                value="{{ reward.cooldown_days if reward and reward.cooldown_days else '' }}"
-                placeholder="Optional"
-            >
-            <div class="form-help">Minimum days before this can be claimed again by the same kid</div>
+        <!-- Cooldown Days -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="cooldown_days">
+                Cooldown (days)
+            </label>
+            <input type="number"
+                   id="cooldown_days"
+                   name="cooldown_days"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   min="0"
+                   value="{{ reward.cooldown_days if reward and reward.cooldown_days else '' }}"
+                   placeholder="Optional">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Minimum days before this can be claimed again by the same kid
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="limit_per_kid">Limit Per Kid</label>
-            <input
-                type="number"
-                id="limit_per_kid"
-                name="limit_per_kid"
-                class="form-input"
-                min="0"
-                value="{{ reward.limit_per_kid if reward and reward.limit_per_kid else '' }}"
-                placeholder="Optional"
-            >
-            <div class="form-help">Maximum number of times each kid can claim this reward (leave empty for unlimited)</div>
+        <!-- Limit Per Kid -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="limit_per_kid">
+                Limit Per Kid
+            </label>
+            <input type="number"
+                   id="limit_per_kid"
+                   name="limit_per_kid"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   min="0"
+                   value="{{ reward.limit_per_kid if reward and reward.limit_per_kid else '' }}"
+                   placeholder="Optional">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Maximum number of times each kid can claim this reward (leave empty for unlimited)
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="expiration_days">Expiration (days)</label>
-            <input
-                type="number"
-                id="expiration_days"
-                name="expiration_days"
-                class="form-input"
-                min="0"
-                value="{{ reward.expiration_days if reward and reward.expiration_days else '' }}"
-                placeholder="Optional"
-            >
-            <div class="form-help">Days until approved claim expires (leave empty for no expiration)</div>
+        <!-- Expiration Days -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="expiration_days">
+                Expiration (days)
+            </label>
+            <input type="number"
+                   id="expiration_days"
+                   name="expiration_days"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   min="0"
+                   value="{{ reward.expiration_days if reward and reward.expiration_days else '' }}"
+                   placeholder="Optional">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Days until approved claim expires (leave empty for no expiration)
+            </p>
         </div>
 
-        <div class="form-group">
-            <div class="form-checkbox">
-                <input
-                    type="checkbox"
-                    id="requires_approval"
-                    name="requires_approval"
-                    {% if not reward or reward.requires_approval %}checked{% endif %}
-                >
-                <label for="requires_approval">Requires Approval</label>
+        <!-- Requires Approval -->
+        <div class="mb-6">
+            <div class="flex items-center gap-3">
+                <input type="checkbox"
+                       id="requires_approval"
+                       name="requires_approval"
+                       {% if not reward or reward.requires_approval %}checked{% endif %}
+                       class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                <label for="requires_approval" class="text-gray-900 dark:text-white font-medium">
+                    Requires Approval
+                </label>
             </div>
-            <div class="form-help">If checked, parent must approve claims before reward is granted</div>
+            <p class="mt-2 ml-8 text-sm text-gray-600 dark:text-gray-400">
+                If checked, parent must approve claims before reward is granted
+            </p>
         </div>
 
-        <div class="form-group">
-            <div class="form-checkbox">
-                <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    {% if not reward or reward.is_active %}checked{% endif %}
-                >
-                <label for="is_active">Active</label>
+        <!-- Is Active -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3">
+                <input type="checkbox"
+                       id="is_active"
+                       name="is_active"
+                       {% if not reward or reward.is_active %}checked{% endif %}
+                       class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                <label for="is_active" class="text-gray-900 dark:text-white font-medium">Active</label>
             </div>
-            <div class="form-help">Only active rewards can be claimed by kids</div>
+            <p class="mt-2 ml-8 text-sm text-gray-600 dark:text-gray-400">
+                Only active rewards can be claimed by kids
+            </p>
         </div>
 
-        <div class="flex-gap-sm mt-lg">
-            <button type="submit" class="btn btn-primary">{{ 'Update' if reward else 'Create' }} Reward</button>
-            <a href="{{ url_for('ui.rewards_list') }}" class="btn btn-secondary">Cancel</a>
+        <!-- Form Actions -->
+        <div class="flex gap-3 pt-6 border-t border-white/10 dark:border-white/5">
+            <button type="submit"
+                    class="flex-1 sm:flex-none bg-green-500/90 hover:bg-green-500 text-white font-medium px-8 py-3 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
+                {{ 'Update' if reward else 'Create' }} Reward
+            </button>
+            <a href="{{ url_for('ui.rewards_list') }}"
+               class="flex-1 sm:flex-none inline-flex items-center justify-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-8 py-3 rounded-xl backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100">
+                Cancel
+            </a>
         </div>
     </form>
 </div>

@@ -1,73 +1,83 @@
 {% extends "base.html" %}
+{% from "_components/macros.html" import status_badge %}
 
 {% block title %}Calendar - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="card-header mb-lg">
-    <h1 class="card-title">Calendar</h1>
+<!-- Page Header -->
+<div class="mb-8">
+    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+        Calendar
+    </h1>
 </div>
 
 <!-- Status Legend -->
-<div class="card mb-md">
-    <div class="flex flex-gap-sm" style="flex-wrap: wrap; align-items: center;">
-        <strong>Status:</strong>
-        <span class="status status-assigned">Assigned</span>
-        <span class="status status-claimed">Claimed</span>
-        <span class="status status-approved">Approved</span>
-        <span class="status status-rejected">Rejected</span>
-        <span class="status status-missed">Missed</span>
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-6">
+    <div class="flex flex-wrap gap-3 items-center text-sm">
+        <strong class="text-gray-900 dark:text-white">Status:</strong>
+        {{ status_badge('pending', 'Assigned') }}
+        {{ status_badge('claimed', 'Claimed') }}
+        {{ status_badge('approved', 'Approved') }}
+        {{ status_badge('rejected', 'Rejected') }}
+        {{ status_badge('inactive', 'Missed') }}
     </div>
 </div>
 
 <!-- Calendar Container -->
-<div class="card mb-lg">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
     <div id="calendar"></div>
 </div>
 
 <!-- Instances Without Due Dates -->
-<div class="card-header mb-md">
-    <h2 class="card-title">Instances Without Due Date</h2>
+<div class="mb-4">
+    <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+        Instances Without Due Date
+    </h2>
 </div>
 
 {% if instances_without_dates %}
-<div class="card">
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-white/5 dark:bg-white/5 border-b border-white/10 dark:border-white/5">
                 <tr>
-                    <th>Chore Name</th>
-                    <th>Points</th>
-                    <th>Assigned To</th>
-                    <th>Status</th>
-                    <th>Assignment Type</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Chore Name</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Points</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Assigned To</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Assignment Type</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-white/10 dark:divide-white/5">
                 {% for instance in instances_without_dates %}
-                <tr>
-                    <td>{{ instance.chore.name }}</td>
-                    <td>
-                        <span class="points-badge">{{ instance.chore.points }} pts</span>
+                <tr class="hover:bg-white/5 dark:hover:bg-white/5 transition-colors duration-200">
+                    <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30 backdrop-blur-sm">
+                            {{ instance.chore.points }} pts
+                        </span>
                     </td>
-                    <td>
+                    <td class="px-6 py-4">
                         {% if instance.chore.assignment_type == 'shared' %}
                             {% if instance.eligible_kids %}
+                            <div class="flex flex-wrap gap-1">
                                 {% for kid in instance.eligible_kids %}
-                                    <span class="status status-active" style="margin-right: 0.25rem; margin-bottom: 0.25rem;">
-                                        {{ kid.username }}
-                                    </span>
+                                    {{ status_badge('active', kid.username) }}
                                 {% endfor %}
+                            </div>
                             {% else %}
-                                <span class="text-secondary">None</span>
+                                <span class="text-gray-600 dark:text-gray-400">None</span>
                             {% endif %}
                         {% else %}
-                            {{ instance.assignee.username if instance.assignee else 'Unassigned' }}
+                            <span class="text-gray-900 dark:text-white">{{ instance.assignee.username if instance.assignee else 'Unassigned' }}</span>
                         {% endif %}
                     </td>
-                    <td>
-                        <span class="status status-{{ instance.status }}">{{ instance.status|capitalize }}</span>
+                    <td class="px-6 py-4">
+                        {{ status_badge(instance.status) }}
                     </td>
-                    <td>{{ instance.chore.assignment_type|capitalize if instance.chore else 'Individual' }}</td>
+                    <td class="px-6 py-4 text-gray-900 dark:text-white">
+                        {{ instance.chore.assignment_type|capitalize if instance.chore else 'Individual' }}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -75,11 +85,15 @@
     </div>
 </div>
 {% else %}
-<div class="card">
-    <div class="empty-state">
-        <div class="empty-state-icon">✓</div>
-        <div class="empty-state-title">No instances without due dates</div>
-        <p class="empty-state-text">All chore instances have due dates assigned.</p>
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-12">
+    <div class="text-center">
+        <div class="text-6xl mb-4">✓</div>
+        <div class="font-display text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            No instances without due dates
+        </div>
+        <p class="text-gray-600 dark:text-gray-400">
+            All chore instances have due dates assigned.
+        </p>
     </div>
 </div>
 {% endif %}
@@ -87,6 +101,9 @@
 <!-- FullCalendar CSS -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
 
+{% endblock %}
+
+{% block extra_js %}
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 

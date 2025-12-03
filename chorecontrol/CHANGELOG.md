@@ -2,8 +2,8 @@
 
 All notable changes to the ChoreControl add-on will be documented in this file.
 
-## [0.2.7] - 2025-11-30
+## [0.3.0] - 2025-12-02
 
-### Fixed
-- HA users automatically available for mapping in addon
+### Initial UI update
+- Implemented tailwinds css
 

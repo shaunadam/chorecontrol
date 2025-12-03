@@ -1,148 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-mode-auto">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Access Restricted - ChoreControl</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .restricted-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', filename='js/dark-mode.js') }}"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Space Grotesk', 'sans-serif'],
+                        'body': ['Inter', 'sans-serif'],
+                    }
+                }
+            }
         }
-
-        .restricted-card {
-            background: white;
-            border-radius: 16px;
-            padding: 3rem 2rem;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            text-align: center;
-        }
-
-        .restricted-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .restricted-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 1rem;
-        }
-
-        .restricted-subtitle {
-            font-size: 1.25rem;
-            color: #666;
-            margin-bottom: 2rem;
-        }
-
-        .restricted-message {
-            background-color: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-            text-align: left;
-        }
-
-        .restricted-message h3 {
-            margin-top: 0;
-            color: #333;
-            font-size: 1.1rem;
-        }
-
-        .restricted-message p {
-            margin: 0.5rem 0;
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .restricted-message ul {
-            margin: 1rem 0;
-            padding-left: 1.5rem;
-        }
-
-        .restricted-message li {
-            margin: 0.5rem 0;
-            color: #555;
-        }
-
-        .role-badge {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin: 1rem 0;
-        }
-
-        .role-kid {
-            background-color: #f3e5f5;
-            color: #7b1fa2;
-        }
-
-        .role-unmapped {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .btn-logout {
-            display: inline-block;
-            padding: 0.75rem 2rem;
-            background-color: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .btn-logout:hover {
-            background-color: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .info-section {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #e0e0e0;
-        }
-
-        .info-section h4 {
-            color: #333;
-            margin-bottom: 1rem;
-        }
-
-        .info-section p {
-            color: #666;
-            line-height: 1.6;
-            margin: 0.5rem 0;
-        }
-    </style>
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-overrides.css') }}">
 </head>
-<body>
-    <div class="restricted-container">
-        <div class="restricted-card">
-            {% if user_role == 'unmapped' %}
-                <div class="restricted-icon">🔒</div>
-                <h1 class="restricted-title">Account Needs Mapping</h1>
-                <p class="restricted-subtitle">Welcome, {{ username }}!</p>
-                <span class="role-badge role-unmapped">Unmapped User</span>
+<body class="font-body bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen">
+    <!-- Animated Background -->
+    <div class="fixed inset-0 -z-10 overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-green-500/10 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+        <div class="absolute top-0 right-1/4 w-96 h-96 bg-gray-500/10 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-0 left-1/2 w-96 h-96 bg-green-400/10 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+    </div>
 
-                <div class="restricted-message">
-                    <h3>Your account needs to be set up by a parent</h3>
-                    <p>Your Home Assistant account has been detected, but hasn't been assigned a role yet.</p>
-                    <p><strong>What happens next:</strong></p>
-                    <ul>
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+            {% if user_role == 'unmapped' %}
+                <div class="text-center mb-6">
+                    <div class="text-6xl mb-4">🔒</div>
+                    <h1 class="font-display text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                        Account Needs Mapping
+                    </h1>
+                    <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">
+                        Welcome, {{ username }}!
+                    </p>
+                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30 backdrop-blur-sm uppercase">
+                        Unmapped User
+                    </span>
+                </div>
+
+                <div class="bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-6 mb-6">
+                    <h3 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                        Your account needs to be set up by a parent
+                    </h3>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        Your Home Assistant account has been detected, but hasn't been assigned a role yet.
+                    </p>
+                    <p class="text-gray-700 dark:text-gray-300 font-semibold mb-2">
+                        What happens next:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
                         <li>A parent user needs to log in to ChoreControl</li>
                         <li>They'll navigate to <strong>User Mapping</strong></li>
                         <li>They'll assign you as either a <strong>Parent</strong> or <strong>Kid</strong></li>
@@ -150,23 +66,41 @@
                     </ul>
                 </div>
 
-                <div class="info-section">
-                    <h4>ℹ️ Information</h4>
-                    <p><strong>Your HA User ID:</strong> {{ ha_user_id }}</p>
-                    <p>Please share this information with a parent so they can map your account.</p>
+                <div class="bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-2">ℹ️ Information</h4>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                        <strong>Your HA User ID:</strong> {{ ha_user_id }}
+                    </p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Please share this information with a parent so they can map your account.
+                    </p>
                 </div>
 
             {% elif user_role == 'kid' %}
-                <div class="restricted-icon">🎮</div>
-                <h1 class="restricted-title">Welcome, {{ username }}!</h1>
-                <p class="restricted-subtitle">You're all set up in ChoreControl</p>
-                <span class="role-badge role-kid">Kid User</span>
+                <div class="text-center mb-6">
+                    <div class="text-6xl mb-4">🎮</div>
+                    <h1 class="font-display text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                        Welcome, {{ username }}!
+                    </h1>
+                    <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">
+                        You're all set up in ChoreControl
+                    </p>
+                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30 backdrop-blur-sm uppercase">
+                        Kid User
+                    </span>
+                </div>
 
-                <div class="restricted-message">
-                    <h3>Kids use the Home Assistant integration, not this addon UI</h3>
-                    <p>This web interface is for parents to manage chores, rewards, and approvals.</p>
-                    <p><strong>How you interact with ChoreControl:</strong></p>
-                    <ul>
+                <div class="bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-6 mb-6">
+                    <h3 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                        Kids use the Home Assistant integration, not this addon UI
+                    </h3>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        This web interface is for parents to manage chores, rewards, and approvals.
+                    </p>
+                    <p class="text-gray-700 dark:text-gray-300 font-semibold mb-2">
+                        How you interact with ChoreControl:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
                         <li><strong>Claim chores</strong> using buttons in your Home Assistant dashboard</li>
                         <li><strong>View your points</strong> via the ChoreControl sensors</li>
                         <li><strong>Request rewards</strong> using the claim_reward service</li>
@@ -174,33 +108,54 @@
                     </ul>
                 </div>
 
-                <div class="info-section">
-                    <h4>📊 Your Stats</h4>
-                    <p><strong>Current Points:</strong> <span style="color: #4caf50; font-weight: 600; font-size: 1.2rem;">{{ points }}</span></p>
-                    <p><strong>Role:</strong> Kid</p>
-                    <p>Check your Home Assistant dashboard to see available chores and claim them!</p>
+                <div class="bg-green-500/10 dark:bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">📊 Your Stats</h4>
+                    <p class="text-gray-700 dark:text-gray-300 mb-2">
+                        <strong>Current Points:</strong>
+                        <span class="text-green-500 dark:text-green-400 font-bold text-2xl ml-2">{{ points }}</span>
+                    </p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Check your Home Assistant dashboard to see available chores and claim them!
+                    </p>
                 </div>
 
             {% else %}
-                <div class="restricted-icon">⚠️</div>
-                <h1 class="restricted-title">Access Restricted</h1>
-                <p class="restricted-subtitle">{{ username }}</p>
-
-                <div class="restricted-message">
-                    <h3>You don't have permission to access this addon</h3>
-                    <p>This addon interface is only accessible to users with parent privileges.</p>
-                    <p>If you believe this is an error, contact a parent user to update your role via the User Mapping page.</p>
+                <div class="text-center mb-6">
+                    <div class="text-6xl mb-4">⚠️</div>
+                    <h1 class="font-display text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                        Access Restricted
+                    </h1>
+                    <p class="text-xl text-gray-600 dark:text-gray-400">
+                        {{ username }}
+                    </p>
                 </div>
 
-                <div class="info-section">
-                    <h4>ℹ️ Information</h4>
-                    <p><strong>Your Role:</strong> {{ user_role }}</p>
-                    <p><strong>Your HA User ID:</strong> {{ ha_user_id }}</p>
+                <div class="bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-6 mb-6">
+                    <h3 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                        You don't have permission to access this addon
+                    </h3>
+                    <p class="text-gray-700 dark:text-gray-300">
+                        This addon interface is only accessible to users with parent privileges.
+                        If you believe this is an error, contact a parent user to update your role via the User Mapping page.
+                    </p>
+                </div>
+
+                <div class="bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-2">ℹ️ Information</h4>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                        <strong>Your Role:</strong> {{ user_role }}
+                    </p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        <strong>Your HA User ID:</strong> {{ ha_user_id }}
+                    </p>
                 </div>
             {% endif %}
 
-            <div style="margin-top: 2rem;">
-                <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+            <div class="text-center">
+                <a href="{{ url_for('auth.logout') }}"
+                   class="inline-flex items-center justify-center bg-gray-500/20 hover:bg-gray-500/30 text-gray-900 dark:text-white font-medium px-8 py-3 rounded-xl backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100">
+                    Logout
+                </a>
             </div>
         </div>
     </div>

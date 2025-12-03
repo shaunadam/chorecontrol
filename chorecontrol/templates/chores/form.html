@@ -1,74 +1,96 @@
 {% extends "base.html" %}
+{% from "_components/macros.html" import form_input, form_textarea, form_select, form_checkbox %}
 
 {% block title %}{{ 'Edit' if chore else 'Create' }} Chore - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="mb-md">
-    <a href="{{ url_for('ui.chores_list') }}" class="btn btn-sm btn-outline">← Back to Chores</a>
+<!-- Back Button -->
+<div class="mb-6">
+    <a href="{{ url_for('ui.chores_list') }}"
+       class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+        ← Back to Chores
+    </a>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h1 class="card-title">{{ 'Edit' if chore else 'Create New' }} Chore</h1>
+<!-- Form Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
+    <!-- Header -->
+    <div class="mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+        <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+            {{ 'Edit' if chore else 'Create New' }} Chore
+        </h1>
     </div>
 
     <form method="POST" action="{{ url_for('chores.create_chore') if not chore else url_for('chores.update_chore', chore_id=chore.id) }}" data-json-form>
-        <div class="form-group">
-            <label class="form-label" for="name">Name *</label>
-            <input
-                type="text"
-                id="name"
-                name="name"
-                class="form-input"
-                required
-                maxlength="255"
-                value="{{ chore.name if chore else '' }}"
-                placeholder="e.g., Take out trash"
-            >
+        <!-- Name -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="name">
+                Name *
+            </label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   required
+                   maxlength="255"
+                   value="{{ chore.name if chore else '' }}"
+                   placeholder="e.g., Take out trash">
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="description">Description</label>
-            <textarea
-                id="description"
-                name="description"
-                class="form-textarea"
-                rows="3"
-                placeholder="Provide details about how to complete this chore..."
-            >{{ chore.description if chore else '' }}</textarea>
+        <!-- Description -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="description">
+                Description
+            </label>
+            <textarea id="description"
+                      name="description"
+                      class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 resize-none"
+                      rows="3"
+                      placeholder="Provide details about how to complete this chore...">{{ chore.description if chore else '' }}</textarea>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="points">Points Value *</label>
-            <input
-                type="number"
-                id="points"
-                name="points"
-                class="form-input"
-                required
-                min="0"
-                value="{{ chore.points if chore else '10' }}"
-            >
-            <div class="form-help">Points awarded when the chore is completed and approved</div>
+        <!-- Points -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="points">
+                Points Value *
+            </label>
+            <input type="number"
+                   id="points"
+                   name="points"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   required
+                   min="0"
+                   value="{{ chore.points if chore else '10' }}">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Points awarded when the chore is completed and approved
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="late_points">Late Points</label>
-            <input
-                type="number"
-                id="late_points"
-                name="late_points"
-                class="form-input"
-                min="0"
-                value="{{ chore.late_points if chore and chore.late_points else '' }}"
-                placeholder="Optional"
-            >
-            <div class="form-help">Reduced points if completed after the due date</div>
+        <!-- Late Points -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="late_points">
+                Late Points
+            </label>
+            <input type="number"
+                   id="late_points"
+                   name="late_points"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   min="0"
+                   value="{{ chore.late_points if chore and chore.late_points else '' }}"
+                   placeholder="Optional">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Reduced points if completed after the due date
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="recurrence_type">Recurrence Pattern</label>
-            <select id="recurrence_type" class="form-select" onchange="updateRecurrenceFields()">
+        <!-- Recurrence Type -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="recurrence_type">
+                Recurrence Pattern
+            </label>
+            <select id="recurrence_type"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                    onchange="updateRecurrenceFields()">
                 <option value="none">One-time (no recurrence)</option>
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
@@ -78,108 +100,146 @@
             <input type="hidden" id="recurrence_type_value" name="recurrence_type" value="{{ chore.recurrence_type if chore and chore.recurrence_type else 'none' }}">
         </div>
 
-        <!-- Start date for one-off chores -->
-        <div id="start_date_field" class="form-group">
-            <label class="form-label" for="start_date">Due Date</label>
-            <input
-                type="date"
-                id="start_date"
-                name="start_date"
-                class="form-input"
-                value="{{ chore.start_date.isoformat() if chore and chore.start_date else '' }}"
-            >
-            <div class="form-help">
+        <!-- Start Date -->
+        <div id="start_date_field" class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="start_date">
+                Due Date
+            </label>
+            <input type="date"
+                   id="start_date"
+                   name="start_date"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   value="{{ chore.start_date.isoformat() if chore and chore.start_date else '' }}">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 For one-time chores: leave empty to create an "anytime" chore with no due date.<br>
                 For recurring chores: this is when the schedule starts.
-            </div>
+            </p>
         </div>
 
-        <div id="recurrence_fields" style="display: none;">
+        <!-- Recurrence Fields -->
+        <div id="recurrence_fields" style="display: none;" class="mb-6">
             <!-- Daily Options -->
-            <div id="daily_options" class="recurrence-option" style="display: none;">
-                <div class="form-group">
-                    <label class="form-label" for="daily_interval">Every</label>
-                    <div class="flex flex-gap-sm">
-                        <input type="number" id="daily_interval" class="form-input" min="1" value="1" style="max-width: 100px;">
-                        <span style="padding: 0.625rem;">day(s)</span>
-                    </div>
+            <div id="daily_options" class="recurrence-option bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Every
+                </label>
+                <div class="flex items-center gap-3">
+                    <input type="number"
+                           id="daily_interval"
+                           class="w-24 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                           min="1"
+                           value="1">
+                    <span class="text-gray-900 dark:text-white">day(s)</span>
                 </div>
             </div>
 
             <!-- Weekly Options -->
-            <div id="weekly_options" class="recurrence-option" style="display: none;">
-                <div class="form-group">
-                    <label class="form-label">Days of the Week</label>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="mon" value="MON">
-                        <label for="mon">Monday</label>
+            <div id="weekly_options" class="recurrence-option bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Days of the Week
+                </label>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="mon"
+                               value="MON"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="mon" class="text-gray-900 dark:text-white">Monday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="tue" value="TUE">
-                        <label for="tue">Tuesday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="tue"
+                               value="TUE"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="tue" class="text-gray-900 dark:text-white">Tuesday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="wed" value="WED">
-                        <label for="wed">Wednesday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="wed"
+                               value="WED"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="wed" class="text-gray-900 dark:text-white">Wednesday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="thu" value="THU">
-                        <label for="thu">Thursday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="thu"
+                               value="THU"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="thu" class="text-gray-900 dark:text-white">Thursday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="fri" value="FRI">
-                        <label for="fri">Friday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="fri"
+                               value="FRI"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="fri" class="text-gray-900 dark:text-white">Friday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="sat" value="SAT">
-                        <label for="sat">Saturday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="sat"
+                               value="SAT"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="sat" class="text-gray-900 dark:text-white">Saturday</label>
                     </div>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="sun" value="SUN">
-                        <label for="sun">Sunday</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="sun"
+                               value="SUN"
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="sun" class="text-gray-900 dark:text-white">Sunday</label>
                     </div>
                 </div>
             </div>
 
             <!-- Monthly Options -->
-            <div id="monthly_options" class="recurrence-option" style="display: none;">
-                <div class="form-group">
-                    <label class="form-label" for="monthly_day">Day of Month</label>
-                    <input type="number" id="monthly_day" class="form-input" min="1" max="31" placeholder="e.g., 15">
-                    <div class="form-help">Day of the month (1-31)</div>
-                </div>
+            <div id="monthly_options" class="recurrence-option bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="monthly_day">
+                    Day of Month
+                </label>
+                <input type="number"
+                       id="monthly_day"
+                       class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       min="1"
+                       max="31"
+                       placeholder="e.g., 15">
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    Day of the month (1-31)
+                </p>
             </div>
 
             <!-- Custom Pattern -->
-            <div id="custom_options" class="recurrence-option" style="display: none;">
-                <div class="form-group">
-                    <label class="form-label" for="custom_pattern">Custom Pattern</label>
-                    <input
-                        type="text"
-                        id="custom_pattern"
-                        class="form-input"
-                        placeholder="e.g., every 2 weeks on Monday, Wednesday"
-                    >
-                    <div class="form-help">
-                        Examples:
-                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-                            <li>"daily" or "every day"</li>
-                            <li>"every 3 days"</li>
-                            <li>"weekly on Monday, Wednesday, Friday"</li>
-                            <li>"every 2 weeks on Saturday"</li>
-                            <li>"monthly on day 15"</li>
-                            <li>"on the 1st and 15th"</li>
-                        </ul>
-                    </div>
+            <div id="custom_options" class="recurrence-option bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="custom_pattern">
+                    Custom Pattern
+                </label>
+                <input type="text"
+                       id="custom_pattern"
+                       class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       placeholder="e.g., every 2 weeks on Monday, Wednesday">
+                <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                    <p class="font-medium mb-2">Examples:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-2">
+                        <li>"daily" or "every day"</li>
+                        <li>"every 3 days"</li>
+                        <li>"weekly on Monday, Wednesday, Friday"</li>
+                        <li>"every 2 weeks on Saturday"</li>
+                        <li>"monthly on day 15"</li>
+                        <li>"on the 1st and 15th"</li>
+                    </ul>
                 </div>
             </div>
 
             <input type="hidden" id="recurrence_pattern" name="recurrence_pattern" value="{{ chore.recurrence_pattern if chore else '' }}">
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="assignment_type">Assignment Type</label>
-            <select id="assignment_type" name="assignment_type" class="form-select">
+        <!-- Assignment Type -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="assignment_type">
+                Assignment Type
+            </label>
+            <select id="assignment_type"
+                    name="assignment_type"
+                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200">
                 <option value="individual" {% if not chore or chore.assignment_type == 'individual' %}selected{% endif %}>
                     Individual - Each assigned kid gets their own instance
                 </option>
@@ -187,65 +247,83 @@
                     Shared - One instance that any assigned kid can claim (first come, first served)
                 </option>
             </select>
-            <div class="form-help">
-                <strong>Individual:</strong> Creates separate chore instances for each kid (e.g., "Make your bed")<br>
-                <strong>Shared:</strong> Creates one instance that any assigned kid can claim (e.g., "Take out the garbage")
+            <div class="mt-3 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <p><strong>Individual:</strong> Creates separate chore instances for each kid (e.g., "Make your bed")</p>
+                <p><strong>Shared:</strong> Creates one instance that any assigned kid can claim (e.g., "Take out the garbage")</p>
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="assigned_to">Assign To</label>
-            <div id="assignments">
+        <!-- Assign To -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                Assign To
+            </label>
+            <div id="assignments" class="space-y-2">
                 {% if kids %}
                     {% for kid in kids %}
-                    <div class="form-checkbox">
-                        <input
-                            type="checkbox"
-                            id="kid_{{ kid.id }}"
-                            name="assigned_to"
-                            value="{{ kid.id }}"
-                            {% if chore and kid.id in chore.assigned_users %}checked{% endif %}
-                        >
-                        <label for="kid_{{ kid.id }}">{{ kid.username }}</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox"
+                               id="kid_{{ kid.id }}"
+                               name="assigned_to"
+                               value="{{ kid.id }}"
+                               {% if chore and kid.id in chore.assigned_users %}checked{% endif %}
+                               class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                        <label for="kid_{{ kid.id }}" class="text-gray-900 dark:text-white">{{ kid.username }}</label>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <p class="text-secondary">No kids available. <a href="{{ url_for('ui.users_list') }}">Add a user</a> first.</p>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        No kids available. <a href="{{ url_for('ui.users_list') }}" class="text-green-500 hover:text-green-400 underline">Add a user</a> first.
+                    </p>
                 {% endif %}
             </div>
-            <div class="form-help">Select which kids can do this chore. For shared chores, any of the selected kids can claim it.</div>
+            <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                Select which kids can do this chore. For shared chores, any of the selected kids can claim it.
+            </p>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="auto_approve_delay_hours">Auto-approve Delay (hours)</label>
-            <input
-                type="number"
-                id="auto_approve_delay_hours"
-                name="auto_approve_delay_hours"
-                class="form-input"
-                min="0"
-                value="{{ chore.auto_approve_delay_hours if chore and chore.auto_approve_delay_hours else '' }}"
-                placeholder="Optional"
-            >
-            <div class="form-help">Automatically approve after this many hours (leave empty to disable)</div>
+        <!-- Auto-approve Delay -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="auto_approve_delay_hours">
+                Auto-approve Delay (hours)
+            </label>
+            <input type="number"
+                   id="auto_approve_delay_hours"
+                   name="auto_approve_delay_hours"
+                   class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                   min="0"
+                   value="{{ chore.auto_approve_delay_hours if chore and chore.auto_approve_delay_hours else '' }}"
+                   placeholder="Optional">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Automatically approve after this many hours (leave empty to disable)
+            </p>
         </div>
 
-        <div class="form-group">
-            <div class="form-checkbox">
-                <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    {% if not chore or chore.is_active %}checked{% endif %}
-                >
-                <label for="is_active">Active</label>
+        <!-- Is Active -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3">
+                <input type="checkbox"
+                       id="is_active"
+                       name="is_active"
+                       {% if not chore or chore.is_active %}checked{% endif %}
+                       class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                <label for="is_active" class="text-gray-900 dark:text-white font-medium">Active</label>
             </div>
-            <div class="form-help">Only active chores will generate new instances</div>
+            <p class="mt-2 ml-8 text-sm text-gray-600 dark:text-gray-400">
+                Only active chores will generate new instances
+            </p>
         </div>
 
-        <div class="flex-gap-sm mt-lg">
-            <button type="submit" class="btn btn-primary">{{ 'Update' if chore else 'Create' }} Chore</button>
-            <a href="{{ url_for('ui.chores_list') }}" class="btn btn-secondary">Cancel</a>
+        <!-- Form Actions -->
+        <div class="flex gap-3 pt-6 border-t border-white/10 dark:border-white/5">
+            <button type="submit"
+                    class="flex-1 sm:flex-none bg-green-500/90 hover:bg-green-500 text-white font-medium px-8 py-3 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
+                {{ 'Update' if chore else 'Create' }} Chore
+            </button>
+            <a href="{{ url_for('ui.chores_list') }}"
+               class="flex-1 sm:flex-none inline-flex items-center justify-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-8 py-3 rounded-xl backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100">
+                Cancel
+            </a>
         </div>
     </form>
 </div>
@@ -268,8 +346,8 @@ function updateRecurrenceFields() {
     const fieldsDiv = document.getElementById('recurrence_fields');
     const allOptions = document.querySelectorAll('.recurrence-option');
     const startDateField = document.getElementById('start_date_field');
-    const startDateLabel = startDateField.querySelector('.form-label');
-    const startDateHelp = startDateField.querySelector('.form-help');
+    const startDateLabel = startDateField.querySelector('.block');
+    const startDateHelp = startDateField.querySelector('.mt-2');
     const recurrenceTypeValue = document.getElementById('recurrence_type_value');
 
     // Hide all options first

@@ -3,60 +3,93 @@
 {% block title %}Settings - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Settings</h1>
-    <p class="subtitle">Configuration and integration settings</p>
+<!-- Page Header -->
+<div class="mb-8">
+    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+        Settings
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400">
+        Configuration and integration settings
+    </p>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h2>Home Assistant Integration</h2>
+<!-- Settings Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
+    <!-- Header -->
+    <div class="mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+        <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+            Home Assistant Integration
+        </h2>
     </div>
-    <div class="card-body">
-        <p>Use this API token to configure the ChoreControl integration in Home Assistant.</p>
 
-        <div class="form-group">
-            <label for="api_token">API Token:</label>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input
-                    type="text"
-                    id="api_token"
-                    value="{{ api_token }}"
-                    readonly
-                    class="form-control"
-                    style="font-family: monospace; flex: 1;"
-                    onclick="this.select()"
-                >
-                <button
-                    type="button"
-                    class="btn btn-primary"
-                    onclick="copyToken()"
-                    id="copy_btn"
-                >
+    <!-- Content -->
+    <div class="space-y-6">
+        <p class="text-gray-700 dark:text-gray-300">
+            Use this API token to configure the ChoreControl integration in Home Assistant.
+        </p>
+
+        <!-- API Token -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="api_token">
+                API Token:
+            </label>
+            <div class="flex gap-3">
+                <input type="text"
+                       id="api_token"
+                       value="{{ api_token }}"
+                       readonly
+                       class="flex-1 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       onclick="this.select()">
+                <button type="button"
+                        id="copy_btn"
+                        onclick="copyToken()"
+                        class="inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
                     Copy
                 </button>
             </div>
-            <small class="form-text text-muted">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Click the token to select it, or click the Copy button to copy to clipboard.
-            </small>
+            </p>
         </div>
 
-        <div class="alert alert-info" style="margin-top: 1rem;">
-            <strong>Setup Instructions:</strong>
-            <ol style="margin: 0.5rem 0 0 1.5rem;">
-                <li>Go to Home Assistant Settings → Devices & Services</li>
-                <li>Click "Add Integration" and search for "ChoreControl"</li>
-                <li>Enter the addon URL (e.g., <code>http://localhost:8099</code> or <code>http://homeassistant.local:8099</code>)</li>
-                <li>Paste this API token when prompted</li>
-            </ol>
+        <!-- Setup Instructions -->
+        <div class="bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+                <div class="text-2xl">ℹ️</div>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                        Setup Instructions:
+                    </h3>
+                    <ol class="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                        <li>Go to Home Assistant Settings → Devices & Services</li>
+                        <li>Click "Add Integration" and search for "ChoreControl"</li>
+                        <li>Enter the addon URL (e.g., <code class="bg-white/30 dark:bg-black/30 px-2 py-0.5 rounded">http://localhost:8099</code> or <code class="bg-white/30 dark:bg-black/30 px-2 py-0.5 rounded">http://homeassistant.local:8099</code>)</li>
+                        <li>Paste this API token when prompted</li>
+                    </ol>
+                </div>
+            </div>
         </div>
 
-        <div class="alert alert-warning" style="margin-top: 1rem;">
-            <strong>Security Note:</strong> Keep this token secret! Anyone with this token can access your ChoreControl data through the Home Assistant integration.
+        <!-- Security Warning -->
+        <div class="bg-yellow-500/10 dark:bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+                <div class="text-2xl">⚠️</div>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                        Security Note:
+                    </h3>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Keep this token secret! Anyone with this token can access your ChoreControl data through the Home Assistant integration.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
 function copyToken() {
     const tokenInput = document.getElementById('api_token');
@@ -66,17 +99,13 @@ function copyToken() {
     tokenInput.select();
     document.execCommand('copy');
 
-    // Update button text
+    // Update button text and style
     const originalText = copyBtn.textContent;
     copyBtn.textContent = 'Copied!';
-    copyBtn.classList.add('btn-success');
-    copyBtn.classList.remove('btn-primary');
 
     // Reset after 2 seconds
     setTimeout(() => {
         copyBtn.textContent = originalText;
-        copyBtn.classList.add('btn-primary');
-        copyBtn.classList.remove('btn-success');
     }, 2000);
 }
 </script>

@@ -1,0 +1,242 @@
+{# Glass Component Macros for ChoreControl #}
+
+{# Glass Card - Primary container with optional title and actions #}
+{% macro glass_card(title=None, actions=None, extra_classes='') %}
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 transition-all duration-300 hover:bg-white/15 hover:shadow-xl {{ extra_classes }}">
+  {% if title or actions %}
+  <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
+    {% if title %}
+    <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">{{ title }}</h2>
+    {% endif %}
+    {% if actions %}
+    <div class="flex gap-2">
+      {{ actions|safe }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {{ caller() }}
+</div>
+{% endmacro %}
+
+{# Status Badge - Colored badges for status indicators #}
+{% macro status_badge(status, text=None) %}
+{% set badge_map = {
+  'pending': {'bg': 'bg-yellow-500/20 dark:bg-yellow-500/30', 'text': 'text-yellow-700 dark:text-yellow-300', 'border': 'border-yellow-500/30'},
+  'claimed': {'bg': 'bg-blue-500/20 dark:bg-blue-500/30', 'text': 'text-blue-700 dark:text-blue-300', 'border': 'border-blue-500/30'},
+  'approved': {'bg': 'bg-green-500/20 dark:bg-green-500/30', 'text': 'text-green-700 dark:text-green-300', 'border': 'border-green-500/30'},
+  'rejected': {'bg': 'bg-red-500/20 dark:bg-red-500/30', 'text': 'text-red-700 dark:text-red-300', 'border': 'border-red-500/30'},
+  'missed': {'bg': 'bg-gray-500/20 dark:bg-gray-500/30', 'text': 'text-gray-700 dark:text-gray-300', 'border': 'border-gray-500/30'},
+  'active': {'bg': 'bg-green-500/20 dark:bg-green-500/30', 'text': 'text-green-700 dark:text-green-300', 'border': 'border-green-500/30'},
+  'inactive': {'bg': 'bg-gray-500/20 dark:bg-gray-500/30', 'text': 'text-gray-700 dark:text-gray-300', 'border': 'border-gray-500/30'},
+  'warning': {'bg': 'bg-yellow-500/20 dark:bg-yellow-500/30', 'text': 'text-yellow-700 dark:text-yellow-300', 'border': 'border-yellow-500/30'},
+  'success': {'bg': 'bg-green-500/20 dark:bg-green-500/30', 'text': 'text-green-700 dark:text-green-300', 'border': 'border-green-500/30'},
+  'error': {'bg': 'bg-red-500/20 dark:bg-red-500/30', 'text': 'text-red-700 dark:text-red-300', 'border': 'border-red-500/30'},
+} %}
+{% set badge_style = badge_map.get(status|lower, badge_map['pending']) %}
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase backdrop-blur-sm border {{ badge_style.bg }} {{ badge_style.text }} {{ badge_style.border }}">
+  {{ text or status }}
+</span>
+{% endmacro %}
+
+{# Primary Button - Green CTA button #}
+{% macro btn_primary(text, href=None, onclick=None, type='button', extra_classes='', icon=None) %}
+{% if href %}
+  <a href="{{ href }}" class="inline-flex items-center gap-2 bg-green-500/90 hover:bg-green-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </a>
+{% else %}
+  <button type="{{ type }}" {% if onclick %}onclick="{{ onclick }}"{% endif %} class="inline-flex items-center gap-2 bg-green-500/90 hover:bg-green-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </button>
+{% endif %}
+{% endmacro %}
+
+{# Secondary Button - Glass outline button #}
+{% macro btn_secondary(text, href=None, onclick=None, type='button', extra_classes='', icon=None) %}
+{% if href %}
+  <a href="{{ href }}" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-medium px-5 py-2 rounded-xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 hover:border-gray-400/50 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </a>
+{% else %}
+  <button type="{{ type }}" {% if onclick %}onclick="{{ onclick }}"{% endif %} class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-medium px-5 py-2 rounded-xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 hover:border-gray-400/50 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </button>
+{% endif %}
+{% endmacro %}
+
+{# Danger Button - Red button for destructive actions #}
+{% macro btn_danger(text, href=None, onclick=None, type='button', extra_classes='', icon=None) %}
+{% if href %}
+  <a href="{{ href }}" class="inline-flex items-center gap-2 bg-red-500/90 hover:bg-red-500 text-white font-medium px-5 py-2 rounded-xl backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </a>
+{% else %}
+  <button type="{{ type }}" {% if onclick %}onclick="{{ onclick }}"{% endif %} class="inline-flex items-center gap-2 bg-red-500/90 hover:bg-red-500 text-white font-medium px-5 py-2 rounded-xl backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </button>
+{% endif %}
+{% endmacro %}
+
+{# Small Button - Compact button variant #}
+{% macro btn_sm(text, href=None, onclick=None, type='button', variant='secondary', extra_classes='', icon=None) %}
+{% if variant == 'primary' %}
+  {% set btn_classes = 'bg-green-500/90 hover:bg-green-500 text-white shadow-md shadow-green-500/20 border-green-400/30' %}
+{% elif variant == 'danger' %}
+  {% set btn_classes = 'bg-red-500/90 hover:bg-red-500 text-white shadow-md shadow-red-500/20 border-red-400/30' %}
+{% else %}
+  {% set btn_classes = 'bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-300/50 dark:border-gray-600/50' %}
+{% endif %}
+
+{% if href %}
+  <a href="{{ href }}" class="inline-flex items-center gap-1 {{ btn_classes }} font-medium px-4 py-2 rounded-lg backdrop-blur-sm border transition-all duration-200 hover:scale-105 active:scale-100 text-sm {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </a>
+{% else %}
+  <button type="{{ type }}" {% if onclick %}onclick="{{ onclick }}"{% endif %} class="inline-flex items-center gap-1 {{ btn_classes }} font-medium px-4 py-2 rounded-lg backdrop-blur-sm border transition-all duration-200 hover:scale-105 active:scale-100 text-sm {{ extra_classes }}">
+    {% if icon %}{{ icon|safe }}{% endif %}{{ text }}
+  </button>
+{% endif %}
+{% endmacro %}
+
+{# Empty State - Display when there's no data #}
+{% macro empty_state(icon, title, text, button_text=None, button_href=None) %}
+<div class="text-center py-12">
+  <div class="text-6xl mb-4 opacity-50">{{ icon }}</div>
+  <h3 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-2">
+    {{ title }}
+  </h3>
+  <p class="text-gray-600 dark:text-gray-400 mb-4">
+    {{ text }}
+  </p>
+  {% if button_text and button_href %}
+    {{ btn_primary(button_text, href=button_href) }}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# Form Input - Glass styled input field #}
+{% macro form_input(name, label, type='text', value='', placeholder='', required=False, help_text='', extra_classes='') %}
+<div class="form-group {{ extra_classes }}">
+  <label for="{{ name }}" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+    {{ label }}
+    {% if required %}<span class="text-red-500">*</span>{% endif %}
+  </label>
+  <input
+    type="{{ type }}"
+    id="{{ name }}"
+    name="{{ name }}"
+    {% if value %}value="{{ value }}"{% endif %}
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    {% if required %}required{% endif %}
+    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:bg-white/70 dark:focus:bg-gray-800/70"
+  />
+  {% if help_text %}
+  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ help_text }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# Form Textarea - Glass styled textarea #}
+{% macro form_textarea(name, label, value='', placeholder='', rows=3, required=False, help_text='', extra_classes='') %}
+<div class="form-group {{ extra_classes }}">
+  <label for="{{ name }}" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+    {{ label }}
+    {% if required %}<span class="text-red-500">*</span>{% endif %}
+  </label>
+  <textarea
+    id="{{ name }}"
+    name="{{ name }}"
+    rows="{{ rows }}"
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    {% if required %}required{% endif %}
+    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:bg-white/70 dark:focus:bg-gray-800/70"
+  >{% if value %}{{ value }}{% endif %}</textarea>
+  {% if help_text %}
+  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ help_text }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# Form Select - Glass styled select dropdown #}
+{% macro form_select(name, label, options, selected='', required=False, help_text='', extra_classes='') %}
+<div class="form-group {{ extra_classes }}">
+  <label for="{{ name }}" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+    {{ label }}
+    {% if required %}<span class="text-red-500">*</span>{% endif %}
+  </label>
+  <select
+    id="{{ name }}"
+    name="{{ name }}"
+    {% if required %}required{% endif %}
+    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 focus:bg-white/70 dark:focus:bg-gray-800/70"
+  >
+    {% for value, text in options %}
+    <option value="{{ value }}" {% if value == selected %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+  {% if help_text %}
+  <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ help_text }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# Form Checkbox - Glass styled checkbox #}
+{% macro form_checkbox(name, label, checked=False, help_text='', extra_classes='') %}
+<div class="flex items-center gap-3 {{ extra_classes }}">
+  <input
+    type="checkbox"
+    id="{{ name }}"
+    name="{{ name }}"
+    {% if checked %}checked{% endif %}
+    class="w-5 h-5 rounded bg-white/50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600 text-green-500 focus:ring-2 focus:ring-green-500/50"
+  />
+  <div class="flex-1">
+    <label for="{{ name }}" class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+      {{ label }}
+    </label>
+    {% if help_text %}
+    <p class="text-xs text-gray-600 dark:text-gray-400">{{ help_text }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{# Points Badge - Special badge for displaying points #}
+{% macro points_badge(points, size='md') %}
+{% if size == 'lg' %}
+  {% set badge_classes = 'px-6 py-3 text-2xl' %}
+  {% set icon_size = 'text-3xl' %}
+{% elif size == 'sm' %}
+  {% set badge_classes = 'px-2 py-1 text-sm' %}
+  {% set icon_size = 'text-base' %}
+{% else %}
+  {% set badge_classes = 'px-4 py-2 text-xl' %}
+  {% set icon_size = 'text-2xl' %}
+{% endif %}
+
+<div class="inline-flex items-center gap-2 {{ badge_classes }} rounded-full bg-gradient-to-r from-green-500/30 to-green-600/30 border border-green-500/40 backdrop-blur-sm">
+  <span class="{{ icon_size }}">⭐</span>
+  <span class="font-display font-bold text-green-700 dark:text-green-300">
+    {{ points }}
+  </span>
+</div>
+{% endmacro %}
+
+{# Modal - Glass styled modal #}
+{% macro modal(id, title, size='md') %}
+<div id="{{ id }}" class="fixed inset-0 hidden items-center justify-center z-[1000]" style="display: none;">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="this.parentElement.style.display='none'"></div>
+
+  <!-- Modal Content -->
+  <div class="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 {% if size == 'lg' %}max-w-2xl{% elif size == 'sm' %}max-w-sm{% else %}max-w-md{% endif %} w-full mx-4 animate-fade-in">
+    <h3 class="font-display text-2xl font-bold text-gray-900 dark:text-white mb-4">
+      {{ title }}
+    </h3>
+
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}

@@ -1,232 +1,267 @@
 {% extends "base.html" %}
+{% from "_components/macros.html" import glass_card, status_badge, btn_primary, btn_secondary, btn_sm, btn_danger, empty_state, points_badge, modal %}
 
 {% block title %}Dashboard - ChoreControl{% endblock %}
 
 {% block content %}
-<div class="page-header mb-lg">
-    <h1>Dashboard</h1>
-    <p class="text-secondary">Welcome back, {{ current_user.username }}!</p>
+<!-- Page Header -->
+<div class="mb-8">
+    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+      Dashboard
+    </h1>
+    <p class="text-lg text-gray-600 dark:text-gray-400">
+      Welcome back, <span class="font-semibold text-green-600 dark:text-green-400">{{ current_user.username }}</span>!
+    </p>
 </div>
 
-<!-- Stats Overview -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ stats.pending_approvals }}</span>
-        <span class="stat-label">Pending Approvals</span>
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+    <!-- Stat Card 1: Pending Approvals -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer" onclick="window.location.href='{{ url_for('ui.approval_queue') }}'">
+      <div class="text-4xl md:text-5xl font-display font-bold text-green-600 dark:text-green-400 mb-2">
+        {{ stats.pending_approvals }}
+      </div>
+      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+        Pending Approvals
+      </div>
     </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ stats.pending_rewards }}</span>
-        <span class="stat-label">Reward Claims</span>
+
+    <!-- Stat Card 2: Reward Claims -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
+      <div class="text-4xl md:text-5xl font-display font-bold text-purple-600 dark:text-purple-400 mb-2">
+        {{ stats.pending_rewards }}
+      </div>
+      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+        Reward Claims
+      </div>
     </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ stats.today_completed }}</span>
-        <span class="stat-label">Completed Today</span>
+
+    <!-- Stat Card 3: Completed Today -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
+      <div class="text-4xl md:text-5xl font-display font-bold text-blue-600 dark:text-blue-400 mb-2">
+        {{ stats.today_completed }}
+      </div>
+      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+        Completed Today
+      </div>
     </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ stats.active_chores }}</span>
-        <span class="stat-label">Active Chores</span>
+
+    <!-- Stat Card 4: Active Chores -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
+      <div class="text-4xl md:text-5xl font-display font-bold text-gray-900 dark:text-white mb-2">
+        {{ stats.active_chores }}
+      </div>
+      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+        Active Chores
+      </div>
     </div>
 </div>
 
-<!-- Pending Approvals Section -->
-<div class="card mb-lg">
-    <div class="card-header">
-        <h2 class="card-title">Pending Approvals</h2>
-        <a href="{{ url_for('ui.approval_queue') }}" class="btn btn-sm btn-primary">View All</a>
+<!-- Pending Approvals Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+    <!-- Card Header -->
+    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+        Pending Approvals
+      </h2>
+      {{ btn_sm('View All', href=url_for('ui.approval_queue'), variant='primary') }}
     </div>
 
     {% if pending_instances %}
-        <ul class="list">
+        <div class="space-y-3">
             {% for instance in pending_instances %}
-            <li class="list-item">
-                <div class="list-item-header">
-                    <div class="list-item-title">{{ instance.chore.name }}</div>
-                    <span class="status status-claimed">Claimed</span>
+            <div class="bg-white/30 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl p-4 transition-all duration-200 hover:bg-white/40 hover:shadow-md">
+                <!-- Item Header -->
+                <div class="flex justify-between items-start mb-3">
+                  <h3 class="font-semibold text-lg text-gray-900 dark:text-white">
+                    {{ instance.chore.name }}
+                  </h3>
+                  {{ status_badge('claimed', 'Claimed') }}
                 </div>
-                <div class="list-item-meta">
-                    <strong>{{ instance.claimer.username }}</strong> completed this on
-                    {{ instance.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
-                </div>
-                <div class="list-item-meta">
+
+                <!-- Metadata -->
+                <div class="space-y-1 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <p>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ instance.claimer.username }}</span>
+                    completed this on {{ instance.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
+                  </p>
+                  <p>
                     Due: {{ instance.due_date.strftime('%b %d, %Y') }}
                     {% if instance.claimed_late %}
-                        <span class="status status-warning">Claimed Late</span>
+                      {{ status_badge('warning', 'Claimed Late') }}
                     {% endif %}
-                </div>
-                <div class="list-item-meta">
-                    Points: <strong>{{ instance.points_value }}</strong>
+                  </p>
+                  <p>
+                    Points: <span class="font-semibold text-green-600 dark:text-green-400">{{ instance.points_value }}</span>
                     {% if instance.claimed_late and instance.chore.late_points %}
                         (Late: {{ instance.chore.late_points }})
                     {% endif %}
+                  </p>
                 </div>
-                <div class="list-item-actions">
-                    <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" style="display: inline;" data-json-form>
-                        <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
-                    </form>
-                    <button class="btn btn-sm btn-danger" onclick="showRejectModal({{ instance.id }}, '{{ instance.chore.name }}')">✗ Reject</button>
-                    <a href="{{ url_for('ui.chore_detail', id=instance.chore.id) }}" class="btn btn-sm btn-outline">View Chore</a>
+
+                <!-- Actions -->
+                <div class="flex flex-wrap gap-2">
+                  <form method="POST" action="{{ url_for('instances.approve_instance', instance_id=instance.id) }}" data-json-form class="inline">
+                    {{ btn_sm('✓ Approve', type='submit', variant='primary') }}
+                  </form>
+
+                  {{ btn_sm('✗ Reject', onclick="showRejectModal(" ~ instance.id ~ ", '" ~ instance.chore.name ~ "')", variant='danger') }}
+
+                  {{ btn_sm('View Chore', href=url_for('ui.chore_detail', id=instance.chore.id)) }}
                 </div>
-            </li>
+            </div>
             {% endfor %}
-        </ul>
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">✓</div>
-            <div class="empty-state-title">All caught up!</div>
-            <p class="empty-state-text">No pending chore approvals at the moment.</p>
         </div>
+    {% else %}
+        {{ empty_state('✓', 'All caught up!', 'No pending chore approvals at the moment.') }}
     {% endif %}
 </div>
 
-<!-- Kids' Points -->
-<div class="card mb-lg">
-    <div class="card-header">
-        <h2 class="card-title">Kids' Points</h2>
-        <a href="{{ url_for('ui.users_list') }}" class="btn btn-sm btn-outline">Manage</a>
+<!-- Kids' Points Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+        Kids' Points
+      </h2>
+      {{ btn_sm('Manage', href=url_for('ui.users_list')) }}
     </div>
 
     {% if kids %}
-        <ul class="list">
+        <div class="space-y-3">
             {% for kid in kids %}
-            <li class="list-item">
-                <div class="flex-between">
-                    <div>
-                        <div class="list-item-title">{{ kid.username }}</div>
-                    </div>
-                    <div class="points-badge">{{ kid.points }}</div>
+            <div class="bg-white/30 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h3 class="font-semibold text-lg text-gray-900 dark:text-white">
+                  {{ kid.username }}
+                </h3>
+
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <!-- Points Badge -->
+                  {{ points_badge(kid.points) }}
+
+                  <!-- Action Buttons -->
+                  <div class="flex gap-2 flex-wrap">
+                    {{ btn_sm('View History', href=url_for('ui.user_detail', id=kid.id), variant='primary', extra_classes='text-xs') }}
+                    {{ btn_sm('Adjust Points', onclick="showPointsAdjustModal(" ~ kid.id ~ ", '" ~ kid.username ~ "', " ~ kid.points ~ ")", extra_classes='text-xs') }}
+                  </div>
                 </div>
-                <div class="list-item-actions">
-                    <a href="{{ url_for('ui.user_detail', id=kid.id) }}" class="btn btn-sm btn-primary">View History</a>
-                    <button class="btn btn-sm btn-outline" onclick="showPointsAdjustModal({{ kid.id }}, '{{ kid.username }}', {{ kid.points }})">Adjust Points</button>
-                </div>
-            </li>
+            </div>
             {% endfor %}
-        </ul>
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">👥</div>
-            <div class="empty-state-title">No kids yet</div>
-            <p class="empty-state-text">Add kids to start tracking chores and points.</p>
-            <a href="{{ url_for('ui.users_list') }}" class="btn btn-primary">Add User</a>
         </div>
+    {% else %}
+        {{ empty_state('👥', 'No kids yet', 'Add kids to start tracking chores and points.', 'Add User', url_for('ui.users_list')) }}
     {% endif %}
 </div>
 
-<!-- Recent Activity -->
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">Recent Activity</h2>
+<!-- Recent Activity Card -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
+    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+        Recent Activity
+      </h2>
     </div>
 
     {% if recent_activity %}
-        <ul class="list">
+        <div class="space-y-3">
             {% for activity in recent_activity %}
-            <li class="list-item">
-                <div class="list-item-header">
-                    <div class="list-item-title">{{ activity.chore.title }}</div>
-                    <span class="status status-{{ activity.status }}">{{ activity.status|title }}</span>
+            <div class="bg-white/30 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl p-4">
+                <div class="flex justify-between items-start mb-3">
+                  <div class="font-semibold text-gray-900 dark:text-white">{{ activity.chore.title }}</div>
+                  {{ status_badge(activity.status, activity.status|title) }}
                 </div>
-                <div class="list-item-meta">
+                <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     {% if activity.status == 'approved' %}
-                        <strong>{{ activity.claimer.username }}</strong> completed and earned <strong>{{ activity.points_awarded }} points</strong>
-                        <br>Approved {{ activity.approved_at.strftime('%b %d at %I:%M %p') }}
+                        <p><strong class="text-gray-900 dark:text-white">{{ activity.claimer.username }}</strong> completed and earned <strong class="text-green-600 dark:text-green-400">{{ activity.points_awarded }} points</strong></p>
+                        <p class="text-xs">Approved {{ activity.approved_at.strftime('%b %d at %I:%M %p') }}</p>
                     {% elif activity.status == 'rejected' %}
-                        <strong>{{ activity.claimer.username }}</strong>'s completion was rejected
+                        <p><strong class="text-gray-900 dark:text-white">{{ activity.claimer.username }}</strong>'s completion was rejected</p>
                         {% if activity.rejection_reason %}
-                            <br>Reason: {{ activity.rejection_reason }}
+                        <p class="text-xs italic">Reason: {{ activity.rejection_reason }}</p>
                         {% endif %}
                     {% elif activity.status == 'missed' %}
-                        Missed by <strong>{{ activity.assigned_user.username if activity.assigned_user else 'Unassigned' }}</strong>
+                        <p>Missed by <strong class="text-gray-900 dark:text-white">{{ activity.assigned_user.username if activity.assigned_user else 'Unassigned' }}</strong></p>
                     {% endif %}
-                    <br>Due date: {{ activity.due_date.strftime('%b %d, %Y') }}
+                    <p class="text-xs">Due date: {{ activity.due_date.strftime('%b %d, %Y') }}</p>
                 </div>
-            </li>
+            </div>
             {% endfor %}
-        </ul>
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
-            <div class="empty-state-title">No recent activity</div>
         </div>
+    {% else %}
+        {{ empty_state('📋', 'No recent activity', '') }}
     {% endif %}
 </div>
 
 <!-- Reject Modal -->
-<div id="rejectModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h3>Reject Chore Completion</h3>
-        <p>Are you sure you want to reject <strong id="rejectChoreTitle"></strong>?</p>
-        <form id="rejectForm" method="POST" data-json-form>
-            <div class="form-group">
-                <label class="form-label" for="rejection_reason">Reason (required):</label>
-                <textarea id="rejection_reason" name="reason" class="form-textarea" rows="3" placeholder="Please provide a reason for rejection" required></textarea>
-            </div>
-            <div class="flex-gap-sm">
-                <button type="submit" class="btn btn-danger">Reject</button>
-                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
+{% call modal('rejectModal', 'Reject Chore Completion') %}
+    <p class="text-gray-600 dark:text-gray-400 mb-6">
+      Are you sure you want to reject <strong id="rejectChoreTitle" class="text-gray-900 dark:text-white"></strong>?
+    </p>
+
+    <form id="rejectForm" method="POST" data-json-form class="space-y-4">
+        <div>
+            <label for="rejection_reason" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Reason <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              id="rejection_reason"
+              name="reason"
+              rows="3"
+              required
+              placeholder="Please provide a reason for rejection"
+              class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50"
+            ></textarea>
+        </div>
+
+        <div class="flex gap-3">
+            {{ btn_danger('Reject', type='submit', extra_classes='flex-1') }}
+            {{ btn_secondary('Cancel', onclick='closeRejectModal()', extra_classes='flex-1') }}
+        </div>
+    </form>
+{% endcall %}
 
 <!-- Points Adjustment Modal -->
-<div id="pointsModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h3>Adjust Points</h3>
-        <p>Adjust points for <strong id="pointsUsername"></strong> (Current: <span id="pointsCurrent"></span>)</p>
-        <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}" data-json-form>
-            <input type="hidden" id="pointsUserId" name="user_id">
-            <div class="form-group">
-                <label class="form-label" for="points_delta">Points Change:</label>
-                <input type="number" id="points_delta" name="points_delta" class="form-input" required placeholder="e.g., 10 or -5">
-                <div class="form-help">Use positive numbers to add points, negative to subtract</div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="points_reason">Reason:</label>
-                <input type="text" id="points_reason" name="reason" class="form-input" required placeholder="e.g., Bonus for helping out">
-            </div>
-            <div class="flex-gap-sm">
-                <button type="submit" class="btn btn-primary">Adjust Points</button>
-                <button type="button" class="btn btn-secondary" onclick="closePointsModal()">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
+{% call modal('pointsModal', 'Adjust Points') %}
+    <p class="text-gray-600 dark:text-gray-400 mb-6">
+      Adjust points for <strong id="pointsUsername" class="text-gray-900 dark:text-white"></strong> (Current: <span id="pointsCurrent" class="text-green-600 dark:text-green-400 font-bold"></span>)
+    </p>
 
-{% endblock %}
+    <form id="pointsForm" method="POST" action="{{ url_for('points.adjust_points') }}" data-json-form class="space-y-4">
+        <input type="hidden" id="pointsUserId" name="user_id">
 
-{% block extra_css %}
-<style>
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
+        <div>
+            <label for="points_delta" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Points Change <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="points_delta"
+              name="points_delta"
+              required
+              placeholder="e.g., 10 or -5"
+              class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
+            />
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Use positive numbers to add points, negative to subtract</p>
+        </div>
 
-.modal-content {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
+        <div>
+            <label for="points_reason" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Reason <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="points_reason"
+              name="reason"
+              required
+              placeholder="e.g., Bonus for helping out"
+              class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
+            />
+        </div>
 
-.modal-content h3 {
-    margin-bottom: 1rem;
-}
-
-.modal-content p {
-    margin-bottom: 1rem;
-}
-</style>
+        <div class="flex gap-3">
+            {{ btn_primary('Adjust Points', type='submit', extra_classes='flex-1') }}
+            {{ btn_secondary('Cancel', onclick='closePointsModal()', extra_classes='flex-1') }}
+        </div>
+    </form>
+{% endcall %}
 {% endblock %}
 
 {% block extra_js %}
@@ -234,7 +269,8 @@
 function showRejectModal(instanceId, choreTitle) {
     document.getElementById('rejectChoreTitle').textContent = choreTitle;
     document.getElementById('rejectForm').action = `/api/instances/${instanceId}/reject`;
-    document.getElementById('rejectModal').style.display = 'flex';
+    const modal = document.getElementById('rejectModal');
+    modal.style.display = 'flex';
 }
 
 function closeRejectModal() {

@@ -1,0 +1,261 @@
+/* Glass Overrides & Browser Fallbacks for ChoreControl */
+
+/* Backdrop-filter fallback for older browsers */
+@supports not (backdrop-filter: blur(12px)) {
+  .backdrop-blur-sm {
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+  .backdrop-blur-md {
+    background: rgba(255, 255, 255, 0.85) !important;
+  }
+  .backdrop-blur-lg {
+    background: rgba(255, 255, 255, 0.8) !important;
+  }
+  .backdrop-blur-xl {
+    background: rgba(255, 255, 255, 0.75) !important;
+  }
+
+  .dark .backdrop-blur-sm {
+    background: rgba(0, 0, 0, 0.9) !important;
+  }
+  .dark .backdrop-blur-md {
+    background: rgba(0, 0, 0, 0.85) !important;
+  }
+  .dark .backdrop-blur-lg {
+    background: rgba(0, 0, 0, 0.8) !important;
+  }
+  .dark .backdrop-blur-xl {
+    background: rgba(0, 0, 0, 0.75) !important;
+  }
+}
+
+/* Smooth transitions for theme switching */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Prevent transition on page load */
+.preload * {
+  transition: none !important;
+}
+
+/* FullCalendar Glassmorphism Overrides */
+.fc {
+  --fc-border-color: rgba(209, 213, 219, 0.3);
+  --fc-today-bg-color: rgba(34, 197, 94, 0.1);
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark .fc {
+  --fc-border-color: rgba(75, 85, 99, 0.3);
+  --fc-today-bg-color: rgba(34, 197, 94, 0.15);
+  --fc-neutral-bg-color: rgba(0, 0, 0, 0.1);
+}
+
+.fc .fc-toolbar {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.dark .fc .fc-toolbar {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.fc .fc-toolbar-title {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+.fc .fc-button {
+  background: rgba(34, 197, 94, 0.9) !important;
+  border: 1px solid rgba(74, 222, 128, 0.3) !important;
+  border-radius: 0.75rem !important;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+  padding: 0.5rem 1rem;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.fc .fc-button:hover {
+  background: rgba(34, 197, 94, 1) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.fc .fc-button:disabled {
+  background: rgba(156, 163, 175, 0.5) !important;
+  border-color: rgba(156, 163, 175, 0.3) !important;
+  opacity: 0.5;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: rgba(22, 163, 74, 0.9) !important;
+  border-color: rgba(34, 197, 94, 0.5) !important;
+}
+
+.fc .fc-daygrid-day {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .fc .fc-daygrid-day {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark .fc .fc-daygrid-day:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+.fc .fc-daygrid-event {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(4px);
+  padding: 2px 4px;
+  margin: 1px 0;
+}
+
+.fc .fc-daygrid-event:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.fc .fc-daygrid-event-dot {
+  border-color: rgba(34, 197, 94, 1);
+}
+
+.fc .fc-col-header-cell {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 0;
+}
+
+.dark .fc .fc-col-header-cell {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.fc .fc-scrollgrid {
+  border: 1px solid rgba(209, 213, 219, 0.3);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.dark .fc .fc-scrollgrid {
+  border-color: rgba(75, 85, 99, 0.3);
+}
+
+/* Modal glass overlay improvements */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Improve form autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: inherit;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.2) inset;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse-green {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse-green {
+  animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
