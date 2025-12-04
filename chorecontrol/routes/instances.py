@@ -92,6 +92,19 @@ def serialize_instance(instance: ChoreInstance, include_details: bool = False) -
     return data
 
 
+@instances_bp.route('/test', methods=['GET', 'POST'])
+def test_json_response():
+    """Test endpoint to verify JSON responses work."""
+    logger.info("Test endpoint hit")
+    return jsonify({
+        'message': 'Test successful',
+        'method': request.method,
+        'path': request.path,
+        'has_ha_user': hasattr(g, 'ha_user'),
+        'ha_user_value': getattr(g, 'ha_user', None)
+    }), 200
+
+
 @instances_bp.route('', methods=['GET'])
 @ha_auth_required
 def list_instances():

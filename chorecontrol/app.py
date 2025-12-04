@@ -112,7 +112,15 @@ def register_middleware(app):
         from auth import get_session_user_id, auto_create_unmapped_user, verify_api_token
         from models import User
 
+        logger = logging.getLogger(__name__)
+
         ha_user = request.headers.get('X-Ingress-User')
+
+        # Log API requests for debugging
+        if request.path.startswith('/api/'):
+            logger.info(f"API Request: {request.method} {request.path}")
+            logger.info(f"X-Ingress-User header: {ha_user}")
+            logger.info(f"Request headers: {dict(request.headers)}")
 
         if ha_user:
             # Use the authenticated user from HA ingress
