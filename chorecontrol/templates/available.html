@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.textContent = 'Claiming...';
 
             try {
-                const response = await fetch(`/api/instances/${instanceId}/claim`, {
+                // Use relative path to work with Home Assistant ingress
+                const response = await fetch(`{{ url_for('instances.claim_instance', instance_id=0) }}`.replace('/0/', `/${instanceId}/`), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

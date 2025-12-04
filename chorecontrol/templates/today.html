@@ -242,7 +242,8 @@ async function confirmClaim() {
 
     try {
         console.log('Claiming instance:', currentInstanceId, 'for user:', currentUserId);
-        const response = await fetch(`/api/instances/${currentInstanceId}/claim`, {
+        // Use relative path to work with Home Assistant ingress
+        const response = await fetch(`{{ url_for('instances.claim_instance', instance_id=0) }}`.replace('/0/', `/${currentInstanceId}/`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
