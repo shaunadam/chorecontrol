@@ -38,14 +38,22 @@ function validateForm(formId) {
     return isValid;
 }
 
-// Add error styling for invalid inputs
+// Add error styling for invalid inputs (glassmorphism style)
 const style = document.createElement('style');
 style.textContent = `
     .form-input.error,
     .form-select.error,
     .form-textarea.error {
-        border-color: var(--danger-color);
-        box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.1);
+        border-color: rgb(239 68 68 / 0.5) !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+        background-color: rgba(254, 226, 226, 0.2) !important;
+    }
+    .dark .form-input.error,
+    .dark .form-select.error,
+    .dark .form-textarea.error {
+        border-color: rgb(239 68 68 / 0.5) !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+        background-color: rgba(127, 29, 29, 0.2) !important;
     }
 `;
 document.head.appendChild(style);
@@ -75,17 +83,46 @@ function confirmAction(message) {
     return confirm(message || 'Are you sure you want to do this?');
 }
 
-// Toast notification system (lightweight alternative to flash messages)
+// Toast notification system with glassmorphism styling
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
-    toast.className = `flash flash-${type}`;
-    toast.textContent = message;
+
+    // Base glassmorphism styles
     toast.style.position = 'fixed';
     toast.style.top = '20px';
     toast.style.right = '20px';
     toast.style.zIndex = '10000';
     toast.style.minWidth = '250px';
+    toast.style.maxWidth = '400px';
+    toast.style.padding = '16px';
+    toast.style.borderRadius = '12px';
+    toast.style.backdropFilter = 'blur(12px)';
+    toast.style.fontWeight = '500';
+    toast.style.fontSize = '14px';
+    toast.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
     toast.style.animation = 'slideIn 0.3s ease-out';
+    toast.textContent = message;
+
+    // Type-specific styling
+    const isDark = document.documentElement.classList.contains('dark');
+
+    if (type === 'success') {
+        toast.style.backgroundColor = isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)';
+        toast.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+        toast.style.color = isDark ? 'rgb(134, 239, 172)' : 'rgb(21, 128, 61)';
+    } else if (type === 'error') {
+        toast.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)';
+        toast.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        toast.style.color = isDark ? 'rgb(252, 165, 165)' : 'rgb(153, 27, 27)';
+    } else if (type === 'warning') {
+        toast.style.backgroundColor = isDark ? 'rgba(234, 179, 8, 0.2)' : 'rgba(234, 179, 8, 0.1)';
+        toast.style.border = '1px solid rgba(234, 179, 8, 0.3)';
+        toast.style.color = isDark ? 'rgb(253, 224, 71)' : 'rgb(133, 77, 14)';
+    } else {
+        toast.style.backgroundColor = isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
+        toast.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+        toast.style.color = isDark ? 'rgb(147, 197, 253)' : 'rgb(29, 78, 216)';
+    }
 
     document.body.appendChild(toast);
 
