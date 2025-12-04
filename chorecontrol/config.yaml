@@ -1,5 +1,5 @@
 name: ChoreControl
-version: "0.3.0.1d"
+version: "0.3.0.2"
 slug: chorecontrol
 description: Home Assistant chore management system with kids, parents, points, and rewards
 url: https://github.com/shaunadam/chorecontrol
