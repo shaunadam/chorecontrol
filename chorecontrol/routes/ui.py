@@ -592,3 +592,59 @@ def settings():
     api_token = get_or_create_api_token()
 
     return render_template('settings.html', api_token=api_token)
+
+
+@ui_bp.route('/today')
+@ha_auth_required
+def today_page():
+    """Today's chores dashboard - shows what each kid can do to earn points today."""
+    today = date.today()
+
+    # Get all claimable instances (status='assigned') that are either:
+    # 1. Due today, or
+    # 2. Have no due date (anytime chores)
+    instances = ChoreInstance.query.filter(
+        ChoreInstance.status == 'assigned',
+        or_(
+            ChoreInstance.due_date == today,
+            ChoreInstance.due_date.is_(None)
+        )
+    ).order_by(ChoreInstance.due_date.asc().nullslast()).all()
+
+    # Get all kids
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    # Group instances by kid
+    # For each kid, find instances they can claim
+    kids_data = []
+    for kid in kids:
+        kid_instances = []
+        for instance in instances:
+            # Check if this kid can claim this instance
+            can_claim = False
+            if instance.chore.assignment_type == 'shared':
+                # For shared chores, check if kid is in the assignments
+                assigned_user_ids = [a.user_id for a in instance.chore.assignments]
+                can_claim = kid.id in assigned_user_ids
+            else:
+                # For individual chores, check if assigned to this kid
+                if instance.assigned_to:
+                    can_claim = instance.assigned_to == kid.id
+                else:
+                    # Fallback to chore assignments
+                    assigned_user_ids = [a.user_id for a in instance.chore.assignments]
+                    can_claim = kid.id in assigned_user_ids
+
+            if can_claim:
+                kid_instances.append(instance)
+
+        if kid_instances:
+            # Calculate total potential points
+            total_points = sum(inst.chore.points for inst in kid_instances)
+            kids_data.append({
+                'kid': kid,
+                'instances': kid_instances,
+                'total_points': total_points
+            })
+
+    return render_template('today.html', kids_data=kids_data, today=today)
