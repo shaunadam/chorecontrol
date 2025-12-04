@@ -241,6 +241,7 @@ async function confirmClaim() {
     confirmBtn.textContent = 'Claiming...';
 
     try {
+        console.log('Claiming instance:', currentInstanceId, 'for user:', currentUserId);
         const response = await fetch(`/api/instances/${currentInstanceId}/claim`, {
             method: 'POST',
             headers: {
@@ -249,21 +250,26 @@ async function confirmClaim() {
             body: JSON.stringify({ user_id: currentUserId })
         });
 
+        console.log('Response status:', response.status);
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (response.ok) {
             // Success - reload page to show updated list
             closeClaimModal();
             window.location.reload();
         } else {
-            // Error - show message
-            alert(data.message || 'Failed to claim chore');
+            // Error - show message with more details
+            const errorMsg = data.message || 'Failed to claim chore';
+            const detailsMsg = data.details ? `\n\nDetails: ${data.details}` : '';
+            console.error('Claim failed:', data);
+            alert(errorMsg + detailsMsg);
             confirmBtn.disabled = false;
             confirmBtn.textContent = originalText;
         }
     } catch (error) {
         console.error('Error claiming chore:', error);
-        alert('Failed to claim chore. Please try again.');
+        alert('Failed to claim chore. Please try again.\n\nError: ' + error.message);
         confirmBtn.disabled = false;
         confirmBtn.textContent = originalText;
     }

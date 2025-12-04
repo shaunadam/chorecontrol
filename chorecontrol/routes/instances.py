@@ -10,6 +10,7 @@ State machine: assigned → claimed → approved/rejected
 After rejection: rejected → assigned (can re-claim)
 """
 
+import logging
 from datetime import datetime, date
 from flask import Blueprint, jsonify, request, g
 from sqlalchemy import and_, or_
@@ -18,6 +19,7 @@ from auth import ha_auth_required, get_current_user as auth_get_current_user
 from utils.webhooks import fire_webhook
 
 instances_bp = Blueprint('instances', __name__, url_prefix='/api/instances')
+logger = logging.getLogger(__name__)
 
 
 def get_current_user() -> User:
@@ -254,9 +256,14 @@ def claim_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
+    logger.info(f"Claim request for instance {instance_id}")
+    logger.info(f"g.ha_user: {getattr(g, 'ha_user', 'NOT SET')}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+
     instance = ChoreInstance.query.get(instance_id)
 
     if not instance:
+        logger.warning(f"Instance {instance_id} not found")
         return jsonify({
             'error': 'Not Found',
             'message': f'Chore instance {instance_id} not found'
@@ -265,21 +272,27 @@ def claim_instance(instance_id: int):
     # Get user_id from request body or use current authenticated user
     data = request.get_json() or {}
     user_id = data.get('user_id')
+    logger.info(f"Request data: {data}, user_id from body: {user_id}")
 
     if not user_id:
         # Use current authenticated user
         current_user = get_current_user()
+        logger.info(f"Current user from get_current_user(): {current_user}")
         if not current_user:
+            logger.error("Could not identify current user")
             return jsonify({
                 'error': 'Unauthorized',
                 'message': 'Could not identify current user'
             }), 401
         user_id = current_user.id
+        logger.info(f"Using current user ID: {user_id}")
 
     # Check if user can claim this instance
+    logger.info(f"Checking if user {user_id} can claim instance {instance_id} (status: {instance.status})")
     if not instance.can_claim(user_id):
         # Determine specific reason for failure
         if instance.status != 'assigned':
+            logger.warning(f"Cannot claim - wrong status: {instance.status}")
             return jsonify({
                 'error': 'Bad Request',
                 'message': f'Cannot claim chore with status "{instance.status}". Only "assigned" chores can be claimed.'
@@ -292,12 +305,14 @@ def claim_instance(instance_id: int):
             ).first()
 
             if not assignment:
+                logger.warning(f"User {user_id} not assigned to chore {instance.chore_id}")
                 return jsonify({
                     'error': 'Forbidden',
                     'message': 'You are not assigned to this chore'
                 }), 403
 
     # Claim the instance
+    logger.info(f"Claiming instance {instance_id} for user {user_id}")
     instance.status = 'claimed'
     instance.claimed_by = user_id
     instance.claimed_at = datetime.utcnow()
@@ -310,7 +325,9 @@ def claim_instance(instance_id: int):
 
     try:
         db.session.commit()
+        logger.info(f"Successfully claimed instance {instance_id}")
     except Exception as e:
+        logger.error(f"Failed to claim instance {instance_id}: {str(e)}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
@@ -319,7 +336,10 @@ def claim_instance(instance_id: int):
         }), 500
 
     # Fire webhook
-    fire_webhook('chore_instance_claimed', instance)
+    try:
+        fire_webhook('chore_instance_claimed', instance)
+    except Exception as e:
+        logger.error(f"Failed to fire webhook: {str(e)}", exc_info=True)
 
     return jsonify({
         'data': serialize_instance(instance, include_details=True),
