@@ -13,30 +13,32 @@ def ha_auth_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Check if this is an API route FIRST (before checking authentication)
+        is_api_route = request.path.startswith('/api/')
+
         if not hasattr(g, 'ha_user') or g.ha_user is None:
+            # For API routes, always return JSON
+            if is_api_route:
+                return jsonify({
+                    'error': 'Unauthorized',
+                    'message': 'Authentication required'
+                }), 401
             # For UI routes, redirect to login
-            if request.accept_mimetypes.accept_html:
-                return redirect(url_for('auth.login'))
-            # For API routes, return JSON error
-            return jsonify({
-                'error': 'Unauthorized',
-                'message': 'Authentication required'
-            }), 401
+            return redirect(url_for('auth.login'))
 
         # Get current user to check role
         user = get_current_user()
 
-        # If user doesn't exist in database, redirect to login
+        # If user doesn't exist in database
         if user is None:
-            if request.accept_mimetypes.accept_html:
-                return redirect(url_for('auth.login'))
-            return jsonify({
-                'error': 'Unauthorized',
-                'message': 'User not found in database'
-            }), 401
-
-        # Check if this is an API route (starts with /api/)
-        is_api_route = request.path.startswith('/api/')
+            # For API routes, always return JSON
+            if is_api_route:
+                return jsonify({
+                    'error': 'Unauthorized',
+                    'message': 'User not found in database'
+                }), 401
+            # For UI routes, redirect to login
+            return redirect(url_for('auth.login'))
 
         # For API routes, allow all authenticated users (kids need access for HA integration)
         if is_api_route:
