@@ -105,6 +105,7 @@
                                 <option value="" selected>-- Not synced --</option>
                                 <option value="parent">Parent</option>
                                 <option value="kid">Kid</option>
+                                <option value="claim_only">Claim Only</option>
                                 <option value="unmapped">Unmapped</option>
                             </select>
                         </div>
@@ -155,6 +156,7 @@
                         <option value="unmapped" selected>Unmapped</option>
                         <option value="parent">Parent</option>
                         <option value="kid">Kid</option>
+                        <option value="claim_only">Claim Only</option>
                     </select>
                 </div>
             </li>
@@ -207,6 +209,7 @@
                                     class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 role-select">
                                 <option value="parent" selected>Parent</option>
                                 <option value="kid">Kid</option>
+                                <option value="claim_only">Claim Only</option>
                                 <option value="unmapped">Unmapped</option>
                             </select>
                         {% endif %}
@@ -261,6 +264,49 @@
                                     class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 role-select">
                                 <option value="kid" selected>Kid</option>
                                 <option value="parent">Parent</option>
+                                <option value="claim_only">Claim Only</option>
+                                <option value="unmapped">Unmapped</option>
+                            </select>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Claim Only Users -->
+        {% if claim_only_users %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Claim Only ({{ claim_only_users|length }})
+            </h3>
+            <ul class="space-y-4">
+                {% for user in claim_only_users %}
+                <li class="bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="font-semibold text-gray-900 dark:text-white">
+                            {{ user.username }}
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold uppercase bg-orange-500/20 text-orange-700 dark:text-orange-300 border border-orange-500/30 backdrop-blur-sm">
+                            claim only
+                        </span>
+                    </div>
+
+                    <div class="space-y-1 text-sm text-gray-700 dark:text-gray-300 mb-3">
+                        <div><strong>HA User ID:</strong> {{ user.ha_user_id }}</div>
+                    </div>
+
+                    <div>
+                        {% if not user.ha_user_id.startswith('local-') %}
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Change Role:
+                            </label>
+                            <select name="role_{{ user.id }}"
+                                    class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 role-select">
+                                <option value="claim_only" selected>Claim Only</option>
+                                <option value="parent">Parent</option>
+                                <option value="kid">Kid</option>
                                 <option value="unmapped">Unmapped</option>
                             </select>
                         {% endif %}
@@ -304,7 +350,7 @@
         </div>
         {% endif %}
 
-        {% if not parents and not kids and not system_users %}
+        {% if not parents and not kids and not claim_only_users and not system_users %}
         <div class="text-center py-12">
             <div class="text-6xl mb-4">👥</div>
             <div class="font-display text-2xl font-semibold text-gray-900 dark:text-white mb-2">

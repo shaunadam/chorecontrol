@@ -96,6 +96,26 @@ def kid_headers(kid_user):
 
 
 @pytest.fixture
+def claim_only_user(db_session):
+    """Create a claim_only user for testing."""
+    user = User(
+        ha_user_id='claim-only-ha-001',
+        username='Kids Dashboard',
+        role='claim_only',
+        points=0
+    )
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
+def claim_only_headers(claim_only_user):
+    """Create headers for claim_only user authentication."""
+    return {'X-Ingress-User': claim_only_user.ha_user_id}
+
+
+@pytest.fixture
 def unauthenticated_headers():
     """Create headers without authentication."""
     return {}

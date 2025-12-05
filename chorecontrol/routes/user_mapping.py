@@ -72,12 +72,14 @@ def mapping_page():
     # Get all users grouped by role - only from ChoreControl DB
     parents = User.query.filter_by(role='parent').order_by(User.username).all()
     kids = User.query.filter_by(role='kid').order_by(User.username).all()
+    claim_only_users = User.query.filter_by(role='claim_only').order_by(User.username).all()
     system_users = User.query.filter_by(role='system').order_by(User.username).all()
 
     return render_template('users/mapping.html',
                          unmapped_users=unmapped_users,
                          parents=parents,
                          kids=kids,
+                         claim_only_users=claim_only_users,
                          system_users=system_users,
                          ha_users=ha_users_with_status,
                          ha_api_available=ha_api_available)
@@ -118,7 +120,7 @@ def update_mappings():
             continue
 
         # Validate role
-        if new_role not in ('parent', 'kid', 'unmapped', 'system'):
+        if new_role not in ('parent', 'kid', 'unmapped', 'system', 'claim_only'):
             errors.append(f'Invalid role for user {user_id}')
             continue
 
@@ -159,7 +161,7 @@ def update_mappings():
             continue
 
         # Validate role
-        if new_role not in ('parent', 'kid', 'unmapped'):
+        if new_role not in ('parent', 'kid', 'unmapped', 'claim_only'):
             errors.append(f'Invalid role for HA user {ha_user_id}')
             continue
 

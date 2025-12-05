@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from sqlalchemy import func, and_, or_
 from datetime import datetime, date, timedelta
+from functools import wraps
 from auth import ha_auth_required
 from models import db, User, Chore, ChoreInstance, Reward, RewardClaim, PointsHistory, ChoreAssignment
 
@@ -15,6 +16,26 @@ def get_current_user():
         return None
     user = User.query.filter_by(ha_user_id=g.ha_user).first()
     return user
+
+
+def redirect_claim_only_to_today(f):
+    """Decorator to redirect claim_only users to /today page.
+
+    claim_only users should only access the Today page. If they try to access
+    any other route, redirect them to /today automatically.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()
+        if user and user.role == 'claim_only':
+            # Already on today page or logout - allow
+            if request.endpoint in ('ui.today_page', 'auth.logout'):
+                return f(*args, **kwargs)
+            # Trying to access other pages - redirect to today
+            return redirect(url_for('ui.today_page'))
+        # Not claim_only user - proceed normally
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 def get_pending_count():
@@ -35,6 +56,7 @@ def inject_globals():
 
 @ui_bp.route('/')
 @ha_auth_required
+@redirect_claim_only_to_today
 def dashboard():
     """Main dashboard view."""
     current_user = get_current_user()
@@ -89,6 +111,7 @@ def dashboard():
 
 @ui_bp.route('/chores')
 @ha_auth_required
+@redirect_claim_only_to_today
 def chores_list():
     """List all chores with filters."""
     # Get filters from query params
@@ -142,6 +165,7 @@ def chores_list():
 
 @ui_bp.route('/chores/<int:id>')
 @ha_auth_required
+@redirect_claim_only_to_today
 def chore_detail(id):
     """View single chore with instances."""
     chore = Chore.query.get_or_404(id)
@@ -202,6 +226,7 @@ def chore_form(id=None):
 
 @ui_bp.route('/calendar')
 @ha_auth_required
+@redirect_claim_only_to_today
 def calendar():
     """Calendar view showing chore instances."""
     # Get all instances with due dates for calendar
@@ -266,6 +291,7 @@ def calendar():
 
 @ui_bp.route('/rewards')
 @ha_auth_required
+@redirect_claim_only_to_today
 def rewards_list():
     """List all rewards with filters."""
     # Get filters
@@ -330,6 +356,7 @@ def reward_form(id=None):
 
 @ui_bp.route('/approvals')
 @ha_auth_required
+@redirect_claim_only_to_today
 def approval_queue():
     """Show all pending approvals (chores and rewards)."""
     # Get pending chore instances
@@ -349,6 +376,7 @@ def approval_queue():
 
 @ui_bp.route('/available')
 @ha_auth_required
+@redirect_claim_only_to_today
 def available_chores():
     """List all available chores that can be claimed."""
     # Get all instances with status='assigned' (claimable)
@@ -396,6 +424,7 @@ def available_chores():
 
 @ui_bp.route('/users')
 @ha_auth_required
+@redirect_claim_only_to_today
 def users_list():
     """List all users."""
     # Get role filter
@@ -413,6 +442,7 @@ def users_list():
 
 @ui_bp.route('/users/<int:id>')
 @ha_auth_required
+@redirect_claim_only_to_today
 def user_detail(id):
     """View single user with details."""
     user = User.query.get_or_404(id)
@@ -578,6 +608,7 @@ def update_user():
 
 @ui_bp.route('/settings')
 @ha_auth_required
+@redirect_claim_only_to_today
 def settings():
     """Settings page with integration configuration."""
     from auth import get_or_create_api_token

@@ -8,14 +8,14 @@
     /* Optimized for landscape touch screens */
     .today-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        {% if kids_data and kids_data|length > 0 %}
+        /* Dynamic columns: always fit all kids in one row */
+        grid-template-columns: repeat({{ kids_data|length }}, minmax(0, 1fr));
+        {% else %}
+        /* Fallback for empty state */
+        grid-template-columns: 1fr;
+        {% endif %}
         gap: 1.5rem;
-    }
-
-    @media (min-width: 1280px) {
-        .today-grid {
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-        }
     }
 
     /* Large touch-friendly buttons */

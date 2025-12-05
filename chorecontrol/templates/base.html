@@ -98,11 +98,13 @@
                         bg-blue-500/20 dark:bg-blue-500/30 text-blue-700 dark:text-blue-300 border-blue-500/30
                       {% elif current_user.role == 'kid' %}
                         bg-purple-500/20 dark:bg-purple-500/30 text-purple-700 dark:text-purple-300 border-purple-500/30
+                      {% elif current_user.role == 'claim_only' %}
+                        bg-orange-500/20 dark:bg-orange-500/30 text-orange-700 dark:text-orange-300 border-orange-500/30
                       {% else %}
                         bg-gray-500/20 dark:bg-gray-500/30 text-gray-700 dark:text-gray-300 border-gray-500/30
                       {% endif %}
                     ">
-                      {{ current_user.role|upper }}
+                      {{ current_user.role|upper|replace('_', ' ') }}
                     </span>
 
                     <!-- Dark Mode Toggle -->
@@ -124,6 +126,14 @@
 
             <!-- Navigation -->
             <nav class="flex gap-1 sm:gap-2 overflow-x-auto pb-2 -mb-px scrollbar-hide">
+                {% if current_user and current_user.role == 'claim_only' %}
+                {# claim_only users only see Today tab #}
+                <a href="{{ url_for('ui.today_page') }}" class="nav-item group flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-t-xl text-sm font-medium whitespace-nowrap transition-all duration-200 {% if request.endpoint == 'ui.today_page' %}bg-white/40 dark:bg-white/10 border-b-2 border-green-500 text-green-600 dark:text-green-400{% else %}text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/5{% endif %}">
+                  <span class="text-xl sm:text-base">☀️</span>
+                  <span class="text-xs sm:text-sm">Today</span>
+                </a>
+                {% else %}
+                {# Parent users see all navigation tabs #}
                 <a href="{{ url_for('ui.dashboard') }}" class="nav-item group flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-t-xl text-sm font-medium whitespace-nowrap transition-all duration-200 {% if request.endpoint == 'ui.dashboard' %}bg-white/40 dark:bg-white/10 border-b-2 border-green-500 text-green-600 dark:text-green-400{% else %}text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/5{% endif %}">
                   <span class="text-xl sm:text-base">📊</span>
                   <span class="text-xs sm:text-sm">Dashboard</span>
@@ -177,6 +187,7 @@
                   <span class="text-xl sm:text-base">⚙️</span>
                   <span class="text-xs sm:text-sm hidden lg:inline">Settings</span>
                 </a>
+                {% endif %}
                 {% endif %}
             </nav>
         </div>

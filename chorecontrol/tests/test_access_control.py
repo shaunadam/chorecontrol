@@ -5,12 +5,24 @@ from models import User
 
 
 class TestUIAccessControl:
-    """Tests for UI route access control (parent-only)."""
+    """Tests for UI route access control (parent and claim_only)."""
 
     def test_parent_can_access_dashboard(self, client, parent_headers):
         """Test that parents can access the dashboard."""
         response = client.get('/', headers=parent_headers)
         assert response.status_code == 200
+
+    def test_claim_only_redirected_from_dashboard_to_today(self, client, claim_only_headers):
+        """Test that claim_only users are redirected from dashboard to today page."""
+        response = client.get('/', headers=claim_only_headers, follow_redirects=False)
+        assert response.status_code == 302
+        assert '/today' in response.location
+
+    def test_claim_only_can_access_today_page(self, client, claim_only_headers):
+        """Test that claim_only users can access the today page."""
+        response = client.get('/today', headers=claim_only_headers)
+        assert response.status_code == 200
+        assert b'Today' in response.data
 
     def test_kid_redirected_from_dashboard(self, client, kid_headers):
         """Test that kids are redirected to access_restricted page."""
@@ -32,6 +44,12 @@ class TestUIAccessControl:
         """Test that parents can access chores list."""
         response = client.get('/chores', headers=parent_headers)
         assert response.status_code == 200
+
+    def test_claim_only_redirected_from_chores_to_today(self, client, claim_only_headers):
+        """Test that claim_only users are redirected from chores to today."""
+        response = client.get('/chores', headers=claim_only_headers, follow_redirects=False)
+        assert response.status_code == 302
+        assert '/today' in response.location
 
     def test_kid_cannot_access_chores_list(self, client, kid_headers):
         """Test that kids cannot access chores UI."""
@@ -80,11 +98,20 @@ class TestUIAccessControl:
 
     def test_unmapped_cannot_access_any_ui_route(self, client, unmapped_headers):
         """Test that unmapped users cannot access any UI routes."""
-        ui_routes = ['/', '/chores', '/users', '/rewards', '/approvals', '/calendar']
+        ui_routes = ['/', '/chores', '/users', '/rewards', '/approvals', '/calendar', '/today']
 
         for route in ui_routes:
             response = client.get(route, headers=unmapped_headers)
             assert response.status_code == 403, f"Route {route} should deny unmapped users"
+
+    def test_claim_only_redirected_from_all_routes_except_today(self, client, claim_only_headers):
+        """Test that claim_only users are redirected to /today from all other routes."""
+        restricted_routes = ['/', '/chores', '/users', '/rewards', '/approvals', '/calendar', '/available', '/settings']
+
+        for route in restricted_routes:
+            response = client.get(route, headers=claim_only_headers, follow_redirects=False)
+            assert response.status_code == 302, f"Route {route} should redirect claim_only users"
+            assert '/today' in response.location, f"Route {route} should redirect to /today"
 
 
 class TestAPIAccessControl:
@@ -98,6 +125,11 @@ class TestAPIAccessControl:
     def test_kid_can_access_api_users(self, client, kid_headers):
         """Test that kids can access API endpoints (needed for HA integration)."""
         response = client.get('/api/users', headers=kid_headers)
+        assert response.status_code == 200
+
+    def test_claim_only_can_access_api(self, client, claim_only_headers):
+        """Test that claim_only users can access API endpoints (for claiming chores)."""
+        response = client.get('/api/users', headers=claim_only_headers)
         assert response.status_code == 200
 
     def test_unmapped_can_access_api_users(self, client, unmapped_headers):
@@ -241,6 +273,26 @@ class TestRoleBasedUIElements:
 
         assert b'User Mapping' in response.data
         assert b'/users/mapping' in response.data
+
+    def test_claim_only_sees_only_today_tab(self, client, claim_only_headers):
+        """Test that claim_only users see only the Today tab in navigation."""
+        response = client.get('/today', headers=claim_only_headers)
+
+        # Should see Today tab
+        assert b'Today' in response.data
+
+        # Should NOT see other navigation tabs
+        assert b'Dashboard' not in response.data or b'Today' in response.data
+        # Note: Can't check for "Chores" or "Rewards" as they might appear in content
+        # But we can check that User Mapping and Settings are not visible
+        assert b'/users/mapping' not in response.data
+        assert b'/settings' not in response.data
+
+    def test_claim_only_sees_role_badge(self, client, claim_only_headers):
+        """Test that claim_only users see their role badge."""
+        response = client.get('/today', headers=claim_only_headers)
+
+        assert b'CLAIM ONLY' in response.data or b'Claim Only' in response.data
 
 
 # Fixtures for access control tests

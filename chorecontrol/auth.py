@@ -8,7 +8,7 @@ from flask import g, jsonify, session, redirect, url_for, request
 def ha_auth_required(f):
     """Decorator to ensure user is authenticated via HA ingress or session.
 
-    For UI routes: Only parents can access (kids/unmapped see access_restricted page)
+    For UI routes: Parents and claim_only users can access (kids/unmapped see access_restricted page)
     For API routes: All authenticated users can access (needed for HA integration)
     """
     @wraps(f)
@@ -44,9 +44,9 @@ def ha_auth_required(f):
         if is_api_route:
             return f(*args, **kwargs)
 
-        # For UI routes, only allow parents
+        # For UI routes, allow parents and claim_only users
         # Kids and unmapped users should use HA integration only
-        if user.role != 'parent':
+        if user.role not in ('parent', 'claim_only'):
             # Show access restricted page
             from flask import render_template
             return render_template('access_restricted.html',
