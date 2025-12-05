@@ -182,9 +182,13 @@ def register_routes(app):
     from routes.rewards import rewards_bp
     from routes.points import points_bp
     from routes.user_mapping import user_mapping_bp
+    from routes.debug import debug_bp
 
     # Register auth blueprint first (handles login/logout)
     app.register_blueprint(auth_bp)
+
+    # Register debug blueprint (for troubleshooting)
+    app.register_blueprint(debug_bp)
 
     # Register UI blueprint (so it handles the root route)
     app.register_blueprint(ui_bp)

@@ -216,3 +216,85 @@ def is_supervisor_api_available() -> bool:
         return response.status_code == 200
     except Exception:
         return False
+
+
+def get_current_ha_user_from_ingress() -> Optional[str]:
+    """
+    Query Supervisor API to identify current HA user from ingress session.
+
+    This function is called when a request comes through HA ingress but we don't have
+    a session cookie yet. We need to discover which HA user is making the request.
+
+    Note: This is experimental - the exact endpoint is not documented.
+    We try multiple possible endpoints to discover what works.
+
+    Returns:
+        str: HA user ID if identified, None otherwise
+    """
+    if not SUPERVISOR_TOKEN:
+        logger.debug("SUPERVISOR_TOKEN not available, cannot identify ingress user")
+        return None
+
+    try:
+        headers = {
+            'Authorization': f'Bearer {SUPERVISOR_TOKEN}',
+            'Content-Type': 'application/json'
+        }
+
+        # Try multiple possible endpoints to discover current user
+        # The actual endpoint needs to be discovered through testing
+        endpoints_to_try = [
+            # Most likely candidates:
+            f'{SUPERVISOR_API_BASE}/auth',  # Generic auth endpoint
+            f'{SUPERVISOR_API_BASE}/auth/current',  # Current user endpoint
+            f'{SUPERVISOR_API_BASE}/auth/user',  # User info endpoint
+
+            # Alternative possibilities:
+            f'{SUPERVISOR_API_BASE}/core/api/auth',  # Core API auth
+            f'{SUPERVISOR_API_BASE}/homeassistant/api/auth',  # HA API auth
+        ]
+
+        for endpoint in endpoints_to_try:
+            try:
+                logger.debug(f"Trying to identify current HA user via: {endpoint}")
+                response = requests.get(endpoint, headers=headers, timeout=2)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    logger.debug(f"Got response from {endpoint}: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+
+                    # Try different response structures
+                    user_id = None
+
+                    # Structure 1: {"data": {"user_id": "..."}}
+                    if isinstance(data, dict):
+                        if 'data' in data and isinstance(data['data'], dict):
+                            user_id = data['data'].get('user_id') or data['data'].get('id')
+                        # Structure 2: {"user_id": "..."} or {"id": "..."}
+                        else:
+                            user_id = data.get('user_id') or data.get('id')
+
+                    if user_id:
+                        logger.info(f"Successfully identified current HA user: {user_id} via {endpoint}")
+                        return user_id
+                    else:
+                        logger.debug(f"Response from {endpoint} doesn't contain user_id or id")
+                        logger.debug(f"Response data: {data}")
+
+                elif response.status_code == 404:
+                    logger.debug(f"Endpoint not found: {endpoint}")
+                else:
+                    logger.debug(f"Endpoint {endpoint} returned {response.status_code}")
+
+            except requests.exceptions.RequestException as e:
+                logger.debug(f"Request to {endpoint} failed: {e}")
+                continue
+
+        logger.debug("Could not identify current HA user from any known endpoint")
+        logger.info("This is expected - HA Ingress doesn't provide user identity via API")
+        logger.info("You may need to check debug endpoint /debug/headers to see what's available")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Error trying to identify current HA user: {e}")
+        return None
