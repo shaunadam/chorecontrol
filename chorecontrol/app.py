@@ -114,23 +114,22 @@ def register_middleware(app):
 
         logger = logging.getLogger(__name__)
 
-        ha_user = request.headers.get('X-Ingress-User')
+        # Try multiple header names for HA user identification
+        # X-Remote-User-Id is sent by HA Ingress (discovered via testing)
+        # X-Ingress-User was the original assumption (keep for compatibility)
+        ha_user = (
+            request.headers.get('X-Remote-User-Id') or  # HA Ingress actual header
+            request.headers.get('X-Ingress-User')       # Original assumption (fallback)
+        )
 
         # Log ALL requests for debugging (not just API)
         # Skip static files to reduce noise
         if not request.path.startswith('/static/'):
             logger.info(f"Request: {request.method} {request.path}")
-            logger.info(f"X-Ingress-User header: {ha_user}")
+            logger.info(f"X-Remote-User-Id header: {request.headers.get('X-Remote-User-Id')}")
             logger.info(f"X-Ingress-Path header: {request.headers.get('X-Ingress-Path')}")
             logger.info(f"Has session: {bool(get_session_user_id())}")
-
-            # Log all headers that might contain user info
-            relevant_headers = {}
-            for key, value in request.headers:
-                key_lower = key.lower()
-                if any(x in key_lower for x in ['ingress', 'user', 'auth', 'x-']):
-                    relevant_headers[key] = value
-            logger.info(f"Relevant headers: {relevant_headers}")
+            logger.info(f"Final ha_user: {ha_user}")
 
         if ha_user:
             # Use the authenticated user from HA ingress
