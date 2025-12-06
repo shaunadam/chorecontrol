@@ -115,19 +115,21 @@ def register_middleware(app):
         logger = logging.getLogger(__name__)
 
         # Try multiple header names for HA user identification
-        # X-Remote-User-Id is sent by HA Ingress (discovered via testing)
-        # X-Ingress-User was the original assumption (keep for compatibility)
+        # HA Ingress sends X-Remote-User-Name (username) and X-Remote-User-Id (UUID)
+        # Use username for better compatibility with existing user records
         ha_user = (
-            request.headers.get('X-Remote-User-Id') or  # HA Ingress actual header
-            request.headers.get('X-Ingress-User')       # Original assumption (fallback)
+            request.headers.get('X-Remote-User-Name') or  # HA Ingress username (best match)
+            request.headers.get('X-Remote-User-Id') or    # HA Ingress UUID (fallback)
+            request.headers.get('X-Ingress-User')         # Original assumption (fallback)
         )
 
         # Log ALL requests for debugging (not just API)
         # Skip static files to reduce noise
         if not request.path.startswith('/static/'):
             logger.info(f"Request: {request.method} {request.path}")
-            logger.info(f"X-Remote-User-Id header: {request.headers.get('X-Remote-User-Id')}")
-            logger.info(f"X-Ingress-Path header: {request.headers.get('X-Ingress-Path')}")
+            logger.info(f"X-Remote-User-Name: {request.headers.get('X-Remote-User-Name')}")
+            logger.info(f"X-Remote-User-Id: {request.headers.get('X-Remote-User-Id')}")
+            logger.info(f"X-Ingress-Path: {request.headers.get('X-Ingress-Path')}")
             logger.info(f"Has session: {bool(get_session_user_id())}")
             logger.info(f"Final ha_user: {ha_user}")
 
