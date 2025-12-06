@@ -321,8 +321,9 @@ async function submitJsonForm(form, options = {}) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.textContent : '';
 
-    // Get method from form attribute or default to POST
-    const method = form.getAttribute('method')?.toUpperCase() || 'POST';
+    // Get method from data-method attribute first (for DELETE/PUT), then method attribute
+    // HTML forms only support GET/POST, so we use data-method for REST methods
+    const method = (form.dataset.method || form.getAttribute('method') || 'POST').toUpperCase();
 
     try {
         if (submitBtn) {
@@ -375,7 +376,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form[data-json-form]').forEach(function(form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            submitJsonForm(form);
+            // Pass redirect URL from data-redirect attribute if present
+            const options = {};
+            if (form.dataset.redirect) {
+                options.redirectUrl = form.dataset.redirect;
+            }
+            submitJsonForm(form, options);
         });
     });
 });

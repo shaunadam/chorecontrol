@@ -352,7 +352,7 @@
             <li>Points history</li>
             <li>Reward claims</li>
         </ul>
-        <form id="deleteUserForm" method="DELETE" action="{{ url_for('users.delete_user', user_id=user.id) }}" data-json-form data-redirect="{{ url_for('ui.users_list') }}">
+        <form id="deleteUserForm" method="POST" data-method="DELETE" action="{{ url_for('users.delete_user', user_id=user.id) }}" data-json-form data-redirect="{{ url_for('ui.users_list') }}">
             <div class="flex gap-3">
                 <button type="submit"
                         class="flex-1 bg-red-500/90 hover:bg-red-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
