@@ -63,8 +63,18 @@ def parent_required(f):
     """Decorator to ensure user is a parent (has admin privileges)."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Check if this is an API route FIRST (like ha_auth_required does)
+        is_api_route = request.path.startswith('/api/')
+
         user = get_current_user()
         if user is None:
+            # For API routes, always return JSON
+            if is_api_route:
+                return jsonify({
+                    'error': 'Unauthorized',
+                    'message': 'Authentication required'
+                }), 401
+            # For UI routes, check content type
             if request.accept_mimetypes.accept_html:
                 return redirect(url_for('auth.login'))
             return jsonify({
@@ -73,6 +83,13 @@ def parent_required(f):
             }), 401
 
         if user.role != 'parent':
+            # For API routes, always return JSON
+            if is_api_route:
+                return jsonify({
+                    'error': 'Forbidden',
+                    'message': 'Parent privileges required'
+                }), 403
+            # For UI routes, check content type
             if request.accept_mimetypes.accept_html:
                 return redirect(url_for('ui.dashboard'))
             return jsonify({
