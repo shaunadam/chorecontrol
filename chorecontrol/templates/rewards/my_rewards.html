@@ -69,6 +69,14 @@
             Claim rewards with points
         </p>
     </div>
+    {% if current_user and current_user.role == 'parent' %}
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('ui.rewards_list') }}"
+           class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-medium px-5 py-3 rounded-xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 text-lg">
+            ⚙️ Manage Rewards
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 {% if kids_data %}
