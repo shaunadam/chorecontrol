@@ -335,7 +335,23 @@ async function submitJsonForm(form, options = {}) {
             body: JSON.stringify(data)
         });
 
-        const result = await response.json();
+        // Debug: Log response details before parsing
+        const responseText = await response.text();
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        console.log('Response text:', responseText);
+        console.log('Response text length:', responseText.length);
+        console.log('First 100 chars:', responseText.substring(0, 100));
+
+        // Parse the JSON
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Failed to parse:', responseText);
+            throw parseError;
+        }
 
         if (!response.ok) {
             throw new Error(result.message || result.error || 'Request failed');
