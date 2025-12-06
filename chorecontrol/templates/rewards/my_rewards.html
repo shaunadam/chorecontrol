@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+{% from "_components/macros.html" import status_badge, empty_state, points_badge %}
+
+{% block title %}Rewards - ChoreControl{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Optimized for landscape touch screens */
+    .rewards-grid {
+        display: grid;
+        {% if kids_data and kids_data|length > 0 %}
+        /* Dynamic columns: always fit all kids in one row */
+        grid-template-columns: repeat({{ kids_data|length }}, minmax(0, 1fr));
+        {% else %}
+        /* Fallback for empty state */
+        grid-template-columns: 1fr;
+        {% endif %}
+        gap: 1.5rem;
+    }
+
+    /* Large touch-friendly buttons */
+    .touch-btn {
+        min-height: 56px;
+        min-width: 120px;
+    }
+
+    /* Kid card styling */
+    .kid-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .kid-card:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Reward row styling for touch */
+    .reward-row {
+        min-height: 120px;
+        transition: background-color 0.2s ease;
+    }
+
+    .reward-row:active {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Prevent text overflow in cards */
+    .kid-card {
+        min-width: 0;
+    }
+
+    /* Better badge spacing */
+    .badge-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div>
+        <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
+            Rewards
+        </h1>
+        <p class="mt-2 text-xl md:text-2xl text-gray-600 dark:text-gray-400">
+            Claim rewards with points
+        </p>
+    </div>
+</div>
+
+{% if kids_data %}
+<!-- Kids Grid -->
+<div class="rewards-grid">
+    {% for data in kids_data %}
+    <div class="kid-card bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-xl shadow-black/5 overflow-hidden">
+        <!-- Kid Header -->
+        <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 dark:from-purple-500/10 dark:to-pink-500/10 border-b border-white/10 p-4">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <div class="w-14 h-14 flex-shrink-0 rounded-full bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                        {{ data.kid.username[0]|upper }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="font-display text-2xl font-bold text-gray-900 dark:text-white truncate">
+                            {{ data.kid.username }}
+                        </h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ data.rewards|length }} reward{{ 's' if data.rewards|length != 1 else '' }} available
+                        </p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 text-right">
+                    <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Points</div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500/30 to-green-600/30 border border-green-500/40 backdrop-blur-sm">
+                        <span class="text-xl font-bold text-green-700 dark:text-green-300">{{ data.kid.points }}</span>
+                        <span class="text-sm font-bold text-green-700 dark:text-green-300">pts</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Claims (if any) -->
+        {% if data.pending_claims %}
+        <div class="bg-orange-500/10 dark:bg-orange-500/5 border-b border-orange-500/20 p-4">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xl">⏳</span>
+                <h3 class="font-semibold text-gray-900 dark:text-white">Pending Approval</h3>
+                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500 text-white">
+                    {{ data.pending_claims|length }}
+                </span>
+            </div>
+            <div class="space-y-2">
+                {% for claim in data.pending_claims %}
+                <div class="bg-white/20 dark:bg-white/10 rounded-lg p-3 flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                            {{ claim.reward.name }}
+                        </div>
+                        <div class="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                            {{ claim.points_spent }} pts
+                            {% if claim.days_until_expiry is not none %}
+                            • {{ claim.days_until_expiry }}d left
+                            {% endif %}
+                        </div>
+                    </div>
+                    <button type="button"
+                            onclick="openUnclaimModal({{ claim.id }}, '{{ claim.reward.name|e }}', {{ claim.points_spent }}, '{{ data.kid.username|e }}')"
+                            class="flex-shrink-0 inline-flex items-center bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-medium px-3 py-1.5 rounded-lg backdrop-blur-sm border border-red-500/30 transition-all duration-200 text-xs">
+                        Cancel
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Rewards List -->
+        <div class="divide-y divide-white/10 dark:divide-white/5 max-h-[600px] overflow-y-auto">
+            {% for reward in data.rewards %}
+            <div class="reward-row p-4 flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                        {{ reward.name }}
+                    </h3>
+                    {% if reward.description %}
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-2 line-clamp-2">
+                        {{ reward.description }}
+                    </p>
+                    {% endif %}
+                    <div class="badge-group">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 whitespace-nowrap">
+                            {{ reward.points_cost }} pts
+                        </span>
+                        {% if reward.requires_approval %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-700 dark:text-orange-300 border border-orange-500/30 whitespace-nowrap">
+                            Needs Approval
+                        </span>
+                        {% endif %}
+                        {% if reward.cooldown_days %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 whitespace-nowrap">
+                            {{ reward.cooldown_days }}d cooldown
+                        </span>
+                        {% endif %}
+                        {% if reward.on_cooldown %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30 whitespace-nowrap">
+                            {{ reward.cooldown_remaining }}d left
+                        </span>
+                        {% endif %}
+                        {% if reward.max_claims_per_kid and reward.claims_remaining is not none %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 whitespace-nowrap">
+                            {{ reward.claims_remaining }} left
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex-shrink-0">
+                    {% if reward.can_claim %}
+                    <button type="button"
+                            onclick="openClaimModal({{ reward.id }}, {{ data.kid.id }}, '{{ reward.name|e }}', '{{ data.kid.username|e }}', {{ reward.points_cost }}, {{ data.kid.points }}, {{ 'true' if reward.requires_approval else 'false' }})"
+                            class="touch-btn inline-flex items-center justify-center bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-500 hover:to-pink-500 text-white font-bold px-6 py-3 rounded-xl backdrop-blur-sm shadow-lg shadow-purple-500/20 border border-purple-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-lg">
+                        Claim
+                    </button>
+                    {% else %}
+                    <button type="button"
+                            disabled
+                            class="touch-btn inline-flex items-center justify-center bg-gray-500/20 text-gray-600 dark:text-gray-400 font-medium px-4 py-2 rounded-xl backdrop-blur-sm border border-gray-500/30 cursor-not-allowed text-sm">
+                        {% if not reward.can_afford %}
+                            Need {{ reward.points_cost - data.kid.points }} more
+                        {% elif reward.on_cooldown %}
+                            On Cooldown
+                        {% elif reward.at_max_claims %}
+                            Max Reached
+                        {% elif reward.at_max_total %}
+                            Sold Out
+                        {% else %}
+                            Can't Claim
+                        {% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-lg shadow-black/5 p-16 text-center">
+    <div class="text-8xl mb-6">🎁</div>
+    <h2 class="font-display text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        No Rewards Available
+    </h2>
+    <p class="text-xl text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
+        Create some rewards that kids can claim with their points!
+    </p>
+</div>
+{% endif %}
+
+<!-- Claim Confirmation Modal -->
+<div id="claim-modal" class="fixed inset-0 z-[1000] hidden items-center justify-center p-4" style="display: none;">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeClaimModal()"></div>
+    <div class="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-3xl shadow-2xl p-8 max-w-lg w-full animate-fade-in">
+        <h3 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            Claim Reward
+        </h3>
+        <div class="text-center mb-8">
+            <div class="text-6xl mb-4">🎁</div>
+            <p class="text-xl text-gray-700 dark:text-gray-300 mb-2">
+                <span id="modal-kid-name" class="font-bold"></span> wants to claim:
+            </p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                <span id="modal-reward-name"></span>
+            </p>
+            <div class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-red-500/30 to-orange-500/30 border border-red-500/40 mb-4">
+                <span class="text-3xl font-bold text-red-700 dark:text-red-300">
+                    -<span id="modal-points"></span> pts
+                </span>
+            </div>
+            <p class="text-lg text-gray-700 dark:text-gray-300 mb-2">
+                Current points: <strong id="modal-current-points"></strong>
+            </p>
+            <p id="modal-approval-notice" class="text-sm text-orange-600 dark:text-orange-400 mt-3" style="display: none;">
+                ⚠️ This reward requires parent approval
+            </p>
+        </div>
+        <div class="flex gap-4">
+            <button type="button"
+                    onclick="closeClaimModal()"
+                    class="flex-1 touch-btn inline-flex items-center justify-center bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-bold px-6 py-4 rounded-2xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 text-xl">
+                Cancel
+            </button>
+            <button type="button"
+                    id="modal-confirm-btn"
+                    onclick="confirmClaim()"
+                    class="flex-1 touch-btn inline-flex items-center justify-center bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-500 hover:to-pink-500 text-white font-bold px-6 py-4 rounded-2xl backdrop-blur-sm shadow-lg shadow-purple-500/20 border border-purple-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-xl">
+                Yes, Claim It!
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Unclaim Confirmation Modal -->
+<div id="unclaim-modal" class="fixed inset-0 z-[1000] hidden items-center justify-center p-4" style="display: none;">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeUnclaimModal()"></div>
+    <div class="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-3xl shadow-2xl p-8 max-w-lg w-full animate-fade-in">
+        <h3 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            Cancel Reward Claim
+        </h3>
+        <div class="text-center mb-8">
+            <div class="text-6xl mb-4">↩️</div>
+            <p class="text-xl text-gray-700 dark:text-gray-300 mb-2">
+                Cancel <span id="unclaim-modal-kid-name" class="font-bold"></span>'s claim for:
+            </p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                <span id="unclaim-modal-reward-name"></span>
+            </p>
+            <div class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-green-500/30 to-green-600/30 border border-green-500/40">
+                <span class="text-3xl font-bold text-green-700 dark:text-green-300">
+                    +<span id="unclaim-modal-points"></span> pts refunded
+                </span>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <button type="button"
+                    onclick="closeUnclaimModal()"
+                    class="flex-1 touch-btn inline-flex items-center justify-center bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-bold px-6 py-4 rounded-2xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 text-xl">
+                Keep Claim
+            </button>
+            <button type="button"
+                    id="unclaim-modal-confirm-btn"
+                    onclick="confirmUnclaim()"
+                    class="flex-1 touch-btn inline-flex items-center justify-center bg-red-500/90 hover:bg-red-500 text-white font-bold px-6 py-4 rounded-2xl backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-xl">
+                Yes, Cancel It
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Claim modal state
+let currentRewardId = null;
+let currentKidId = null;
+let requiresApproval = false;
+
+function openClaimModal(rewardId, kidId, rewardName, kidName, points, currentPoints, needsApproval) {
+    currentRewardId = rewardId;
+    currentKidId = kidId;
+    requiresApproval = needsApproval;
+
+    document.getElementById('modal-reward-name').textContent = rewardName;
+    document.getElementById('modal-kid-name').textContent = kidName;
+    document.getElementById('modal-points').textContent = points;
+    document.getElementById('modal-current-points').textContent = currentPoints;
+
+    const approvalNotice = document.getElementById('modal-approval-notice');
+    if (needsApproval) {
+        approvalNotice.style.display = 'block';
+    } else {
+        approvalNotice.style.display = 'none';
+    }
+
+    const modal = document.getElementById('claim-modal');
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+}
+
+function closeClaimModal() {
+    const modal = document.getElementById('claim-modal');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+    currentRewardId = null;
+    currentKidId = null;
+    requiresApproval = false;
+}
+
+async function confirmClaim() {
+    if (!currentRewardId || !currentKidId) return;
+
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Claiming...';
+
+    try {
+        const response = await fetch(`{{ url_for('rewards.claim_reward', reward_id=0) }}`.replace('/0/', `/${currentRewardId}/`), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_id: currentKidId })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            closeClaimModal();
+            window.location.reload();
+        } else {
+            const errorMsg = data.message || 'Failed to claim reward';
+            alert(errorMsg);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
+        }
+    } catch (error) {
+        console.error('Error claiming reward:', error);
+        alert('Failed to claim reward. Please try again.\n\nError: ' + error.message);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    }
+}
+
+// Unclaim modal state
+let currentClaimId = null;
+
+function openUnclaimModal(claimId, rewardName, points, kidName) {
+    currentClaimId = claimId;
+
+    document.getElementById('unclaim-modal-reward-name').textContent = rewardName;
+    document.getElementById('unclaim-modal-kid-name').textContent = kidName;
+    document.getElementById('unclaim-modal-points').textContent = points;
+
+    const modal = document.getElementById('unclaim-modal');
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+}
+
+function closeUnclaimModal() {
+    const modal = document.getElementById('unclaim-modal');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+    currentClaimId = null;
+}
+
+async function confirmUnclaim() {
+    if (!currentClaimId) return;
+
+    const confirmBtn = document.getElementById('unclaim-modal-confirm-btn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Canceling...';
+
+    try {
+        const response = await fetch(`{{ url_for('rewards.unclaim_reward', claim_id=0) }}`.replace('/0/', `/${currentClaimId}/`), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            closeUnclaimModal();
+            window.location.reload();
+        } else {
+            const errorMsg = data.message || 'Failed to cancel claim';
+            alert(errorMsg);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
+        }
+    } catch (error) {
+        console.error('Error canceling claim:', error);
+        alert('Failed to cancel claim. Please try again.\n\nError: ' + error.message);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    }
+}
+
+// Close modals on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeClaimModal();
+        closeUnclaimModal();
+    }
+});
+</script>
+{% endblock %}

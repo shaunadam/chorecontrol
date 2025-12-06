@@ -26,10 +26,16 @@
                 {{ user.role }}
             </span>
         </div>
-        <button onclick="showEditUserModal()"
-                class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
-            Edit
-        </button>
+        <div class="flex gap-2">
+            <button onclick="showEditUserModal()"
+                    class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                Edit
+            </button>
+            <button onclick="showDeleteUserModal()"
+                    class="inline-flex items-center bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                Delete
+            </button>
+        </div>
     </div>
 
     <!-- User Info -->
@@ -333,6 +339,35 @@
     </div>
 </div>
 
+<!-- Delete User Confirmation Modal -->
+<div id="deleteUserModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] hidden">
+    <div class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <h3 class="font-display text-2xl font-semibold text-red-600 dark:text-red-400 mb-2">Delete User</h3>
+        <p class="text-gray-700 dark:text-gray-300 mb-6">
+            Are you sure you want to delete <strong>{{ user.username }}</strong>? This action cannot be undone and will permanently delete:
+        </p>
+        <ul class="list-disc list-inside text-gray-700 dark:text-gray-300 mb-6 space-y-1">
+            <li>User account</li>
+            <li>All chore assignments</li>
+            <li>Points history</li>
+            <li>Reward claims</li>
+        </ul>
+        <form id="deleteUserForm" method="DELETE" action="{{ url_for('users.delete_user', user_id=user.id) }}" data-json-form data-redirect="{{ url_for('ui.users_list') }}">
+            <div class="flex gap-3">
+                <button type="submit"
+                        class="flex-1 bg-red-500/90 hover:bg-red-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
+                    Delete Permanently
+                </button>
+                <button type="button"
+                        class="flex-1 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100"
+                        onclick="closeDeleteUserModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -353,10 +388,19 @@ function closePointsModal() {
     document.getElementById('pointsModal').classList.add('hidden');
 }
 
+function showDeleteUserModal() {
+    document.getElementById('deleteUserModal').classList.remove('hidden');
+}
+
+function closeDeleteUserModal() {
+    document.getElementById('deleteUserModal').classList.add('hidden');
+}
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeEditUserModal();
         closePointsModal();
+        closeDeleteUserModal();
     }
 });
 </script>

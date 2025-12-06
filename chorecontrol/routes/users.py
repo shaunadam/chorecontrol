@@ -416,3 +416,52 @@ def get_user_points(user_id):
         },
         'message': 'Points information retrieved successfully'
     }), 200
+
+
+@users_bp.route('/<int:user_id>', methods=['DELETE'])
+@requires_auth
+@requires_parent
+def delete_user(user_id):
+    """
+    Delete a user and all their associated data.
+
+    Path Parameters:
+        user_id: ID of the user to delete
+
+    Returns:
+        JSON response confirming deletion
+
+    Note: This will cascade delete all related records including:
+        - Chore assignments
+        - Points history
+        - Reward claims
+    """
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({
+            'error': 'NotFound',
+            'message': f'User with ID {user_id} not found',
+            'details': {'user_id': user_id}
+        }), 404
+
+    # Store username for response message
+    username = user.username
+
+    try:
+        # SQLAlchemy will handle cascade deletes based on relationships
+        db.session.delete(user)
+        db.session.commit()
+
+        return jsonify({
+            'message': f'User "{username}" deleted successfully',
+            'details': {'user_id': user_id}
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': 'InternalServerError',
+            'message': 'Failed to delete user',
+            'details': {'error': str(e)}
+        }), 500

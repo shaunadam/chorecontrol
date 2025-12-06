@@ -679,3 +679,116 @@ def today_page():
             })
 
     return render_template('today.html', kids_data=kids_data, today=today)
+
+
+@ui_bp.route('/my-rewards')
+@ha_auth_required
+def my_rewards():
+    """Rewards page - claim rewards and view pending claims for all kids."""
+    current_user = get_current_user()
+
+    # Get all kids
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    # Get all active rewards
+    active_rewards = Reward.query.filter_by(is_active=True).order_by(Reward.points_cost).all()
+
+    # For each kid, build their reward eligibility data
+    kids_data = []
+    for kid in kids:
+        kid_rewards = []
+
+        for reward in active_rewards:
+            # Create a copy of reward data for this kid
+            reward_data = {
+                'id': reward.id,
+                'name': reward.name,
+                'description': reward.description,
+                'points_cost': reward.points_cost,
+                'cooldown_days': reward.cooldown_days,
+                'max_claims_per_kid': reward.max_claims_per_kid,
+                'max_claims_total': reward.max_claims_total,
+                'requires_approval': reward.requires_approval,
+            }
+
+            # Check if kid has enough points
+            reward_data['can_afford'] = kid.points >= reward.points_cost
+
+            # Check cooldown (if kid has claimed this reward recently)
+            if reward.cooldown_days:
+                last_claim = RewardClaim.query.filter_by(
+                    user_id=kid.id,
+                    reward_id=reward.id
+                ).filter(
+                    RewardClaim.status.in_(['approved', 'pending'])
+                ).order_by(RewardClaim.claimed_at.desc()).first()
+
+                if last_claim:
+                    days_since_claim = (datetime.utcnow() - last_claim.claimed_at).days
+                    reward_data['on_cooldown'] = days_since_claim < reward.cooldown_days
+                    reward_data['cooldown_remaining'] = reward.cooldown_days - days_since_claim if reward_data['on_cooldown'] else 0
+                else:
+                    reward_data['on_cooldown'] = False
+                    reward_data['cooldown_remaining'] = 0
+            else:
+                reward_data['on_cooldown'] = False
+                reward_data['cooldown_remaining'] = 0
+
+            # Check max claims per kid
+            if reward.max_claims_per_kid:
+                kid_claim_count = RewardClaim.query.filter_by(
+                    user_id=kid.id,
+                    reward_id=reward.id,
+                    status='approved'
+                ).count()
+                reward_data['at_max_claims'] = kid_claim_count >= reward.max_claims_per_kid
+                reward_data['claims_remaining'] = max(0, reward.max_claims_per_kid - kid_claim_count)
+            else:
+                reward_data['at_max_claims'] = False
+                reward_data['claims_remaining'] = None
+
+            # Check max total claims
+            if reward.max_claims_total:
+                total_claim_count = RewardClaim.query.filter_by(
+                    reward_id=reward.id,
+                    status='approved'
+                ).count()
+                reward_data['at_max_total'] = total_claim_count >= reward.max_claims_total
+            else:
+                reward_data['at_max_total'] = False
+
+            # Can claim if: has points, not on cooldown, not at max, reward not exhausted
+            reward_data['can_claim'] = (
+                reward_data['can_afford'] and
+                not reward_data['on_cooldown'] and
+                not reward_data['at_max_claims'] and
+                not reward_data['at_max_total']
+            )
+
+            kid_rewards.append(reward_data)
+
+        # Get kid's pending claims
+        pending_claims = RewardClaim.query.filter_by(
+            user_id=kid.id,
+            status='pending'
+        ).order_by(RewardClaim.claimed_at.desc()).all()
+
+        # Add time remaining for each pending claim
+        for claim in pending_claims:
+            if claim.expires_at:
+                time_remaining = claim.expires_at - datetime.utcnow()
+                claim.days_until_expiry = max(0, time_remaining.days)
+                claim.is_expiring_soon = claim.days_until_expiry <= 2
+            else:
+                claim.days_until_expiry = None
+                claim.is_expiring_soon = False
+
+        kids_data.append({
+            'kid': kid,
+            'rewards': kid_rewards,
+            'pending_claims': pending_claims
+        })
+
+    return render_template('rewards/my_rewards.html',
+                         kids_data=kids_data,
+                         current_user=current_user)

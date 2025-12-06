@@ -354,7 +354,7 @@ class TestClaimReward:
     def test_claim_reward_parent_cannot_claim(self, client, parent_headers, sample_reward, parent_user):
         """Test that parents cannot claim rewards."""
         response = client.post(f'/api/rewards/{sample_reward.id}/claim', headers=parent_headers)
-        assert response.status_code == 400
+        assert response.status_code == 403
         assert 'Only kids' in response.get_json()['message']
 
     def test_claim_reward_creates_points_history(self, client, kid_headers, sample_reward, kid_user, db_session):

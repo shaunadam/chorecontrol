@@ -612,3 +612,131 @@ def test_system_user_role_allowed(db_session):
     saved_user = User.query.filter_by(ha_user_id='test_system').first()
     assert saved_user is not None
     assert saved_user.role == 'system'
+
+
+class TestDeleteUser:
+    """Tests for DELETE /api/users/<user_id> endpoint."""
+
+    def test_delete_user_success(self, client, parent_headers, db_session):
+        """Test successfully deleting a user."""
+        # Create a user to delete
+        user = User(
+            ha_user_id='user-to-delete',
+            username='Delete Me',
+            role='kid',
+            points=0
+        )
+        db_session.add(user)
+        db_session.commit()
+        user_id = user.id
+
+        # Delete the user
+        response = client.delete(
+            f'/api/users/{user_id}',
+            headers=parent_headers
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'message' in data
+        assert 'Delete Me' in data['message']
+
+        # Verify user is deleted
+        deleted_user = User.query.get(user_id)
+        assert deleted_user is None
+
+    def test_delete_user_with_related_data(self, client, parent_headers, db_session):
+        """Test deleting a user cascades to related data."""
+        from models import Chore, ChoreAssignment, PointsHistory
+
+        # Create a kid with some data
+        kid = User(
+            ha_user_id='kid-with-data',
+            username='Kid with Data',
+            role='kid',
+            points=100
+        )
+        db_session.add(kid)
+        db_session.commit()
+
+        # Add some points history
+        history = PointsHistory(
+            user_id=kid.id,
+            points_delta=100,
+            reason='Test points'
+        )
+        db_session.add(history)
+
+        # Add a chore assignment
+        chore = Chore(
+            name='Test Chore',
+            description='Test',
+            points=10,
+            assignment_type='individual'
+        )
+        db_session.add(chore)
+        db_session.commit()
+
+        assignment = ChoreAssignment(
+            chore_id=chore.id,
+            user_id=kid.id
+        )
+        db_session.add(assignment)
+        db_session.commit()
+
+        kid_id = kid.id
+
+        # Delete the user
+        response = client.delete(
+            f'/api/users/{kid_id}',
+            headers=parent_headers
+        )
+
+        assert response.status_code == 200
+
+        # Verify cascading deletes
+        assert User.query.get(kid_id) is None
+        assert PointsHistory.query.filter_by(user_id=kid_id).count() == 0
+        assert ChoreAssignment.query.filter_by(user_id=kid_id).count() == 0
+
+    def test_delete_user_not_found(self, client, parent_headers):
+        """Test deleting a non-existent user."""
+        response = client.delete('/api/users/9999', headers=parent_headers)
+
+        assert response.status_code == 404
+        data = response.get_json()
+        assert 'error' in data
+        assert data['error'] == 'NotFound'
+
+    def test_delete_user_requires_parent(self, client, kid_user, db_session):
+        """Test that only parents can delete users."""
+        # Create another user to delete
+        from models import User
+        user = User(
+            ha_user_id='another-user',
+            username='Another User',
+            role='kid',
+            points=0
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        # Kid tries to delete user
+        response = client.delete(
+            f'/api/users/{user.id}',
+            headers={'X-Ingress-User': kid_user.ha_user_id}
+        )
+
+        assert response.status_code == 403
+        data = response.get_json()
+        assert 'error' in data
+        assert data['error'] == 'Forbidden'
+
+    def test_delete_user_unauthorized(self, client, kid_user):
+        """Test deleting user without authentication."""
+        response = client.delete(f'/api/users/{kid_user.id}')
+
+        assert response.status_code == 401
+        data = response.get_json()
+        assert 'error' in data
+        assert data['error'] == 'Unauthorized'

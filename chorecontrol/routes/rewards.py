@@ -300,15 +300,37 @@ def claim_reward(reward_id):
             'message': f'Reward {reward_id} not found'
         }), 404
 
-    user = get_current_user()
+    # Get user_id from request body or use current authenticated user
+    data = request.get_json(silent=True) or {}
+    user_id = data.get('user_id')
+
+    if not user_id:
+        # Use current authenticated user
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'User not found'
+            }), 401
+        user_id = current_user.id
+
+    # Get the user object
+    user = User.query.get(user_id)
     if not user:
         return jsonify({
-            'error': 'Unauthorized',
-            'message': 'User not found'
-        }), 401
+            'error': 'NotFound',
+            'message': f'User {user_id} not found'
+        }), 404
+
+    # Only kids can claim rewards
+    if user.role != 'kid':
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Only kids can claim rewards'
+        }), 403
 
     # Check if user can claim the reward
-    can_claim, reason = reward.can_claim(user.id)
+    can_claim, reason = reward.can_claim(user_id)
 
     if not can_claim:
         # Extract details for specific error types
