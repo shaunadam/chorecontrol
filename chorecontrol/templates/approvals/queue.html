@@ -225,10 +225,10 @@ function showRejectModal(id, title, type) {
     document.getElementById('rejectType').textContent = type === 'chore' ? 'Chore' : 'Reward Claim';
 
     if (type === 'chore') {
-        document.getElementById('rejectForm').action = `/api/instances/${id}/reject`;
+        document.getElementById('rejectForm').action = "{{ url_for('instances.reject_instance', instance_id=0) }}".replace('/0/', '/' + id + '/');
         document.getElementById('reasonGroup').style.display = 'block';
     } else {
-        document.getElementById('rejectForm').action = `/api/rewards/claims/${id}/reject`;
+        document.getElementById('rejectForm').action = "{{ url_for('rewards.reject_reward_claim', claim_id=0) }}".replace('/0/', '/' + id + '/');
         document.getElementById('reasonGroup').style.display = 'none';
     }
 

@@ -318,7 +318,7 @@
 {% block extra_js %}
 <script>
 function showRejectModal(instanceId) {
-    document.getElementById('rejectForm').action = `/api/instances/${instanceId}/reject`;
+    document.getElementById('rejectForm').action = "{{ url_for('instances.reject_instance', instance_id=0) }}".replace('/0/', '/' + instanceId + '/');
     document.getElementById('rejectModal').classList.remove('hidden');
 }
 

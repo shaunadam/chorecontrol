@@ -268,7 +268,7 @@
 <script>
 function showRejectModal(instanceId, choreTitle) {
     document.getElementById('rejectChoreTitle').textContent = choreTitle;
-    document.getElementById('rejectForm').action = `/api/instances/${instanceId}/reject`;
+    document.getElementById('rejectForm').action = "{{ url_for('instances.reject_instance', instance_id=0) }}".replace('/0/', '/' + instanceId + '/');
     const modal = document.getElementById('rejectModal');
     modal.style.display = 'flex';
 }
