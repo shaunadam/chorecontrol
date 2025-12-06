@@ -321,6 +321,9 @@ async function submitJsonForm(form, options = {}) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.textContent : '';
 
+    // Get method from form attribute or default to POST
+    const method = form.getAttribute('method')?.toUpperCase() || 'POST';
+
     try {
         if (submitBtn) {
             submitBtn.disabled = true;
@@ -328,7 +331,7 @@ async function submitJsonForm(form, options = {}) {
         }
 
         const response = await fetch(url, {
-            method: 'POST',
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
