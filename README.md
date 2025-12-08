@@ -4,191 +4,105 @@ A comprehensive chore management system for Home Assistant that helps families t
 
 ## Features
 
-### Chore Management
-- **Flexible Scheduling**: Create one-off or recurring chores (daily, weekly, monthly)
-- **Assignment Options**: Assign chores to individual kids or make them shared (first-come, first-served)
-- **Late Claim Support**: Optionally allow late completion with reduced points
-- **Auto-Approval**: Configure chores to auto-approve after a set time
-
-### Points & Rewards
-- **Points System**: Kids earn points for completing chores
-- **Reward Marketplace**: Create rewards kids can claim with their points
-- **Approval Workflow**: Optional parent approval for high-value rewards
-- **Cooldowns & Limits**: Set cooldown periods and claim limits on rewards
-- **Points Auditing**: Automatic nightly verification of point balances
-
-### Approval Workflow
-- **Claim → Approve Flow**: Kids claim chores, parents approve
-- **Rejection with Feedback**: Provide reasons when rejecting claims
-- **Mobile Notifications**: Get notified when kids claim chores
-
-### Home Assistant Integration
-- **Native Entities**: Sensors for points, chore counts, and pending approvals
-- **Dynamic Buttons**: Claim buttons appear automatically for available chores
-- **Services**: Full API access through HA services for automations
-- **Real-time Events**: Webhook integration for instant updates
-
-### Web Interface
-- **Mobile-First Design**: Manage everything from your phone via HA sidebar
-- **Dashboard**: View pending approvals, kid stats, and recent activity
-- **Calendar View**: See all scheduled chores at a glance
-- **Points History**: Track all point transactions
+- **Flexible Chore Scheduling** - One-off or recurring (daily, weekly, monthly)
+- **Points & Rewards** - Kids earn points, claim rewards from a marketplace
+- **Approval Workflow** - Kids claim, parents approve (with mobile notifications)
+- **Home Assistant Integration** - Sensors, buttons, services, calendar, and events
+- **Web Interface** - Mobile-first admin UI via HA sidebar
 
 ## Architecture
 
 ChoreControl consists of two components:
 
-1. **Add-on** (Backend Service)
-   - Flask web application with SQLite database
-   - REST API (28 endpoints) for all operations
-   - Web UI for parent administration
-   - Background jobs for automation (auto-approval, instance generation)
-   - Accessible via HA sidebar (ingress)
-
-2. **Integration** (Custom Component)
-   - Exposes entities (sensors, buttons) to Home Assistant
-   - Provides services for automations
-   - Handles real-time event notifications via webhooks
-
-## Installation
-
-### Prerequisites
-- Home Assistant 2024.1.0 or higher
-- Supervisor access (for add-on installation)
-
-### Quick Start
-
-**Note:** ChoreControl is currently in development. HACS integration and add-on repository publishing coming soon.
-
-#### 1. Install the Add-on (Manual)
-
-For now, install as a local add-on:
-
-1. Clone or download this repository
-2. Copy the `addon` directory to your HA add-ons folder
-3. Restart Home Assistant
-4. Install from **Settings** → **Add-ons** → **Local Add-ons**
-5. Start the add-on and enable **Start on boot**
-6. Access via HA sidebar
-
-#### 2. Install the Integration (Manual)
-
-1. Copy `custom_components/chorecontrol` to your HA config:
-   ```bash
-   cp -r custom_components/chorecontrol /config/custom_components/
-   ```
-2. Restart Home Assistant
-3. Go to **Settings** → **Devices & Services** → **Add Integration**
-4. Search for "ChoreControl"
-4. Enter the add-on URL: `http://chorecontrol` (or auto-detected)
-5. Configure update interval (default: 30 seconds)
-
-See [docs/installation.md](docs/installation.md) for detailed instructions.
+1. **Add-on** - Flask backend with SQLite database, REST API, and web UI
+2. **Integration** - HA custom component exposing entities, services, and events
 
 ## Quick Start
 
-### 1. First Login
+### 1. Install the Add-on
 
-1. Access ChoreControl via the HA sidebar
-2. Login with default credentials: `admin` / `admin`
-3. **Important:** Change the admin password immediately
+```bash
+# Copy to HA add-ons directory
+cp -r chorecontrol /usr/share/hassio/addons/local/chorecontrol
+```
 
-### 2. User Management
+Then in Home Assistant: **Settings → Add-ons → Local Add-ons → ChoreControl → Install → Start**
 
-ChoreControl integrates with Home Assistant users:
-- When HA users access the addon, they're auto-created with role='unmapped'
-- Parents use the User Mapping page to assign roles (parent/kid)
-- Parents get full addon access; kids see their chores via HA dashboards only
+### 2. Install the Integration
 
-See [docs/USER_MANAGEMENT.md](docs/USER_MANAGEMENT.md) (coming soon) for details.
+```bash
+# Copy to HA custom_components
+cp -r custom_components/chorecontrol /config/custom_components/
+```
 
-### 3. Set Up Chores
+Restart HA, then: **Settings → Devices & Services → Add Integration → ChoreControl**
 
-Create chores with:
-- Name and description
-- Point value
-- Recurrence pattern (one-time, daily, weekly, monthly)
-- Assignment (specific kids or shared)
-- Approval requirements
+### 3. First Login
 
-### 4. Create Rewards
-
-Set up rewards kids can claim:
-- Name and description
-- Point cost
-- Optional cooldown period
-- Optional claim limits
-
-### 5. Set Up Dashboards
-
-Use the example dashboard configurations in [docs/examples/](docs/examples/) to create:
-- Kid dashboards (view chores, claim completion, see points)
-- Parent dashboards (approve chores, adjust points, overview)
+1. Access ChoreControl via HA sidebar
+2. Login: `admin` / `admin` (change immediately!)
+3. Map HA users to roles (parent/kid) via **Users → Mapping**
 
 ## Documentation
 
-- [Installation Guide](docs/installation.md) - Detailed setup instructions
-- [User Guide](docs/user-guide.md) - How to use ChoreControl
-- [API Reference](docs/api-reference.md) - REST API documentation
-- [Entity Reference](docs/entity-reference.md) - HA entity naming and attributes
-- [Dashboard Setup](docs/dashboard-setup.md) - Creating HA dashboards
-- [Integration Setup](docs/integration-setup.md) - Configuring the HA integration
-- [Architecture](docs/architecture.md) - Technical details and design decisions
-- [Development Guide](docs/development.md) - Contributing to ChoreControl
+| Document | Purpose |
+|----------|---------|
+| [User Guide](docs/user-guide.md) | Complete family guide - installation, addon usage, dashboards, notifications |
+| [Technical Reference](docs/technical.md) | API reference, database schema, development guide |
+| [Backlog](BACKLOG.md) | Planned features and enhancements |
+| [Changelog](CHANGELOG.md) | Version history |
+
+## What Gets Created
+
+**Sensors:**
+- Global: pending approvals, pending reward approvals, total kids, active chores
+- Per-kid: points, pending chores, claimed chores, completed today/week, chores due today, pending reward claims
+
+**Other Entities:**
+- Dynamic claim buttons for each claimable chore
+- Calendar showing chore schedules
+- API connection status binary sensor
+
+**Services:**
+- `claim_chore`, `approve_chore`, `reject_chore`
+- `claim_reward`, `approve_reward`, `reject_reward`
+- `adjust_points`, `refresh_data`
+
+**Events** (for automations):
+- `chorecontrol_chore_instance_claimed/approved/rejected`
+- `chorecontrol_reward_claimed/approved/rejected`
+
+## Example: Actionable Notification
+
+```yaml
+# Notify parent when chore claimed, with quick approve button
+automation:
+  - alias: "ChoreControl: Chore Claimed"
+    trigger:
+      - platform: event
+        event_type: chorecontrol_chore_instance_claimed
+    action:
+      - service: notify.mobile_app_parent
+        data:
+          title: "Chore Claimed"
+          message: "{{ trigger.event.data.claimed_by_name }} claimed {{ trigger.event.data.chore_name }}"
+          data:
+            actions:
+              - action: "APPROVE_{{ trigger.event.data.instance_id }}"
+                title: "Approve"
+```
+
+See [User Guide - Notifications](docs/user-guide.md#notifications) for complete examples.
 
 ## Technology Stack
 
-**Backend**
-- Python 3.11+
-- Flask with SQLAlchemy ORM
-- SQLite database
-- APScheduler for background jobs
-- Alembic for migrations
-
-**Integration**
-- Python custom component
-- aiohttp for async API calls
-- DataUpdateCoordinator pattern
-
-**Testing**
-- pytest with 245+ tests
-- Comprehensive coverage of business logic
-
-## Future Enhancements
-
-See [BACKLOG.md](BACKLOG.md) for planned features including:
-- Complex scheduling (cron-like patterns)
-- Photo proof of completion
-- Achievements and gamification
-- Analytics and reporting
-- ICS calendar integration
-- Voice assistant integration
-
-## Comparison to Alternatives
-
-### vs kidschores-ha
-ChoreControl improves on existing solutions by:
-- Using proper database storage instead of entity-based storage
-- Providing a dedicated admin UI via add-on
-- Offering more robust scheduling and workflow options
-- Better separation of concerns (add-on + integration)
-
-### vs Skylight Chore Chart
-- Fully integrated with Home Assistant
-- Self-hosted and private
-- Extensible via HA automations
-- Open source
+- **Backend**: Python 3.11, Flask, SQLAlchemy, SQLite, APScheduler
+- **Integration**: Python custom component, aiohttp, DataUpdateCoordinator
+- **Testing**: pytest with 245+ tests
 
 ## Contributing
 
-Contributions welcome! See [docs/development.md](docs/development.md) for setup instructions.
-
-### Development Principles
-- Mobile-first design
-- HA-native integration
-- Proper data modeling
-- User-friendly for non-technical parents
-- Clean, documented, testable code
+See [Technical Reference - Development](docs/technical.md#development-setup) for setup instructions.
 
 ## License
 
@@ -198,9 +112,3 @@ MIT License - See LICENSE file for details.
 
 - **Issues**: [GitHub Issues](https://github.com/shaunadam/chorecontrol/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/shaunadam/chorecontrol/discussions)
-
-## Acknowledgments
-
-- Inspired by [kidschores-ha](https://github.com/ad-ha/kidschores-ha)
-- UI/UX ideas from [Skylight Chore Chart](https://myskylight.com/lp/chore-chart/)
-- Built for the Home Assistant community
