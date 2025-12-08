@@ -82,7 +82,8 @@ def mapping_page():
                          claim_only_users=claim_only_users,
                          system_users=system_users,
                          ha_users=ha_users_with_status,
-                         ha_api_available=ha_api_available)
+                         ha_api_available=ha_api_available,
+                         current_user=get_current_user())
 
 
 @user_mapping_bp.route('/mapping/update', methods=['POST'])

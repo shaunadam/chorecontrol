@@ -271,7 +271,8 @@ class TestRoleBasedUIElements:
         """Test that parents see User Mapping nav link."""
         response = client.get('/', headers=parent_headers)
 
-        assert b'User Mapping' in response.data
+        # Nav shows "Mapping" text and links to /users/mapping
+        assert b'Mapping' in response.data
         assert b'/users/mapping' in response.data
 
     def test_claim_only_sees_only_today_tab(self, client, claim_only_headers):

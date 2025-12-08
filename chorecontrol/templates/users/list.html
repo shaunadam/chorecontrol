@@ -294,7 +294,8 @@ function closePointsModal() {
 function showDeleteUserModal(userId, username) {
     document.getElementById('deleteUsername').textContent = username;
     document.getElementById('deleteUserId').value = userId;
-    document.getElementById('deleteUserForm').action = '/api/users/' + userId;
+    // Use url_for base path to ensure correct ingress prefix
+    document.getElementById('deleteUserForm').action = '{{ url_for("users.delete_user", user_id=0) }}'.replace('/0', '/' + userId);
     document.getElementById('deleteUserModal').classList.remove('hidden');
 }
 

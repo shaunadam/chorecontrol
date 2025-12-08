@@ -38,9 +38,10 @@ class TestDashboard:
         assert b'Pending Approvals' in response.data
 
     def test_dashboard_requires_auth(self, client):
-        """Test that dashboard requires authentication."""
+        """Test that dashboard requires authentication (redirects to login)."""
         response = client.get('/')
-        assert response.status_code == 401
+        assert response.status_code == 302
+        assert '/login' in response.location
 
 
 class TestChoresList:
@@ -315,7 +316,7 @@ class TestUIAuthentication:
     """Tests for UI authentication."""
 
     def test_all_ui_routes_require_auth(self, client):
-        """Test that all UI routes require authentication."""
+        """Test that all UI routes require authentication (redirect to login)."""
         routes = [
             '/',
             '/chores',
@@ -329,7 +330,8 @@ class TestUIAuthentication:
 
         for route in routes:
             response = client.get(route)
-            assert response.status_code == 401, f"Route {route} should require auth"
+            assert response.status_code == 302, f"Route {route} should redirect to login"
+            assert '/login' in response.location, f"Route {route} should redirect to login"
 
     def test_ui_routes_work_with_auth(self, client, parent_headers, parent_user):
         """Test that UI routes work with valid authentication."""
@@ -419,9 +421,10 @@ class TestCalendar:
         assert b'Calendar' in response.data
 
     def test_calendar_requires_auth(self, client):
-        """Test that calendar requires authentication."""
+        """Test that calendar requires authentication (redirects to login)."""
         response = client.get('/calendar')
-        assert response.status_code == 401
+        assert response.status_code == 302
+        assert '/login' in response.location
 
     def test_calendar_shows_instances_with_due_dates(self, client, parent_headers, parent_user, kid_user, sample_chore):
         """Test that instances with due dates appear in calendar events."""
