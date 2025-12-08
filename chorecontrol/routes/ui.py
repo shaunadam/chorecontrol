@@ -789,6 +789,35 @@ def my_rewards():
             'pending_claims': pending_claims
         })
 
+    # Get claim history (approved/rejected in last 30 days) with pagination
+    history_page = request.args.get('history_page', 1, type=int)
+    per_page = 10
+    cutoff_date = datetime.utcnow() - timedelta(days=30)
+
+    history_query = RewardClaim.query.filter(
+        RewardClaim.status.in_(['approved', 'rejected']),
+        RewardClaim.claimed_at >= cutoff_date
+    ).order_by(RewardClaim.claimed_at.desc())
+
+    history_pagination = history_query.paginate(
+        page=history_page, per_page=per_page, error_out=False
+    )
+
+    claim_history = history_pagination.items
+    history_pagination_data = {
+        'page': history_page,
+        'total': history_pagination.total,
+        'pages': history_pagination.pages,
+        'has_prev': history_pagination.has_prev,
+        'has_next': history_pagination.has_next,
+        'prev_page': history_page - 1,
+        'next_page': history_page + 1,
+        'start': (history_page - 1) * per_page + 1 if history_pagination.total > 0 else 0,
+        'end': min(history_page * per_page, history_pagination.total)
+    } if history_pagination.total > 0 else None
+
     return render_template('rewards/my_rewards.html',
                          kids_data=kids_data,
-                         current_user=current_user)
+                         current_user=current_user,
+                         claim_history=claim_history,
+                         history_pagination=history_pagination_data)

@@ -507,6 +507,76 @@ def approve_reward_claim(claim_id):
     }), 200
 
 
+@rewards_bp.route('/claims/history', methods=['GET'])
+@ha_auth_required
+def claim_history():
+    """Get paginated history of approved/rejected reward claims (last 30 days by default)."""
+    # Get query parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    days = request.args.get('days', 30, type=int)
+    user_id = request.args.get('user_id', type=int)
+    status_filter = request.args.get('status')  # 'approved', 'rejected', or None for both
+
+    # Limit per_page to reasonable bounds
+    per_page = min(max(per_page, 1), 50)
+
+    # Calculate date cutoff
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+    # Build query - only approved and rejected claims (not pending)
+    query = RewardClaim.query.filter(
+        RewardClaim.status.in_(['approved', 'rejected']),
+        RewardClaim.claimed_at >= cutoff_date
+    )
+
+    # Apply optional filters
+    if user_id:
+        query = query.filter(RewardClaim.user_id == user_id)
+
+    if status_filter and status_filter in ('approved', 'rejected'):
+        query = query.filter(RewardClaim.status == status_filter)
+
+    # Order by most recent first
+    query = query.order_by(desc(RewardClaim.claimed_at))
+
+    # Paginate
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # Build response data
+    claims_data = []
+    for claim in pagination.items:
+        claim_dict = {
+            'id': claim.id,
+            'reward_id': claim.reward_id,
+            'reward_name': claim.reward.name if claim.reward else 'Unknown',
+            'user_id': claim.user_id,
+            'username': claim.user.username if claim.user else 'Unknown',
+            'points_spent': claim.points_spent,
+            'claimed_at': claim.claimed_at.isoformat(),
+            'status': claim.status,
+            'approved_by': claim.approved_by,
+            'approver_name': claim.approver.username if claim.approver else None,
+            'approved_at': claim.approved_at.isoformat() if claim.approved_at else None
+        }
+        claims_data.append(claim_dict)
+
+    return jsonify({
+        'data': claims_data,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next,
+            'prev_page': page - 1 if pagination.has_prev else None,
+            'next_page': page + 1 if pagination.has_next else None
+        },
+        'message': f'Found {len(claims_data)} claims'
+    })
+
+
 @rewards_bp.route('/claims/<int:claim_id>/reject', methods=['POST'])
 @ha_auth_required
 def reject_reward_claim(claim_id):

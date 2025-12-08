@@ -352,7 +352,7 @@ select:-webkit-autofill:focus {
 }
 
 /* Add bottom padding to main content on mobile to prevent overlap with bottom nav */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   main {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0)) !important;
   }
