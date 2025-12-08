@@ -86,7 +86,11 @@
                     completed this on {{ instance.claimed_at.strftime('%b %d, %Y at %I:%M %p') }}
                   </p>
                   <p>
-                    Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                    {% if instance.due_date %}
+                      Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                    {% else %}
+                      Due: Anytime
+                    {% endif %}
                     {% if instance.claimed_late %}
                       {{ status_badge('warning', 'Claimed Late') }}
                     {% endif %}
@@ -180,7 +184,14 @@
                     {% elif activity.status == 'missed' %}
                         <p>Missed by <strong class="text-gray-900 dark:text-white">{{ activity.assigned_user.username if activity.assigned_user else 'Unassigned' }}</strong></p>
                     {% endif %}
-                    <p class="text-xs">Due date: {{ activity.due_date.strftime('%b %d, %Y') }}</p>
+                    <p class="text-xs">
+                      Due date:
+                      {% if activity.due_date %}
+                        {{ activity.due_date.strftime('%b %d, %Y') }}
+                      {% else %}
+                        Anytime
+                      {% endif %}
+                    </p>
                 </div>
             </div>
             {% endfor %}

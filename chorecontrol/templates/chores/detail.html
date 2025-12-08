@@ -169,7 +169,11 @@
                 <!-- Instance Header -->
                 <div class="flex items-start justify-between mb-3">
                     <div class="font-semibold text-gray-900 dark:text-white">
-                        Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                        {% if instance.due_date %}
+                          Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                        {% else %}
+                          Due: Anytime
+                        {% endif %}
                     </div>
                     {{ status_badge(instance.status) }}
                 </div>
