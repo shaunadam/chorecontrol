@@ -3,61 +3,6 @@
 
 {% block title %}Rewards - ChoreControl{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Optimized for landscape touch screens */
-    .rewards-grid {
-        display: grid;
-        {% if kids_data and kids_data|length > 0 %}
-        /* Dynamic columns: always fit all kids in one row */
-        grid-template-columns: repeat({{ kids_data|length }}, minmax(0, 1fr));
-        {% else %}
-        /* Fallback for empty state */
-        grid-template-columns: 1fr;
-        {% endif %}
-        gap: 1.5rem;
-    }
-
-    /* Large touch-friendly buttons */
-    .touch-btn {
-        min-height: 56px;
-        min-width: 120px;
-    }
-
-    /* Kid card styling */
-    .kid-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .kid-card:hover {
-        transform: translateY(-2px);
-    }
-
-    /* Reward row styling for touch */
-    .reward-row {
-        min-height: 120px;
-        transition: background-color 0.2s ease;
-    }
-
-    .reward-row:active {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    /* Prevent text overflow in cards */
-    .kid-card {
-        min-width: 0;
-    }
-
-    /* Better badge spacing */
-    .badge-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        align-items: center;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <!-- Page Header -->
 <div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -81,7 +26,7 @@
 
 {% if kids_data %}
 <!-- Kids Grid -->
-<div class="rewards-grid">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-{{ [kids_data|length, 4]|min }} gap-6">
     {% for data in kids_data %}
     <div class="kid-card bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-xl shadow-black/5 overflow-hidden">
         <!-- Kid Header -->

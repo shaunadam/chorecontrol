@@ -396,3 +396,57 @@ window.ChoreControl = {
     apiCall: apiCall,
     submitJsonForm: submitJsonForm
 };
+
+// Mobile navigation scroll enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    const navContainer = document.querySelector('.nav-scroll-container');
+    if (!navContainer || window.innerWidth >= 768) return;
+
+    // Update scroll indicator shadows
+    function updateScrollIndicators() {
+        const scrollLeft = navContainer.scrollLeft;
+        const maxScroll = navContainer.scrollWidth - navContainer.clientWidth;
+
+        navContainer.classList.remove('scrolled-start', 'scrolled-middle', 'scrolled-end');
+
+        if (scrollLeft <= 5) {
+            navContainer.classList.add('scrolled-start');
+        } else if (scrollLeft >= maxScroll - 5) {
+            navContainer.classList.add('scrolled-end');
+        } else {
+            navContainer.classList.add('scrolled-middle');
+        }
+    }
+
+    // Listen to scroll events (debounced)
+    let scrollTimeout;
+    navContainer.addEventListener('scroll', function() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(updateScrollIndicators, 50);
+    });
+
+    // Initial update
+    updateScrollIndicators();
+
+    // Auto-scroll active item into view
+    setTimeout(function() {
+        const activeItem = navContainer.querySelector('.border-b-2.border-green-500');
+        if (activeItem) {
+            activeItem.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
+    }, 100);
+
+    // Remember scroll position across page loads
+    const savedScroll = sessionStorage.getItem('nav_scroll');
+    if (savedScroll) {
+        navContainer.scrollLeft = parseInt(savedScroll);
+    }
+
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem('nav_scroll', navContainer.scrollLeft);
+    });
+});
