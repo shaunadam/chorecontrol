@@ -322,8 +322,8 @@ def claim_reward(reward_id):
             'message': f'User {user_id} not found'
         }), 404
 
-    # Only kids can claim rewards
-    if user.role != 'kid':
+    # Only kids and claim_only users can claim rewards
+    if user.role not in ('kid', 'claim_only'):
         return jsonify({
             'error': 'Forbidden',
             'message': 'Only kids can claim rewards'
@@ -423,7 +423,9 @@ def unclaim_reward(claim_id):
         }), 401
 
     # Validate ownership
-    if claim.user_id != user.id:
+    # Allow claim_only users to unclaim any pending reward (they manage shared devices)
+    # Otherwise enforce ownership check
+    if user.role != 'claim_only' and claim.user_id != user.id:
         return jsonify({
             'error': 'Forbidden',
             'message': 'Not your claim'

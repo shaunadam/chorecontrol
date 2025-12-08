@@ -259,3 +259,101 @@ select:-webkit-autofill:focus {
 .pulse-green {
   animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* ========================================
+   Mobile Bottom Navigation
+   ======================================== */
+
+/* Mobile nav item styling */
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  min-height: 56px;
+  min-width: 56px;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  color: rgb(75, 85, 99);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.dark .mobile-nav-item {
+  color: rgb(156, 163, 175);
+}
+
+.mobile-nav-item.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: rgb(34, 197, 94);
+}
+
+.dark .mobile-nav-item.active {
+  background: rgba(34, 197, 94, 0.15);
+  color: rgb(74, 222, 128);
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.95);
+}
+
+/* Safe area padding for notched devices */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+/* Overflow menu animations */
+#mobile-overflow-menu.active {
+  display: block;
+}
+
+.mobile-drawer {
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+}
+
+#mobile-overflow-menu.active .mobile-drawer {
+  transform: translateY(0);
+}
+
+/* Overflow menu item styling */
+.overflow-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dark .overflow-menu-item {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.overflow-menu-item:active {
+  transform: scale(0.95);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.dark .overflow-menu-item:active {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+/* Add bottom padding to main content on mobile to prevent overlap with bottom nav */
+@media (max-width: 768px) {
+  main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0)) !important;
+  }
+}

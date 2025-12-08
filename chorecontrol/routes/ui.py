@@ -21,15 +21,15 @@ def get_current_user():
 def redirect_claim_only_to_today(f):
     """Decorator to redirect claim_only users to /today page.
 
-    claim_only users should only access the Today page. If they try to access
-    any other route, redirect them to /today automatically.
+    claim_only users should only access the Today and My Rewards pages. If they try
+    to access any other route, redirect them to /today automatically.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         user = get_current_user()
         if user and user.role == 'claim_only':
-            # Already on today page or logout - allow
-            if request.endpoint in ('ui.today_page', 'auth.logout'):
+            # Already on today page, my rewards page, or logout - allow
+            if request.endpoint in ('ui.today_page', 'ui.my_rewards', 'auth.logout'):
                 return f(*args, **kwargs)
             # Trying to access other pages - redirect to today
             return redirect(url_for('ui.today_page'))

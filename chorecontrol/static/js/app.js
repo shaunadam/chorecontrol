@@ -450,3 +450,32 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem('nav_scroll', navContainer.scrollLeft);
     });
 });
+
+// Mobile overflow menu functions
+function openMobileMenu() {
+    const menu = document.getElementById('mobile-overflow-menu');
+    if (menu) {
+        menu.classList.add('active');
+    }
+}
+
+function closeMobileMenu() {
+    const menu = document.getElementById('mobile-overflow-menu');
+    if (menu) {
+        const drawer = menu.querySelector('.mobile-drawer');
+        if (drawer) {
+            drawer.style.transform = 'translateY(100%)';
+        }
+        setTimeout(() => {
+            menu.classList.remove('active');
+        }, 300);
+    }
+}
+
+// Close menu when clicking on a link within the overflow menu
+document.addEventListener('DOMContentLoaded', function() {
+    const menuLinks = document.querySelectorAll('#mobile-overflow-menu a');
+    menuLinks.forEach(link => {
+        link.addEventListener('click', closeMobileMenu);
+    });
+});
