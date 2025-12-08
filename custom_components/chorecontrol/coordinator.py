@@ -60,6 +60,9 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             chores = await self.api_client.get_chores(active_only=True)
             instances = await self.api_client.get_instances()
             rewards = await self.api_client.get_rewards(active_only=True)
+            pending_reward_claims = await self.api_client.get_reward_claims(
+                status="pending"
+            )
 
             # Extract kids from users
             kids = [u for u in users if u.get("role") == ROLE_KID]
@@ -71,6 +74,18 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             pending_approvals_count = sum(
                 1 for inst in instances if inst.get("status") == "claimed"
             )
+
+            # Calculate pending reward approvals
+            pending_reward_approvals_count = len(pending_reward_claims)
+
+            # Build pending_reward_claims_by_user
+            pending_reward_claims_by_user: dict[int, list[dict]] = {}
+            for claim in pending_reward_claims:
+                user_id = claim.get("user_id")
+                if user_id:
+                    if user_id not in pending_reward_claims_by_user:
+                        pending_reward_claims_by_user[user_id] = []
+                    pending_reward_claims_by_user[user_id].append(claim)
 
             # Build instances_by_user structure
             instances_by_user = self._build_instances_by_user(instances, kids)
@@ -89,6 +104,9 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "rewards": rewards,
                 "api_connected": True,
                 "pending_approvals_count": pending_approvals_count,
+                "pending_reward_approvals_count": pending_reward_approvals_count,
+                "pending_reward_claims": pending_reward_claims,
+                "pending_reward_claims_by_user": pending_reward_claims_by_user,
                 "instances_by_user": instances_by_user,
                 "claimable_instances": claimable_instances,
             }
@@ -116,6 +134,7 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "claimed": [],
                 "approved_today": [],
                 "approved_this_week": [],
+                "due_today": [],
             }
 
         for inst in instances:
@@ -130,6 +149,23 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             if status == "assigned" and assigned_to == user_id:
                 result[user_id]["assigned"].append(inst)
+                # Track due_today: includes chores due today OR "anytime" chores (null due_date)
+                due_date_str = inst.get("due_date")
+                if due_date_str is None:
+                    # "Anytime" chore - always due today
+                    result[user_id]["due_today"].append(inst)
+                else:
+                    try:
+                        if "T" in due_date_str:
+                            due_date = datetime.fromisoformat(
+                                due_date_str.replace("Z", "+00:00")
+                            ).date()
+                        else:
+                            due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+                        if due_date == today:
+                            result[user_id]["due_today"].append(inst)
+                    except (ValueError, TypeError):
+                        pass
             elif status == "claimed" and claimed_by == user_id:
                 result[user_id]["claimed"].append(inst)
             elif status == "approved":
@@ -208,6 +244,8 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "claimed_count": 0,
             "completed_today": 0,
             "completed_this_week": 0,
+            "chores_due_today": 0,
+            "pending_reward_claims": 0,
         }
 
         if not self.data:
@@ -221,11 +259,17 @@ class ChoreControlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         instances_by_user = self.data.get("instances_by_user", {})
         user_instances = instances_by_user.get(user_id, {})
 
+        # Get pending reward claims for this user
+        pending_reward_claims_by_user = self.data.get("pending_reward_claims_by_user", {})
+        user_pending_claims = pending_reward_claims_by_user.get(user_id, [])
+
         return {
             "points": points,
             "pending_count": len(user_instances.get("assigned", [])),
             "claimed_count": len(user_instances.get("claimed", [])),
             "completed_today": len(user_instances.get("approved_today", [])),
+            "chores_due_today": len(user_instances.get("due_today", [])),
+            "pending_reward_claims": len(user_pending_claims),
             "completed_this_week": len(user_instances.get("approved_this_week", [])),
         }
 

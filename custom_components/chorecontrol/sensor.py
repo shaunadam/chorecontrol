@@ -42,6 +42,7 @@ async def async_setup_entry(
     entities.append(ChoreControlPendingApprovalsSensor(coordinator))
     entities.append(ChoreControlTotalKidsSensor(coordinator))
     entities.append(ChoreControlActiveChoresSensor(coordinator))
+    entities.append(ChoreControlPendingRewardApprovalsSensor(coordinator))
 
     # Track which kids we've created sensors for
     known_kid_ids: set[int] = set()
@@ -58,6 +59,8 @@ async def async_setup_entry(
                     ChoreControlClaimedChoresSensor(coordinator, user),
                     ChoreControlCompletedTodaySensor(coordinator, user),
                     ChoreControlCompletedThisWeekSensor(coordinator, user),
+                    ChoreControlChoresDueTodaySensor(coordinator, user),
+                    ChoreControlPendingRewardClaimsSensor(coordinator, user),
                 ]
             )
 
@@ -83,6 +86,8 @@ async def async_setup_entry(
                         ChoreControlClaimedChoresSensor(coordinator, user),
                         ChoreControlCompletedTodaySensor(coordinator, user),
                         ChoreControlCompletedThisWeekSensor(coordinator, user),
+                        ChoreControlChoresDueTodaySensor(coordinator, user),
+                        ChoreControlPendingRewardClaimsSensor(coordinator, user),
                     ]
                 )
 
@@ -416,4 +421,115 @@ class ChoreControlCompletedThisWeekSensor(ChoreControlKidSensorBase):
             "manufacturer": "ChoreControl",
             "model": "Kid",
             "via_device": (DOMAIN, "chorecontrol"),
+        }
+
+
+class ChoreControlChoresDueTodaySensor(ChoreControlKidSensorBase):
+    """Sensor for kid's chores due today (including anytime chores)."""
+
+    def __init__(
+        self,
+        coordinator: ChoreControlDataUpdateCoordinator,
+        user: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, user)
+        self._attr_unique_id = f"{DOMAIN}_{self.username}_chores_due_today"
+        self._attr_name = f"{self.username} chores due today"
+        self._attr_icon = "mdi:calendar-today"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of chores due today."""
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["chores_due_today"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
+
+
+class ChoreControlPendingRewardClaimsSensor(ChoreControlKidSensorBase):
+    """Sensor for kid's pending reward claims count."""
+
+    def __init__(
+        self,
+        coordinator: ChoreControlDataUpdateCoordinator,
+        user: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, user)
+        self._attr_unique_id = f"{DOMAIN}_{self.username}_pending_reward_claims"
+        self._attr_name = f"{self.username} pending reward claims"
+        self._attr_icon = "mdi:gift-outline"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of pending reward claims."""
+        stats = self.coordinator.get_kid_stats(self.user_id)
+        return stats["pending_reward_claims"]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+        }
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, f"kid_{self.user_id}")},
+            "name": self.username,
+            "manufacturer": "ChoreControl",
+            "model": "Kid",
+            "via_device": (DOMAIN, "chorecontrol"),
+        }
+
+
+class ChoreControlPendingRewardApprovalsSensor(ChoreControlSensorBase):
+    """Sensor for total pending reward approvals count."""
+
+    def __init__(self, coordinator: ChoreControlDataUpdateCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_pending_reward_approvals"
+        self._attr_name = "Pending reward approvals"
+        self._attr_icon = "mdi:gift-outline"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of pending reward approvals."""
+        if not self.coordinator.data:
+            return 0
+        return self.coordinator.data.get("pending_reward_approvals_count", 0)
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, "chorecontrol")},
+            "name": "ChoreControl",
+            "manufacturer": "ChoreControl",
+            "model": "Chore Management System",
         }

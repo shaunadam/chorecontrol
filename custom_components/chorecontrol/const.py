@@ -14,7 +14,7 @@ DEFAULT_ADDON_URL: Final = "http://localhost:8099"
 DEFAULT_SCAN_INTERVAL: Final = 30  # seconds
 
 # Platforms
-PLATFORMS: Final = ["sensor", "button", "binary_sensor"]
+PLATFORMS: Final = ["sensor", "button", "binary_sensor", "calendar"]
 
 # Event types (from DEC-007)
 EVENT_CHORE_ASSIGNED: Final = "chorecontrol_chore_assigned"

@@ -577,6 +577,74 @@ def claim_history():
     })
 
 
+@rewards_bp.route('/claims', methods=['GET'])
+@ha_auth_required
+def list_claims():
+    """List reward claims with optional filtering by status and user.
+
+    Query parameters:
+        status: Filter by claim status ('pending', 'approved', 'rejected')
+        user_id: Filter by user ID
+        limit: Maximum number of results (default 50, max 100)
+        offset: Number of results to skip (default 0)
+
+    Returns:
+        List of reward claims matching the filters.
+    """
+    status_filter = request.args.get('status')
+    user_id = request.args.get('user_id', type=int)
+    limit = min(request.args.get('limit', 50, type=int), 100)
+    offset = request.args.get('offset', 0, type=int)
+
+    query = RewardClaim.query
+
+    if status_filter:
+        if status_filter not in ('pending', 'approved', 'rejected'):
+            return jsonify({
+                'error': 'BadRequest',
+                'message': f'Invalid status: {status_filter}. Must be pending, approved, or rejected.'
+            }), 400
+        query = query.filter(RewardClaim.status == status_filter)
+
+    if user_id:
+        query = query.filter(RewardClaim.user_id == user_id)
+
+    # Order by most recent first
+    query = query.order_by(desc(RewardClaim.claimed_at))
+
+    # Get total count before pagination
+    total = query.count()
+
+    # Apply pagination
+    claims = query.offset(offset).limit(limit).all()
+
+    claims_data = []
+    for claim in claims:
+        claims_data.append({
+            'id': claim.id,
+            'claim_id': claim.id,  # Alias for clarity
+            'reward_id': claim.reward_id,
+            'reward_name': claim.reward.name if claim.reward else 'Unknown',
+            'user_id': claim.user_id,
+            'username': claim.user.username if claim.user else 'Unknown',
+            'points_spent': claim.points_spent,
+            'claimed_at': claim.claimed_at.isoformat(),
+            'status': claim.status,
+            'expires_at': claim.expires_at.isoformat() if claim.expires_at else None,
+            'approved_by': claim.approved_by,
+            'approver_name': claim.approver.username if claim.approver else None,
+            'approved_at': claim.approved_at.isoformat() if claim.approved_at else None
+        })
+
+    return jsonify({
+        'data': claims_data,
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'message': f'Found {len(claims_data)} claims'
+    })
+
+
 @rewards_bp.route('/claims/<int:claim_id>/reject', methods=['POST'])
 @ha_auth_required
 def reject_reward_claim(claim_id):

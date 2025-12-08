@@ -345,6 +345,7 @@ class ChoreInstance(db.Model):
         """Serialize ChoreInstance to dictionary for JSON/webhook responses."""
         result = {
             'id': self.id,
+            'instance_id': self.id,  # Alias for clarity in automations
             'chore_id': self.chore_id,
             'chore_name': self.chore.name if self.chore else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
@@ -625,6 +626,7 @@ class RewardClaim(db.Model):
         """Serialize RewardClaim to dictionary for JSON/webhook responses."""
         return {
             'id': self.id,
+            'claim_id': self.id,  # Alias for clarity in automations
             'reward_id': self.reward_id,
             'reward_name': self.reward.name if self.reward else None,
             'user_id': self.user_id,

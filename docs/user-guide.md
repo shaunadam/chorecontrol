@@ -1,357 +1,447 @@
 # ChoreControl User Guide
 
-Welcome to ChoreControl! This guide will help you get the most out of your chore management system.
+Complete guide for families using ChoreControl with Home Assistant.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [For Parents](#for-parents)
-3. [For Kids](#for-kids)
-4. [Dashboard Setup](#dashboard-setup)
-5. [Common Workflows](#common-workflows)
-6. [Tips and Best Practices](#tips-and-best-practices)
+- [Installation](#installation)
+- [User Management](#user-management)
+- [Using the Addon](#using-the-addon)
+- [Home Assistant Integration](#home-assistant-integration)
+- [Dashboards](#dashboards)
+- [Notifications](#notifications)
+- [Troubleshooting](#troubleshooting)
 
-## Overview
+---
 
-ChoreControl helps families manage chores, track completion, and reward kids for their work.
+## Installation
 
-**Key Concepts**:
+### Prerequisites
 
-- **Chores**: Tasks that need to be completed (one-time or recurring)
-- **Points**: Earned by completing chores, used to claim rewards
-- **Rewards**: Things kids can "buy" with their points
-- **Approval Workflow**: Kids claim chores, parents approve them
+- Home Assistant OS 2024.1.0 or higher
+- Supervisor access (for add-on installation)
+- Terminal/SSH access (for manual installation)
 
-## For Parents
+### Step 1: Install the Add-on
 
-### Managing Kids
+**Local Add-on Installation:**
 
-> **TODO**: Complete when user management is implemented
+1. Clone/download this repository
+2. Copy the `chorecontrol` directory to your HA add-ons folder:
+   ```bash
+   cp -r chorecontrol /usr/share/hassio/addons/local/chorecontrol
+   ```
+3. Restart Home Assistant to detect the new add-on
+4. Go to **Settings > Add-ons > Local Add-ons**
+5. Find "ChoreControl" and click **Install**
+6. Click **Start**, enable **Start on boot** and **Watchdog**
+7. Access via HA sidebar or click "Open Web UI"
 
-1. Go to **ChoreControl** → **Kids**
-2. Add each child by mapping to their Home Assistant user
-3. Set initial points if desired
+### Step 2: Install the Integration
+
+1. Copy integration files:
+   ```bash
+   cp -r custom_components/chorecontrol /config/custom_components/
+   ```
+2. Restart Home Assistant
+3. Go to **Settings > Devices & Services > Add Integration**
+4. Search for "ChoreControl"
+5. Configure:
+   - **Add-on URL**: `http://chorecontrol` (auto-detected)
+   - **Scan Interval**: 30 seconds (recommended)
+
+### Step 3: First Login
+
+1. Access ChoreControl via the HA sidebar
+2. Login with default credentials: `admin` / `admin`
+3. **Important**: Change this password immediately
+
+### Verification Checklist
+
+- [ ] Add-on starts successfully (check logs for "Running on http://0.0.0.0:8099")
+- [ ] Web UI accessible via HA sidebar
+- [ ] Integration shows in Devices & Services
+- [ ] `binary_sensor.chorecontrol_api_connected` is "on"
+- [ ] Global sensors appear (pending_approvals, total_kids, etc.)
+
+---
+
+## User Management
+
+### How Authentication Works
+
+ChoreControl integrates with Home Assistant users:
+
+1. **Auto-Discovery**: When HA users access the addon via ingress, they're auto-created
+2. **Role Assignment**: New users get role='unmapped' until a parent assigns them
+3. **Access Control**: Based on role (parent gets full access, kids use HA dashboards)
+
+### User Roles
+
+| Role | Addon Access | HA Dashboard | Description |
+|------|--------------|--------------|-------------|
+| **parent** | Full access | Yes | Manage chores, rewards, users; approve actions |
+| **kid** | Locked out | Yes | Earn points, claim chores via HA integration |
+| **unmapped** | Locked out | No | Needs parent to assign role |
+| **claim_only** | Limited | Yes | Can only claim chores, see today view |
+
+### Mapping Users
+
+1. Have family members access the addon once (this creates their accounts)
+2. Login as admin/parent
+3. Navigate to **Users > Mapping**
+4. Assign each unmapped user to parent or kid role
+5. Save changes
+
+**Example workflow:**
+- Dad accesses addon → Auto-created as 'unmapped'
+- Mom accesses addon → Auto-created as 'unmapped'
+- Admin logs in, maps Dad → parent, Mom → parent, Kid1 → kid
+- Next login: Parents see full interface, kids are redirected to HA dashboard
+
+### Local Admin Account
+
+ChoreControl creates a fallback local admin account:
+- Username: `admin`
+- Password: `admin`
+- **Change this immediately after installation**
+
+---
+
+## Using the Addon
 
 ### Creating Chores
 
-> **TODO**: Complete when chore creation is implemented
+1. Navigate to **Chores** section
+2. Click **New Chore**
+3. Fill in:
+   - **Name**: e.g., "Take out trash"
+   - **Description**: Additional details
+   - **Points**: Reward value (e.g., 5)
+   - **Recurrence**: One-time, Daily, Weekly, or Monthly
+   - **Assignment**: Specific kid(s) or shared (first to claim)
+   - **Requires Approval**: Toggle on/off
+   - **Allow Late Claims**: Let kids claim after due date (optional reduced points)
+4. Click **Create**
 
-#### One-Time Chores
+### Recurrence Patterns
 
-1. Go to **ChoreControl** → **Chores** → **New Chore**
-2. Fill in the form:
-   - **Name**: Short, descriptive name
-   - **Description**: Details about what needs to be done
-   - **Points**: How many points this chore is worth
-   - **Recurrence**: Select "None" for one-time
-   - **Assign to**: Select which kid(s) should do this
-   - **Requires approval**: Yes (recommended)
-3. Click **Save**
-
-#### Recurring Chores
-
-1. Follow the same steps as one-time chores
-2. For **Recurrence**, select:
-   - **Daily**: Every day or every N days
-   - **Weekly**: Specific days of the week
-   - **Monthly**: Specific days of the month
-3. Set the start date (when the chore becomes active)
-
-**Example: Weekly Trash Day**
-
-- Name: "Take out trash"
-- Description: "Roll both bins to the curb"
-- Points: 5
-- Recurrence: Weekly on Mondays
-- Assign to: Kid1
-- Requires approval: Yes
+- **One-time**: Single occurrence, optionally on specific date
+- **Daily**: Every day
+- **Weekly**: Specific days (e.g., Monday, Wednesday, Friday)
+- **Monthly**: Specific dates (e.g., 1st and 15th)
 
 ### Creating Rewards
 
-> **TODO**: Complete when reward creation is implemented
-
-1. Go to **ChoreControl** → **Rewards** → **New Reward**
-2. Fill in the form:
-   - **Name**: What the reward is
-   - **Description**: Details about the reward
-   - **Points cost**: How many points it costs
-   - **Cooldown** (optional): Days before it can be claimed again
-   - **Max claims** (optional): Limit total or per-kid claims
-3. Click **Save**
-
-**Example Rewards**:
-
-- "Ice cream trip" (20 points, 7-day cooldown)
-- "Extra 30 minutes screen time" (10 points)
-- "Choose dinner" (15 points)
-- "Movie night" (25 points, 2 week cooldown)
+1. Navigate to **Rewards** section
+2. Click **New Reward**
+3. Fill in:
+   - **Name**: e.g., "Ice cream trip"
+   - **Description**: What the reward includes
+   - **Points Cost**: e.g., 20
+   - **Cooldown Days**: Days before same kid can claim again (optional)
+   - **Max Claims**: Total/per-kid limits (optional)
+   - **Requires Approval**: Toggle for parent approval
+4. Click **Create**
 
 ### Approving Chores
 
-> **TODO**: Complete when approval workflow is implemented
-
-**From Parent Dashboard**:
-
-1. Open your Home Assistant dashboard
-2. Check the "Pending Approvals" section
-3. Review each claimed chore
-4. Click **Approve** or **Reject**
-5. If rejecting, provide a reason
-
-**From Mobile Notifications**:
-
-1. Receive notification: "Kid1 claimed 'Take out trash'"
-2. Tap notification to open approval screen
-3. Approve or reject
+1. Navigate to **Approvals** or dashboard
+2. See pending chore claims
+3. Click **Approve** to award points, or **Reject** with feedback
 
 ### Managing Points
 
-> **TODO**: Complete when points management is implemented
+- Points are automatically awarded when chores are approved
+- Points are automatically deducted when rewards are claimed
+- Manual adjustments: **Users > [Kid] > Adjust Points**
 
-**Manual Adjustments**:
+---
 
-1. Go to **ChoreControl** → **Points**
-2. Select the kid
-3. Enter points to add (positive) or deduct (negative)
-4. Provide a reason (e.g., "Bonus for being helpful", "Broke house rule")
-5. Click **Save**
+## Home Assistant Integration
 
-**Viewing History**:
+### Entities Created
 
-1. Go to **ChoreControl** → **Points History**
-2. Select the kid
-3. See all point transactions with timestamps and reasons
+**Global Sensors:**
+- `sensor.chorecontrol_pending_approvals` - Chores awaiting approval
+- `sensor.chorecontrol_pending_reward_approvals` - Rewards awaiting approval
+- `sensor.chorecontrol_total_kids` - Number of kids
+- `sensor.chorecontrol_active_chores` - Active chore count
 
-## For Kids
+**Per-Kid Sensors:**
+- `sensor.chorecontrol_{username}_points` - Current points
+- `sensor.chorecontrol_{username}_pending_chores` - Assigned, not claimed
+- `sensor.chorecontrol_{username}_claimed_chores` - Claimed, awaiting approval
+- `sensor.chorecontrol_{username}_completed_today` - Approved today
+- `sensor.chorecontrol_{username}_completed_this_week` - Approved this week
+- `sensor.chorecontrol_{username}_chores_due_today` - Due today (incl. anytime chores)
+- `sensor.chorecontrol_{username}_pending_reward_claims` - Pending reward claims
 
-### Viewing Your Chores
+**Dynamic Buttons:**
+- `button.chorecontrol_claim_{chore}_{username}` - Claim buttons for each claimable chore
 
-> **TODO**: Complete when kid dashboard is implemented
+**Calendar:**
+- `calendar.chorecontrol_chores` - Calendar showing chore schedules
 
-1. Open your Home Assistant dashboard
-2. See the "My Chores Today" section
-3. See upcoming chores for the week
+**Binary Sensors:**
+- `binary_sensor.chorecontrol_api_connected` - Connection status
 
-### Claiming a Chore
+### Services
 
-> **TODO**: Complete when claim workflow is implemented
+| Service | Description |
+|---------|-------------|
+| `chorecontrol.claim_chore` | Claim a chore instance |
+| `chorecontrol.approve_chore` | Approve a claimed chore |
+| `chorecontrol.reject_chore` | Reject with reason |
+| `chorecontrol.claim_reward` | Claim a reward |
+| `chorecontrol.approve_reward` | Approve reward claim |
+| `chorecontrol.reject_reward` | Reject reward claim |
+| `chorecontrol.adjust_points` | Manual point adjustment |
+| `chorecontrol.refresh_data` | Force data refresh |
 
-1. Complete the chore in real life
-2. Go to your dashboard
-3. Find the chore in "My Chores Today"
-4. Click the **Claim** button
-5. Wait for parent approval
-6. Receive notification when approved
-7. Points are added to your balance
+### Events
 
-### Claiming Rewards
+ChoreControl fires events for automations:
 
-> **TODO**: Complete when reward claiming is implemented
+| Event | When |
+|-------|------|
+| `chorecontrol_chore_instance_claimed` | Kid claims a chore |
+| `chorecontrol_chore_instance_approved` | Parent approves |
+| `chorecontrol_chore_instance_rejected` | Parent rejects |
+| `chorecontrol_reward_claimed` | Kid claims reward |
+| `chorecontrol_reward_approved` | Parent approves reward |
+| `chorecontrol_reward_rejected` | Parent rejects reward |
 
-1. Go to the "Available Rewards" section
-2. See your current points balance
-3. Find a reward you can afford
-4. Click **Claim Reward**
-5. Your points are deducted
-6. Parent receives notification
+---
 
-### Viewing Your Progress
+## Dashboards
 
-> **TODO**: Complete when dashboards are implemented
+### Required Custom Cards (HACS)
 
-- **Current Points**: See your total points
-- **Completed This Week**: Track your progress
-- **Recent Activity**: See recent chores and rewards
-- **Upcoming Chores**: Plan ahead
+- **auto-entities** - Dynamic button display (required)
+- **mushroom** - Modern card designs (recommended)
 
-## Dashboard Setup
+### Finding User IDs
 
-### Kid Dashboard
+1. Go to **Developer Tools > States**
+2. Search for `sensor.chorecontrol_`
+3. Click any kid's sensor
+4. Check `user_id` in Attributes
 
-> **TODO**: Complete when dashboard examples are ready
-
-Example dashboard YAML:
-
-```yaml
-# TODO: Add kid dashboard YAML example
-```
-
-### Parent Dashboard
-
-> **TODO**: Complete when dashboard examples are ready
-
-Example dashboard YAML:
-
-```yaml
-# TODO: Add parent dashboard YAML example
-```
-
-### Shared Family Dashboard
-
-> **TODO**: Complete when dashboard examples are ready
-
-Example dashboard showing all kids:
+### Example: Kid Dashboard
 
 ```yaml
-# TODO: Add family dashboard YAML example
+type: vertical-stack
+cards:
+  - type: markdown
+    content: "# My Chores"
+
+  - type: entities
+    entities:
+      - entity: sensor.chorecontrol_emma_points
+        name: My Points
+      - entity: sensor.chorecontrol_emma_chores_due_today
+        name: Chores Due Today
+      - entity: sensor.chorecontrol_emma_pending_reward_claims
+        name: Pending Rewards
+
+  - type: custom:auto-entities
+    card:
+      type: entities
+      title: "Chores to Claim"
+    filter:
+      include:
+        - entity_id: "button.chorecontrol_claim_*"
+          attributes:
+            user_id: 3  # Replace with actual user_id
 ```
 
-## Common Workflows
-
-### Setting Up a New Chore Schedule
-
-> **TODO**: Complete with step-by-step examples
-
-**Scenario**: You want to set up daily and weekly chores for your two kids.
-
-1. List out all chores needed
-2. Decide which are daily vs. weekly
-3. Assign point values based on effort
-4. Create each chore in the system
-5. Review the calendar to verify schedule
-
-### Handling Vacations
-
-> **TODO**: Complete when chore management is implemented
-
-**Option 1: Disable Chores Temporarily**
-
-1. Edit each recurring chore
-2. Set an end date before vacation
-3. After vacation, create a new version with start date
-
-**Option 2: Pause Assignments**
-
-1. Go to each kid's profile
-2. Mark as "On Vacation"
-3. System won't generate new chore instances
-
-### Adjusting Points for Fairness
-
-> **TODO**: Complete when points management is implemented
-
-If chore difficulty changes or kids need balancing:
-
-1. Review points history for each kid
-2. Make manual adjustments if needed
-3. Update chore point values for future instances
-4. Communicate changes with kids
-
-## Tips and Best Practices
-
-### Setting Point Values
-
-- **Start simple**: 1-10 points for most chores
-- **Consider time**: More points for longer chores
-- **Consider difficulty**: Harder chores worth more
-- **Be consistent**: Similar chores should have similar values
-
-**Example Point Scale**:
-
-- Make bed: 2 points (5 min, easy)
-- Dishes: 5 points (15 min, medium)
-- Vacuum room: 5 points (20 min, medium)
-- Clean bathroom: 10 points (30 min, harder)
-
-### Choosing Rewards
-
-- **Mix of small and large**: Some quick wins, some to save for
-- **Include non-material rewards**: Extra time, special activities
-- **Let kids suggest**: They know what motivates them
-- **Adjust cooldowns**: Prevent overuse of favorite rewards
-
-**Example Reward Tiers**:
-
-- **Small (10-15 points)**: Extra screen time, stay up late, choose dessert
-- **Medium (20-30 points)**: Friend sleepover, movie night, restaurant choice
-- **Large (50+ points)**: Special outing, new toy, big experience
-
-### Making It Work
-
-1. **Start small**: Begin with just a few chores
-2. **Be consistent**: Approve/reject chores promptly
-3. **Communicate**: Explain point values and expectations
-4. **Adjust as needed**: Fine-tune based on what works
-5. **Celebrate success**: Acknowledge milestones and streaks
-
-### Avoiding Common Issues
-
-- **Don't make rewards too expensive**: Kids should be able to earn them
-- **Don't forget to approve**: Set reminders to check pending chores
-- **Don't be too strict**: Allow some flexibility in chore completion
-- **Do explain rejections**: Help kids understand what was wrong
-
-## Advanced Features
-
-### Calendar Integration
-
-> **TODO**: Complete when calendar integration is implemented
-
-1. Set up ICS feed in Home Assistant
-2. Subscribe to calendar on phones/tablets
-3. See chore schedule alongside other events
-
-### Automations
-
-> **TODO**: Complete when HA services are implemented
-
-**Example: Remind kids of chores**
+### Example: Parent Dashboard
 
 ```yaml
-# TODO: Add automation example
+type: vertical-stack
+cards:
+  - type: markdown
+    content: "# ChoreControl Overview"
+
+  - type: entities
+    entities:
+      - entity: sensor.chorecontrol_pending_approvals
+        name: Chores to Approve
+      - entity: sensor.chorecontrol_pending_reward_approvals
+        name: Rewards to Approve
+
+  - type: horizontal-stack
+    cards:
+      - type: entity
+        entity: sensor.chorecontrol_emma_points
+        name: Emma
+      - type: entity
+        entity: sensor.chorecontrol_jack_points
+        name: Jack
 ```
 
-**Example: Celebrate milestones**
+---
+
+## Notifications
+
+### Basic: Notify Parent When Chore Claimed
 
 ```yaml
-# TODO: Add automation example
+alias: "ChoreControl: Notify Parent of Claimed Chores"
+trigger:
+  - platform: event
+    event_type: chorecontrol_chore_instance_claimed
+action:
+  - service: notify.mobile_app_parent_phone
+    data:
+      title: "Chore Claimed"
+      message: "{{ trigger.event.data.claimed_by_name }} claimed: {{ trigger.event.data.chore_name }}"
 ```
 
-### Notifications
+### Actionable: Quick Approve from Notification
 
-> **TODO**: Complete when notifications are implemented
+```yaml
+alias: "ChoreControl: Chore Claimed with Actions"
+trigger:
+  - platform: event
+    event_type: chorecontrol_chore_instance_claimed
+action:
+  - service: notify.mobile_app_parent_phone
+    data:
+      title: "Chore Claimed"
+      message: "{{ trigger.event.data.claimed_by_name }} claimed: {{ trigger.event.data.chore_name }}"
+      data:
+        actions:
+          - action: "APPROVE_CHORE_{{ trigger.event.data.instance_id }}"
+            title: "Approve"
+          - action: "REJECT_CHORE_{{ trigger.event.data.instance_id }}"
+            title: "Reject"
+```
 
-Configure notification preferences:
+```yaml
+alias: "ChoreControl: Handle Approve Action"
+trigger:
+  - platform: event
+    event_type: mobile_app_notification_action
+condition:
+  - condition: template
+    value_template: "{{ trigger.event.data.action.startswith('APPROVE_CHORE_') }}"
+action:
+  - service: chorecontrol.approve_chore
+    data:
+      chore_instance_id: "{{ trigger.event.data.action.split('_')[-1] | int }}"
+      approver_user_id: 1  # Your parent user ID
+```
 
-- When kid claims chore
-- When parent approves/rejects
-- When reward is claimed
-- Daily summary of pending chores
+### Notify Kid When Approved
+
+```yaml
+alias: "ChoreControl: Notify Kid of Approval"
+trigger:
+  - platform: event
+    event_type: chorecontrol_chore_instance_approved
+variables:
+  kid_notify_services:
+    Emma: notify.mobile_app_emma_phone
+    Jack: notify.mobile_app_jack_tablet
+  kid_name: "{{ trigger.event.data.claimed_by_name }}"
+  notify_service: "{{ kid_notify_services.get(kid_name, 'notify.persistent_notification') }}"
+action:
+  - service: "{{ notify_service }}"
+    data:
+      title: "Chore Approved!"
+      message: "Great job! You earned {{ trigger.event.data.points_awarded }} points for {{ trigger.event.data.chore_name }}"
+```
+
+### Reward Claim with Actions
+
+```yaml
+alias: "ChoreControl: Reward Claimed with Actions"
+trigger:
+  - platform: event
+    event_type: chorecontrol_reward_claimed
+action:
+  - service: notify.mobile_app_parent_phone
+    data:
+      title: "Reward Claim"
+      message: "{{ trigger.event.data.user_name }} wants: {{ trigger.event.data.reward_name }} ({{ trigger.event.data.points_spent }} points)"
+      data:
+        actions:
+          - action: "APPROVE_REWARD_{{ trigger.event.data.claim_id }}"
+            title: "Approve"
+          - action: "REJECT_REWARD_{{ trigger.event.data.claim_id }}"
+            title: "Reject"
+```
+
+```yaml
+alias: "ChoreControl: Handle Reward Approve Action"
+trigger:
+  - platform: event
+    event_type: mobile_app_notification_action
+condition:
+  - condition: template
+    value_template: "{{ trigger.event.data.action.startswith('APPROVE_REWARD_') }}"
+action:
+  - service: chorecontrol.approve_reward
+    data:
+      claim_id: "{{ trigger.event.data.action.split('_')[-1] | int }}"
+      approver_user_id: 1
+```
+
+---
 
 ## Troubleshooting
 
-### Kid can't claim chore
+### Add-on Won't Start
 
-> **TODO**: Add troubleshooting steps
+**Check logs:**
+```bash
+ha addons logs chorecontrol
+```
 
-- Verify chore is assigned to them
-- Check that chore is due today
-- Ensure chore isn't already claimed
+**Common issues:**
+- Port 8099 already in use
+- Database permissions in `/data`
+- Missing dependencies
 
-### Points aren't updating
+### Integration Not Found
 
-> **TODO**: Add troubleshooting steps
+- Verify files in `/config/custom_components/chorecontrol/`
+- Check `manifest.json` exists
+- Clear browser cache
+- Restart Home Assistant
 
-- Verify chore was approved (not just claimed)
-- Check points history for transaction
-- Refresh dashboard
+### API Connection Failed
 
-### Chore isn't appearing
+`binary_sensor.chorecontrol_api_connected` shows "off":
+- Verify add-on is running
+- Try URL: `http://chorecontrol` or `http://localhost:8099`
+- Check add-on logs
 
-> **TODO**: Add troubleshooting steps
+### Users Not Auto-Creating
 
-- Check chore's start date
-- Verify chore is active
-- Check assignment settings
+- Users must access the addon (not just HA)
+- Check add-on logs for auto-create messages
+- Manually create users via Users page
 
-## Getting Help
+### Can't Login
 
-- **Documentation**: [Full docs](https://github.com/shaunadam/chorecontrol/docs)
-- **Issues**: [Report bugs](https://github.com/shaunadam/chorecontrol/issues)
-- **Discussions**: [Ask questions](https://github.com/shaunadam/chorecontrol/discussions)
+Default credentials rejected:
+- Password may have been changed
+- Check add-on logs for "Created default admin user"
+- Verify database exists in `/data/`
 
-## What's Next?
+### Notifications Not Working
 
-- **Explore the API**: See [API Reference](api-reference.md)
-- **Contribute**: Check out [Development Guide](development.md)
-- **Request Features**: Open an issue with your ideas!
+- Check automation is enabled
+- Verify event fires (Developer Tools > Events > Listen to `chorecontrol_*`)
+- Check notify service exists (`notify.mobile_app_*`)
+- Review automation traces
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/shaunadam/chorecontrol/issues)
+- **Documentation**: See [Technical Reference](technical.md) for API and development details

@@ -243,6 +243,33 @@ class ChoreControlApiClient:
         )
         return response.get("data", {})
 
+    async def get_reward_claims(
+        self,
+        status: str | None = None,
+        user_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get reward claims with optional filters.
+
+        Args:
+            status: Filter by status ('pending', 'approved', 'rejected')
+            user_id: Filter by user ID
+
+        Returns:
+            List of reward claims.
+        """
+        params = []
+        if status:
+            params.append(f"status={status}")
+        if user_id:
+            params.append(f"user_id={user_id}")
+
+        endpoint = f"{API_REWARDS}/claims"
+        if params:
+            endpoint = f"{endpoint}?{'&'.join(params)}"
+
+        response = await self._request("GET", endpoint)
+        return response.get("data", [])
+
     # Points endpoints
     async def adjust_points(
         self,
