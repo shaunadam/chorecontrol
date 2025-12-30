@@ -196,18 +196,46 @@ def create_chore():
             if data['assignment_type'] not in ['individual', 'shared']:
                 return error_response("assignment_type must be 'individual' or 'shared'")
 
-        # Validate new fields
-        if data.get('late_points') is not None and data.get('late_points') < 0:
-            return error_response('late_points must be non-negative')
+        # Validate and convert numeric fields (form data comes as strings)
+        if data.get('late_points') is not None and data.get('late_points') != '':
+            try:
+                data['late_points'] = int(data['late_points'])
+                if data['late_points'] < 0:
+                    return error_response('late_points must be non-negative')
+            except (ValueError, TypeError):
+                return error_response('late_points must be a valid integer')
+        elif data.get('late_points') == '':
+            data['late_points'] = None
 
-        if data.get('early_claim_days') is not None and data.get('early_claim_days') < 0:
-            return error_response('early_claim_days must be non-negative')
+        if data.get('early_claim_days') is not None and data.get('early_claim_days') != '':
+            try:
+                data['early_claim_days'] = int(data['early_claim_days'])
+                if data['early_claim_days'] < 0:
+                    return error_response('early_claim_days must be non-negative')
+            except (ValueError, TypeError):
+                return error_response('early_claim_days must be a valid integer')
+        elif data.get('early_claim_days') == '':
+            data['early_claim_days'] = 0
 
-        if data.get('grace_period_days') is not None and data.get('grace_period_days') < 0:
-            return error_response('grace_period_days must be non-negative')
+        if data.get('grace_period_days') is not None and data.get('grace_period_days') != '':
+            try:
+                data['grace_period_days'] = int(data['grace_period_days'])
+                if data['grace_period_days'] < 0:
+                    return error_response('grace_period_days must be non-negative')
+            except (ValueError, TypeError):
+                return error_response('grace_period_days must be a valid integer')
+        elif data.get('grace_period_days') == '':
+            data['grace_period_days'] = 0
 
-        if data.get('expires_after_days') is not None and data.get('expires_after_days') < 1:
-            return error_response('expires_after_days must be at least 1')
+        if data.get('expires_after_days') is not None and data.get('expires_after_days') != '':
+            try:
+                data['expires_after_days'] = int(data['expires_after_days'])
+                if data['expires_after_days'] < 1:
+                    return error_response('expires_after_days must be at least 1')
+            except (ValueError, TypeError):
+                return error_response('expires_after_days must be a valid integer')
+        elif data.get('expires_after_days') == '':
+            data['expires_after_days'] = None
 
         # Get current user for created_by
         current_user = get_current_user()
@@ -394,24 +422,52 @@ def update_chore(chore_id):
             chore.allow_late_claims = data['allow_late_claims']
 
         if 'late_points' in data:
-            if data['late_points'] is not None and data['late_points'] < 0:
-                return error_response('late_points must be non-negative')
-            chore.late_points = data['late_points']
+            if data['late_points'] is not None and data['late_points'] != '':
+                try:
+                    data['late_points'] = int(data['late_points'])
+                    if data['late_points'] < 0:
+                        return error_response('late_points must be non-negative')
+                except (ValueError, TypeError):
+                    return error_response('late_points must be a valid integer')
+                chore.late_points = data['late_points']
+            else:
+                chore.late_points = None
 
         if 'early_claim_days' in data:
-            if data['early_claim_days'] is not None and data['early_claim_days'] < 0:
-                return error_response('early_claim_days must be non-negative')
-            chore.early_claim_days = data['early_claim_days'] if data['early_claim_days'] is not None else 0
+            if data['early_claim_days'] is not None and data['early_claim_days'] != '':
+                try:
+                    data['early_claim_days'] = int(data['early_claim_days'])
+                    if data['early_claim_days'] < 0:
+                        return error_response('early_claim_days must be non-negative')
+                except (ValueError, TypeError):
+                    return error_response('early_claim_days must be a valid integer')
+                chore.early_claim_days = data['early_claim_days']
+            else:
+                chore.early_claim_days = 0
 
         if 'grace_period_days' in data:
-            if data['grace_period_days'] is not None and data['grace_period_days'] < 0:
-                return error_response('grace_period_days must be non-negative')
-            chore.grace_period_days = data['grace_period_days'] if data['grace_period_days'] is not None else 0
+            if data['grace_period_days'] is not None and data['grace_period_days'] != '':
+                try:
+                    data['grace_period_days'] = int(data['grace_period_days'])
+                    if data['grace_period_days'] < 0:
+                        return error_response('grace_period_days must be non-negative')
+                except (ValueError, TypeError):
+                    return error_response('grace_period_days must be a valid integer')
+                chore.grace_period_days = data['grace_period_days']
+            else:
+                chore.grace_period_days = 0
 
         if 'expires_after_days' in data:
-            if data['expires_after_days'] is not None and data['expires_after_days'] < 1:
-                return error_response('expires_after_days must be at least 1')
-            chore.expires_after_days = data['expires_after_days']
+            if data['expires_after_days'] is not None and data['expires_after_days'] != '':
+                try:
+                    data['expires_after_days'] = int(data['expires_after_days'])
+                    if data['expires_after_days'] < 1:
+                        return error_response('expires_after_days must be at least 1')
+                except (ValueError, TypeError):
+                    return error_response('expires_after_days must be a valid integer')
+                chore.expires_after_days = data['expires_after_days']
+            else:
+                chore.expires_after_days = None
 
         if 'is_active' in data:
             chore.is_active = data['is_active']
