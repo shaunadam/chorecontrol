@@ -154,8 +154,13 @@ class Chore(db.Model):
     # Workflow
     requires_approval = db.Column(db.Boolean, default=True, nullable=False)
     auto_approve_after_hours = db.Column(db.Integer)  # NULL means no auto-approve
-    allow_late_claims = db.Column(db.Boolean, default=False, nullable=False)
+    allow_late_claims = db.Column(db.Boolean, default=False, nullable=False)  # Deprecated: use grace_period_days
     late_points = db.Column(db.Integer, nullable=True)
+
+    # Claiming windows
+    early_claim_days = db.Column(db.Integer, default=0, nullable=False)  # Days before due date chore can be claimed
+    grace_period_days = db.Column(db.Integer, default=0, nullable=False)  # Days after due date chore can still be claimed
+    expires_after_days = db.Column(db.Integer, nullable=True)  # For anytime chores: days until expiration
 
     # Metadata
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -195,6 +200,9 @@ class Chore(db.Model):
             'auto_approve_after_hours': self.auto_approve_after_hours,
             'allow_late_claims': self.allow_late_claims,
             'late_points': self.late_points,
+            'early_claim_days': self.early_claim_days,
+            'grace_period_days': self.grace_period_days,
+            'expires_after_days': self.expires_after_days,
             'is_active': self.is_active,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -383,16 +391,20 @@ class ChoreInstance(db.Model):
         if self.status != 'assigned':
             return False
 
-        # Check if claimable based on due_date (Option B: Strict)
+        # Check if claimable based on due_date with early/late windows
         if self.due_date is not None:
             today = date.today()
 
-            # Cannot claim future chores
-            if self.due_date > today:
+            # Calculate claiming window
+            earliest_claim = self.due_date - timedelta(days=self.chore.early_claim_days)
+            latest_claim = self.due_date + timedelta(days=self.chore.grace_period_days)
+
+            # Cannot claim before early claim window
+            if today < earliest_claim:
                 return False
 
-            # If past due and late claims not allowed, should be 'missed'
-            if self.due_date < today and not self.chore.allow_late_claims:
+            # Cannot claim after grace period expires
+            if today > latest_claim:
                 return False
 
         # Check assignment

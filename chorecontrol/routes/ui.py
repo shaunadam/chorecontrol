@@ -580,85 +580,89 @@ def settings():
 @ui_bp.route('/today')
 @ha_auth_required
 def today_page():
-    """Today's chores dashboard - shows what each kid can do to earn points today."""
+    """Today's chores dashboard - shows chores in 4 sections: late, today, early, anytime."""
+    from datetime import timedelta
+
     today = date.today()
 
-    # Get all claimable instances (status='assigned') that are due today only
-    # (anytime chores will be shown separately)
+    # Get all kids
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    def get_eligible_kids(instance):
+        """Helper to determine which kids can claim an instance."""
+        if instance.chore.assignment_type == 'shared':
+            if instance.chore.assignments:
+                return [a.user for a in instance.chore.assignments]
+            else:
+                return kids  # No assignments = all kids
+        else:
+            if instance.assignee:
+                return [instance.assignee]
+            elif instance.assigned_to:
+                assignee = User.query.get(instance.assigned_to)
+                return [assignee] if assignee else []
+            else:
+                return [a.user for a in instance.chore.assignments]
+
+    # 1. OVERDUE (Late) - past due but within grace period
+    all_past_due = ChoreInstance.query.filter(
+        ChoreInstance.status == 'assigned',
+        ChoreInstance.due_date < today,
+        ChoreInstance.due_date.isnot(None)
+    ).order_by(ChoreInstance.due_date.asc()).all()
+
+    late_instances = []
+    for instance in all_past_due:
+        grace_deadline = instance.due_date + timedelta(days=instance.chore.grace_period_days)
+        if today <= grace_deadline:
+            instance.days_overdue = (today - instance.due_date).days
+            instance.eligible_kids = get_eligible_kids(instance)
+            # Late claims get late_points if set
+            instance.display_points = instance.chore.late_points if instance.chore.late_points is not None else instance.chore.points
+            late_instances.append(instance)
+
+    # 2. DUE TODAY
     today_instances = ChoreInstance.query.filter(
         ChoreInstance.status == 'assigned',
         ChoreInstance.due_date == today
     ).order_by(ChoreInstance.created_at.desc()).all()
 
-    # Get anytime chores (no due date) separately for the bottom table
+    for instance in today_instances:
+        instance.eligible_kids = get_eligible_kids(instance)
+        instance.display_points = instance.chore.points
+
+    # 3. EARLY CLAIMABLE - future due date but within early_claim_days window
+    all_future = ChoreInstance.query.filter(
+        ChoreInstance.status == 'assigned',
+        ChoreInstance.due_date > today,
+        ChoreInstance.due_date.isnot(None)
+    ).order_by(ChoreInstance.due_date.asc()).all()
+
+    early_instances = []
+    for instance in all_future:
+        earliest_claim = instance.due_date - timedelta(days=instance.chore.early_claim_days)
+        if today >= earliest_claim:
+            instance.days_until_due = (instance.due_date - today).days
+            instance.eligible_kids = get_eligible_kids(instance)
+            instance.display_points = instance.chore.points  # Full points for early
+            early_instances.append(instance)
+
+    # 4. ANYTIME (no due date)
     anytime_instances = ChoreInstance.query.filter(
         ChoreInstance.status == 'assigned',
         ChoreInstance.due_date.is_(None)
     ).order_by(ChoreInstance.created_at.desc()).all()
 
-    # Get all kids
-    kids = User.query.filter_by(role='kid').order_by(User.username).all()
-
-    # Group TODAY's instances by kid
-    # For each kid, find instances they can claim
-    kids_data = []
-    for kid in kids:
-        kid_instances = []
-        for instance in today_instances:
-            # Check if this kid can claim this instance
-            can_claim = False
-            if instance.chore.assignment_type == 'shared':
-                # For shared chores, check if there are specific assignments
-                if instance.chore.assignments:
-                    # If assignments exist, only those kids can claim
-                    assigned_user_ids = [a.user_id for a in instance.chore.assignments]
-                    can_claim = kid.id in assigned_user_ids
-                else:
-                    # No specific assignments = ALL kids can claim
-                    can_claim = True
-            else:
-                # For individual chores, check if assigned to this kid
-                if instance.assigned_to:
-                    can_claim = instance.assigned_to == kid.id
-                else:
-                    # Fallback to chore assignments
-                    assigned_user_ids = [a.user_id for a in instance.chore.assignments]
-                    can_claim = kid.id in assigned_user_ids
-
-            if can_claim:
-                kid_instances.append(instance)
-
-        if kid_instances:
-            # Calculate total potential points
-            total_points = sum(inst.chore.points for inst in kid_instances)
-            kids_data.append({
-                'kid': kid,
-                'instances': kid_instances,
-                'total_points': total_points
-            })
-
-    # Add eligible kids to anytime instances for the table
     for instance in anytime_instances:
-        if instance.chore.assignment_type == 'shared':
-            # For shared chores, check if there are specific assignments
-            if instance.chore.assignments:
-                instance.eligible_kids = [a.user for a in instance.chore.assignments]
-            else:
-                # No specific assignments = ALL kids can claim
-                instance.eligible_kids = kids
-        else:
-            # For individual chores, only the assigned kid can claim
-            if instance.assignee:
-                instance.eligible_kids = [instance.assignee]
-            elif instance.assigned_to:
-                assignee = User.query.get(instance.assigned_to)
-                instance.eligible_kids = [assignee] if assignee else []
-            else:
-                instance.eligible_kids = [a.user for a in instance.chore.assignments]
+        instance.eligible_kids = get_eligible_kids(instance)
+        instance.display_points = instance.chore.points
 
     return render_template('today.html',
-                         kids_data=kids_data,
+                         late_instances=late_instances,
+                         today_instances=today_instances,
+                         early_instances=early_instances,
                          anytime_instances=anytime_instances,
+                         kids=kids,
                          today=today)
 
 

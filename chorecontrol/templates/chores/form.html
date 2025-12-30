@@ -83,6 +83,60 @@
             </p>
         </div>
 
+        <!-- Claiming Windows Section -->
+        <div class="mb-6 p-4 bg-white/5 dark:bg-white/5 border border-white/10 rounded-xl">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Claiming Windows</h3>
+
+            <!-- Early Claim Days -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="early_claim_days">
+                    Early Claim Days
+                </label>
+                <input type="number"
+                       id="early_claim_days"
+                       name="early_claim_days"
+                       class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       min="0"
+                       value="{{ chore.early_claim_days if chore else 0 }}">
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Days before due date the chore can be claimed (full points)
+                </p>
+            </div>
+
+            <!-- Grace Period Days -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="grace_period_days">
+                    Grace Period Days
+                </label>
+                <input type="number"
+                       id="grace_period_days"
+                       name="grace_period_days"
+                       class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       min="0"
+                       value="{{ chore.grace_period_days if chore else 0 }}">
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Days after due date the chore can still be claimed (late points apply)
+                </p>
+            </div>
+
+            <!-- Expires After Days (for anytime chores) -->
+            <div id="expires_after_field" class="mb-0" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="expires_after_days">
+                    Expires After Days
+                </label>
+                <input type="number"
+                       id="expires_after_days"
+                       name="expires_after_days"
+                       class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                       min="1"
+                       value="{{ chore.expires_after_days if chore and chore.expires_after_days else '' }}"
+                       placeholder="Optional">
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    For anytime chores: days until expiration (leave empty for never)
+                </p>
+            </div>
+        </div>
+
         <!-- Recurrence Type -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="recurrence_type">
@@ -349,6 +403,7 @@ function updateRecurrenceFields() {
     const startDateLabel = startDateField.querySelector('.block');
     const startDateHelp = startDateField.querySelector('.mt-2');
     const recurrenceTypeValue = document.getElementById('recurrence_type_value');
+    const expiresField = document.getElementById('expires_after_field');
 
     // Hide all options first
     allOptions.forEach(opt => opt.style.display = 'none');
@@ -370,14 +425,34 @@ function updateRecurrenceFields() {
         // Update label for one-time chores
         startDateLabel.textContent = 'Due Date';
         startDateHelp.innerHTML = 'Leave empty to create an "anytime" chore with no due date that can be claimed whenever.';
+        // Show expires field for potential anytime chores
+        updateExpiresFieldVisibility();
     } else {
         fieldsDiv.style.display = 'block';
         document.getElementById(type + '_options').style.display = 'block';
         // Update label for recurring chores
         startDateLabel.textContent = 'Start Date';
         startDateHelp.innerHTML = 'When this recurring schedule should start generating instances.';
+        // Hide expires field for recurring chores
+        expiresField.style.display = 'none';
     }
 }
+
+function updateExpiresFieldVisibility() {
+    const type = document.getElementById('recurrence_type').value;
+    const startDate = document.getElementById('start_date').value;
+    const expiresField = document.getElementById('expires_after_field');
+
+    // Show expires field only for one-time chores without a due date (anytime chores)
+    if (type === 'none' && !startDate) {
+        expiresField.style.display = 'block';
+    } else {
+        expiresField.style.display = 'none';
+    }
+}
+
+// Listen for start date changes to update expires field visibility
+document.getElementById('start_date').addEventListener('change', updateExpiresFieldVisibility);
 
 function parseExistingPattern(pattern) {
     const lower = pattern.toLowerCase();

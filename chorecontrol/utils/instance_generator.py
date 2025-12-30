@@ -8,6 +8,7 @@ from typing import List
 import calendar
 import logging
 
+from sqlalchemy import or_
 from models import db, Chore, ChoreInstance, ChoreAssignment
 from utils.recurrence import generate_due_dates
 
@@ -146,7 +147,10 @@ def delete_future_instances(chore: Chore) -> int:
     deleted = ChoreInstance.query.filter(
         ChoreInstance.chore_id == chore.id,
         ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date >= today
+        or_(
+            ChoreInstance.due_date >= today,
+            ChoreInstance.due_date.is_(None)  # Also delete anytime instances
+        )
     ).delete()
 
     db.session.commit()

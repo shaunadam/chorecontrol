@@ -855,7 +855,7 @@ def test_can_claim_prevents_late_claim_when_not_allowed(db_session, parent_user,
 
 
 def test_can_claim_allows_late_claim_when_allowed(db_session, parent_user, kid_user):
-    """Test that can_claim() allows late claims when allow_late_claims=True."""
+    """Test that can_claim() allows late claims when grace_period_days > 0."""
     from models import Chore
 
     chore = Chore(
@@ -863,7 +863,7 @@ def test_can_claim_allows_late_claim_when_allowed(db_session, parent_user, kid_u
         points=10,
         recurrence_type='none',
         assignment_type='individual',
-        allow_late_claims=True,
+        grace_period_days=7,  # Allow late claims for 7 days
         late_points=5,
         created_by=parent_user.id,
         is_active=True

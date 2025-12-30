@@ -516,9 +516,9 @@ class TestMarkMissedInstances:
             assert instance.status == 'assigned'
 
     def test_preserves_instances_with_late_claims_allowed(self, app, db_session, parent_user, kid_user):
-        """Test that instances with allow_late_claims=True are preserved."""
+        """Test that instances within grace_period_days are preserved."""
         with app.app_context():
-            # Create chore that allows late claims
+            # Create chore that allows late claims (via grace period)
             chore = Chore(
                 name='Flexible Chore',
                 points=5,
@@ -526,7 +526,7 @@ class TestMarkMissedInstances:
                 recurrence_pattern={'type': 'daily'},
                 assignment_type='individual',
                 requires_approval=True,
-                allow_late_claims=True,  # Key difference
+                grace_period_days=7,  # Allow late claims for 7 days
                 created_by=parent_user.id,
                 is_active=True
             )

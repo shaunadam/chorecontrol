@@ -200,6 +200,15 @@ def create_chore():
         if data.get('late_points') is not None and data.get('late_points') < 0:
             return error_response('late_points must be non-negative')
 
+        if data.get('early_claim_days') is not None and data.get('early_claim_days') < 0:
+            return error_response('early_claim_days must be non-negative')
+
+        if data.get('grace_period_days') is not None and data.get('grace_period_days') < 0:
+            return error_response('grace_period_days must be non-negative')
+
+        if data.get('expires_after_days') is not None and data.get('expires_after_days') < 1:
+            return error_response('expires_after_days must be at least 1')
+
         # Get current user for created_by
         current_user = get_current_user()
 
@@ -217,6 +226,9 @@ def create_chore():
             auto_approve_after_hours=data.get('auto_approve_after_hours'),
             allow_late_claims=data.get('allow_late_claims', False),
             late_points=data.get('late_points'),
+            early_claim_days=data.get('early_claim_days', 0),
+            grace_period_days=data.get('grace_period_days', 0),
+            expires_after_days=data.get('expires_after_days'),
             created_by=current_user.id if current_user else None
         )
 
@@ -385,6 +397,21 @@ def update_chore(chore_id):
             if data['late_points'] is not None and data['late_points'] < 0:
                 return error_response('late_points must be non-negative')
             chore.late_points = data['late_points']
+
+        if 'early_claim_days' in data:
+            if data['early_claim_days'] is not None and data['early_claim_days'] < 0:
+                return error_response('early_claim_days must be non-negative')
+            chore.early_claim_days = data['early_claim_days'] if data['early_claim_days'] is not None else 0
+
+        if 'grace_period_days' in data:
+            if data['grace_period_days'] is not None and data['grace_period_days'] < 0:
+                return error_response('grace_period_days must be non-negative')
+            chore.grace_period_days = data['grace_period_days'] if data['grace_period_days'] is not None else 0
+
+        if 'expires_after_days' in data:
+            if data['expires_after_days'] is not None and data['expires_after_days'] < 1:
+                return error_response('expires_after_days must be at least 1')
+            chore.expires_after_days = data['expires_after_days']
 
         if 'is_active' in data:
             chore.is_active = data['is_active']
