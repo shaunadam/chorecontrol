@@ -31,6 +31,7 @@ COPY run.sh .
 
 # Copy directories
 COPY routes/ ./routes/
+COPY services/ ./services/
 COPY jobs/ ./jobs/
 COPY utils/ ./utils/
 COPY templates/ ./templates/
