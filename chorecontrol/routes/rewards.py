@@ -1,11 +1,14 @@
 """Rewards API endpoints for ChoreControl."""
 
+import logging
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, g
 from sqlalchemy import desc
 from models import db, Reward, RewardClaim, User
 from auth import ha_auth_required, get_current_user as auth_get_current_user
-from utils.webhooks import fire_webhook
+from services.reward_service import RewardService, RewardServiceError
+
+logger = logging.getLogger(__name__)
 
 rewards_bp = Blueprint('rewards', __name__, url_prefix='/api/rewards')
 
@@ -292,20 +295,10 @@ def delete_reward(reward_id):
 @ha_auth_required
 def claim_reward(reward_id):
     """Kid claims a reward - deducts points and creates claim record."""
-    reward = Reward.query.get(reward_id)
-
-    if not reward:
-        return jsonify({
-            'error': 'NotFound',
-            'message': f'Reward {reward_id} not found'
-        }), 404
-
-    # Get user_id from request body or use current authenticated user
     data = request.get_json(silent=True) or {}
     user_id = data.get('user_id')
 
     if not user_id:
-        # Use current authenticated user
         current_user = get_current_user()
         if not current_user:
             return jsonify({
@@ -314,107 +307,53 @@ def claim_reward(reward_id):
             }), 401
         user_id = current_user.id
 
-    # Get the user object
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({
-            'error': 'NotFound',
-            'message': f'User {user_id} not found'
-        }), 404
+    try:
+        claim = RewardService.claim_reward(reward_id, user_id)
+        reward = claim.reward
+        user = db.session.get(User, user_id)
+        old_balance = getattr(claim, '_old_balance', user.points + reward.points_cost)
 
-    # Only kids and claim_only users can claim rewards
-    if user.role not in ('kid', 'claim_only'):
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Only kids can claim rewards'
-        }), 403
-
-    # Check if user can claim the reward
-    can_claim, reason = reward.can_claim(user_id)
-
-    if not can_claim:
-        # Extract details for specific error types
-        details = {}
-        if 'Insufficient points' in reason:
-            details['required'] = reward.points_cost
-            details['current'] = user.points
-        elif 'cooldown' in reason.lower():
-            # Extract cooldown days remaining
-            import re
-            match = re.search(r'(\d+)', reason)
-            if match:
-                details['cooldown_days_remaining'] = int(match.group(1))
+        message = 'Reward claimed successfully'
+        if reward.requires_approval:
+            message = f'Reward claim pending approval. Will expire in 7 days. {reward.points_cost} points reserved.'
+        else:
+            message = f'Reward claimed! {reward.points_cost} points spent.'
 
         return jsonify({
-            'error': 'BadRequest',
-            'message': reason,
-            'details': details if details else None
-        }), 400
-
-    # Create reward claim
-    claim = RewardClaim(
-        reward_id=reward.id,
-        user_id=user.id,
-        points_spent=reward.points_cost,
-        status='pending' if reward.requires_approval else 'approved'
-    )
-
-    # Set expiration for pending claims (7 days)
-    if reward.requires_approval:
-        claim.expires_at = datetime.utcnow() + timedelta(days=7)
-
-    db.session.add(claim)
-    db.session.flush()  # Flush to get claim.id before using it
-
-    # Deduct points from user (optimistic)
-    old_balance = user.points
-    user.adjust_points(
-        delta=-reward.points_cost,
-        reason=f"Claimed reward: {reward.name}",
-        created_by_id=user.id,
-        reward_claim_id=claim.id
-    )
-
-    db.session.commit()
-
-    # Fire webhook
-    fire_webhook('reward_claimed', claim)
-
-    message = 'Reward claimed successfully'
-    if reward.requires_approval:
-        message = f'Reward claim pending approval. Will expire in 7 days. {reward.points_cost} points reserved.'
-    else:
-        message = f'Reward claimed! {reward.points_cost} points spent.'
-
-    return jsonify({
-        'data': {
-            'id': claim.id,
-            'reward_id': reward.id,
-            'reward_name': reward.name,
-            'user_id': user.id,
-            'points_spent': reward.points_cost,
-            'old_balance': old_balance,
-            'new_balance': user.points,
-            'claimed_at': claim.claimed_at.isoformat(),
-            'status': claim.status,
-            'expires_at': claim.expires_at.isoformat() if claim.expires_at else None
-        },
-        'message': message
-    }), 201
+            'data': {
+                'id': claim.id,
+                'reward_id': reward.id,
+                'reward_name': reward.name,
+                'user_id': user.id,
+                'points_spent': reward.points_cost,
+                'old_balance': old_balance,
+                'new_balance': user.points,
+                'claimed_at': claim.claimed_at.isoformat(),
+                'status': claim.status,
+                'expires_at': claim.expires_at.isoformat() if claim.expires_at else None
+            },
+            'message': message
+        }), 201
+    except RewardServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ''),
+            'message': e.message,
+            'details': e.details
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to claim reward {reward_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'InternalServerError',
+            'message': 'Failed to claim reward',
+            'details': str(e)
+        }), 500
 
 
 @rewards_bp.route('/claims/<int:claim_id>/unclaim', methods=['POST'])
 @ha_auth_required
 def unclaim_reward(claim_id):
     """Unclaim a pending reward and refund points."""
-    claim = RewardClaim.query.get(claim_id)
-
-    if not claim:
-        return jsonify({
-            'error': 'NotFound',
-            'message': f'Reward claim {claim_id} not found'
-        }), 404
-
     user = get_current_user()
     if not user:
         return jsonify({
@@ -422,89 +361,66 @@ def unclaim_reward(claim_id):
             'message': 'User not found'
         }), 401
 
-    # Validate ownership
-    # Allow claim_only users to unclaim any pending reward (they manage shared devices)
-    # Otherwise enforce ownership check
-    if user.role != 'claim_only' and claim.user_id != user.id:
+    try:
+        claim, points_refunded = RewardService.unclaim_reward(claim_id, user.id)
+        # Refresh user to get updated balance
+        db.session.refresh(user)
         return jsonify({
-            'error': 'Forbidden',
-            'message': 'Not your claim'
-        }), 403
-
-    if claim.status != 'pending':
+            'message': 'Reward unclaimed, points refunded',
+            'points_refunded': points_refunded,
+            'new_balance': user.points
+        }), 200
+    except RewardServiceError as e:
         return jsonify({
-            'error': 'BadRequest',
-            'message': 'Can only unclaim pending rewards'
-        }), 400
-
-    # Refund points
-    reward = claim.reward
-    user.adjust_points(
-        delta=claim.points_spent,
-        reason=f"Unclaimed reward: {reward.name}",
-        created_by_id=user.id,
-        reward_claim_id=claim.id
-    )
-
-    # Delete claim
-    db.session.delete(claim)
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Reward unclaimed, points refunded',
-        'points_refunded': claim.points_spent,
-        'new_balance': user.points
-    }), 200
+            'error': e.__class__.__name__.replace('Error', ''),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to unclaim reward {claim_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'InternalServerError',
+            'message': 'Failed to unclaim reward'
+        }), 500
 
 
 @rewards_bp.route('/claims/<int:claim_id>/approve', methods=['POST'])
 @ha_auth_required
 def approve_reward_claim(claim_id):
     """Approve a pending reward claim (parents only)."""
-    claim = RewardClaim.query.get(claim_id)
-
-    if not claim:
-        return jsonify({
-            'error': 'NotFound',
-            'message': f'Reward claim {claim_id} not found'
-        }), 404
-
     user = get_current_user()
-    if not user or user.role != 'parent':
+    if not user:
         return jsonify({
-            'error': 'Forbidden',
-            'message': 'Only parents can approve rewards'
-        }), 403
+            'error': 'Unauthorized',
+            'message': 'User not found'
+        }), 401
 
-    if claim.status != 'pending':
+    try:
+        claim = RewardService.approve_claim(claim_id, user.id)
         return jsonify({
-            'error': 'BadRequest',
-            'message': 'Claim is not pending'
-        }), 400
-
-    # Approve
-    claim.status = 'approved'
-    claim.approved_by = user.id
-    claim.approved_at = datetime.utcnow()
-    claim.expires_at = None
-
-    db.session.commit()
-
-    # Fire webhook
-    fire_webhook('reward_approved', claim)
-
-    return jsonify({
-        'data': {
-            'id': claim.id,
-            'reward_id': claim.reward_id,
-            'reward_name': claim.reward.name,
-            'user_id': claim.user_id,
-            'status': claim.status,
-            'approved_by': claim.approved_by,
-            'approved_at': claim.approved_at.isoformat()
-        },
-        'message': 'Reward claim approved'
-    }), 200
+            'data': {
+                'id': claim.id,
+                'reward_id': claim.reward_id,
+                'reward_name': claim.reward.name,
+                'user_id': claim.user_id,
+                'status': claim.status,
+                'approved_by': claim.approved_by,
+                'approved_at': claim.approved_at.isoformat()
+            },
+            'message': 'Reward claim approved'
+        }), 200
+    except RewardServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ''),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to approve reward claim {claim_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'InternalServerError',
+            'message': 'Failed to approve reward claim'
+        }), 500
 
 
 @rewards_bp.route('/claims/history', methods=['GET'])
@@ -649,58 +565,37 @@ def list_claims():
 @ha_auth_required
 def reject_reward_claim(claim_id):
     """Reject a pending reward claim and refund points (parents only)."""
-    claim = RewardClaim.query.get(claim_id)
-
-    if not claim:
-        return jsonify({
-            'error': 'NotFound',
-            'message': f'Reward claim {claim_id} not found'
-        }), 404
-
     user = get_current_user()
-    if not user or user.role != 'parent':
+    if not user:
         return jsonify({
-            'error': 'Forbidden',
-            'message': 'Only parents can reject rewards'
-        }), 403
+            'error': 'Unauthorized',
+            'message': 'User not found'
+        }), 401
 
-    if claim.status != 'pending':
+    try:
+        claim = RewardService.reject_claim(claim_id, user.id)
         return jsonify({
-            'error': 'BadRequest',
-            'message': 'Claim is not pending'
-        }), 400
-
-    # Reject and refund
-    claim.status = 'rejected'
-    claim.approved_by = user.id
-    claim.approved_at = datetime.utcnow()
-    claim.expires_at = None
-
-    # Refund points
-    claimer = User.query.get(claim.user_id)
-    reward = claim.reward
-    claimer.adjust_points(
-        delta=claim.points_spent,
-        reason=f"Reward claim rejected: {reward.name}",
-        created_by_id=user.id,
-        reward_claim_id=claim.id
-    )
-
-    db.session.commit()
-
-    # Fire webhook
-    fire_webhook('reward_rejected', claim, reason='manual')
-
-    return jsonify({
-        'data': {
-            'id': claim.id,
-            'reward_id': claim.reward_id,
-            'reward_name': reward.name,
-            'user_id': claim.user_id,
-            'status': claim.status,
-            'approved_by': claim.approved_by,
-            'approved_at': claim.approved_at.isoformat(),
-            'points_refunded': claim.points_spent
-        },
-        'message': 'Reward claim rejected, points refunded'
-    }), 200
+            'data': {
+                'id': claim.id,
+                'reward_id': claim.reward_id,
+                'reward_name': claim.reward.name,
+                'user_id': claim.user_id,
+                'status': claim.status,
+                'approved_by': claim.approved_by,
+                'approved_at': claim.approved_at.isoformat(),
+                'points_refunded': claim.points_spent
+            },
+            'message': 'Reward claim rejected, points refunded'
+        }), 200
+    except RewardServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ''),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to reject reward claim {claim_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'InternalServerError',
+            'message': 'Failed to reject reward claim'
+        }), 500

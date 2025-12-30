@@ -685,21 +685,87 @@ def today_page():
 @ha_auth_required
 def my_rewards():
     """Rewards page - claim rewards and view pending claims for all kids."""
+    from sqlalchemy import func
+    from collections import defaultdict
+
     current_user = get_current_user()
 
     # Get all kids
     kids = User.query.filter_by(role='kid').order_by(User.username).all()
+    kid_ids = [kid.id for kid in kids]
 
     # Get all active rewards
     active_rewards = Reward.query.filter_by(is_active=True).order_by(Reward.points_cost).all()
+    reward_ids = [r.id for r in active_rewards]
 
-    # For each kid, build their reward eligibility data
+    # Pre-fetch all data in bulk queries (instead of N+1 queries)
+
+    # 1. Get approved claim counts per (user_id, reward_id)
+    approved_counts_query = db.session.query(
+        RewardClaim.user_id,
+        RewardClaim.reward_id,
+        func.count(RewardClaim.id).label('count')
+    ).filter(
+        RewardClaim.user_id.in_(kid_ids),
+        RewardClaim.reward_id.in_(reward_ids),
+        RewardClaim.status == 'approved'
+    ).group_by(RewardClaim.user_id, RewardClaim.reward_id).all()
+
+    # Build lookup: {(user_id, reward_id): count}
+    approved_counts = {(r.user_id, r.reward_id): r.count for r in approved_counts_query}
+
+    # 2. Get total approved claim counts per reward_id
+    total_counts_query = db.session.query(
+        RewardClaim.reward_id,
+        func.count(RewardClaim.id).label('count')
+    ).filter(
+        RewardClaim.reward_id.in_(reward_ids),
+        RewardClaim.status == 'approved'
+    ).group_by(RewardClaim.reward_id).all()
+
+    # Build lookup: {reward_id: count}
+    total_counts = {r.reward_id: r.count for r in total_counts_query}
+
+    # 3. Get most recent claim per (user_id, reward_id) for cooldown checking
+    # Subquery to get max claimed_at per (user_id, reward_id)
+    recent_claims_subq = db.session.query(
+        RewardClaim.user_id,
+        RewardClaim.reward_id,
+        func.max(RewardClaim.claimed_at).label('max_claimed_at')
+    ).filter(
+        RewardClaim.user_id.in_(kid_ids),
+        RewardClaim.reward_id.in_(reward_ids),
+        RewardClaim.status.in_(['approved', 'pending'])
+    ).group_by(RewardClaim.user_id, RewardClaim.reward_id).subquery()
+
+    recent_claims = db.session.query(
+        recent_claims_subq.c.user_id,
+        recent_claims_subq.c.reward_id,
+        recent_claims_subq.c.max_claimed_at
+    ).all()
+
+    # Build lookup: {(user_id, reward_id): claimed_at}
+    last_claim_dates = {(r.user_id, r.reward_id): r.max_claimed_at for r in recent_claims}
+
+    # 4. Get all pending claims for all kids (with reward relationship)
+    all_pending_claims = RewardClaim.query.filter(
+        RewardClaim.user_id.in_(kid_ids),
+        RewardClaim.status == 'pending'
+    ).order_by(RewardClaim.claimed_at.desc()).all()
+
+    # Group by user_id
+    pending_by_kid = defaultdict(list)
+    for claim in all_pending_claims:
+        pending_by_kid[claim.user_id].append(claim)
+
+    # Now build kids_data using the pre-fetched lookups (no additional queries)
     kids_data = []
+    now = datetime.utcnow()
+
     for kid in kids:
         kid_rewards = []
 
         for reward in active_rewards:
-            # Create a copy of reward data for this kid
             reward_data = {
                 'id': reward.id,
                 'name': reward.name,
@@ -714,17 +780,11 @@ def my_rewards():
             # Check if kid has enough points
             reward_data['can_afford'] = kid.points >= reward.points_cost
 
-            # Check cooldown (if kid has claimed this reward recently)
+            # Check cooldown using pre-fetched data
             if reward.cooldown_days:
-                last_claim = RewardClaim.query.filter_by(
-                    user_id=kid.id,
-                    reward_id=reward.id
-                ).filter(
-                    RewardClaim.status.in_(['approved', 'pending'])
-                ).order_by(RewardClaim.claimed_at.desc()).first()
-
-                if last_claim:
-                    days_since_claim = (datetime.utcnow() - last_claim.claimed_at).days
+                last_claim_date = last_claim_dates.get((kid.id, reward.id))
+                if last_claim_date:
+                    days_since_claim = (now - last_claim_date).days
                     reward_data['on_cooldown'] = days_since_claim < reward.cooldown_days
                     reward_data['cooldown_remaining'] = reward.cooldown_days - days_since_claim if reward_data['on_cooldown'] else 0
                 else:
@@ -734,25 +794,18 @@ def my_rewards():
                 reward_data['on_cooldown'] = False
                 reward_data['cooldown_remaining'] = 0
 
-            # Check max claims per kid
+            # Check max claims per kid using pre-fetched data
             if reward.max_claims_per_kid:
-                kid_claim_count = RewardClaim.query.filter_by(
-                    user_id=kid.id,
-                    reward_id=reward.id,
-                    status='approved'
-                ).count()
+                kid_claim_count = approved_counts.get((kid.id, reward.id), 0)
                 reward_data['at_max_claims'] = kid_claim_count >= reward.max_claims_per_kid
                 reward_data['claims_remaining'] = max(0, reward.max_claims_per_kid - kid_claim_count)
             else:
                 reward_data['at_max_claims'] = False
                 reward_data['claims_remaining'] = None
 
-            # Check max total claims
+            # Check max total claims using pre-fetched data
             if reward.max_claims_total:
-                total_claim_count = RewardClaim.query.filter_by(
-                    reward_id=reward.id,
-                    status='approved'
-                ).count()
+                total_claim_count = total_counts.get(reward.id, 0)
                 reward_data['at_max_total'] = total_claim_count >= reward.max_claims_total
             else:
                 reward_data['at_max_total'] = False
@@ -767,16 +820,13 @@ def my_rewards():
 
             kid_rewards.append(reward_data)
 
-        # Get kid's pending claims
-        pending_claims = RewardClaim.query.filter_by(
-            user_id=kid.id,
-            status='pending'
-        ).order_by(RewardClaim.claimed_at.desc()).all()
+        # Get kid's pending claims from pre-fetched data
+        pending_claims = pending_by_kid.get(kid.id, [])
 
         # Add time remaining for each pending claim
         for claim in pending_claims:
             if claim.expires_at:
-                time_remaining = claim.expires_at - datetime.utcnow()
+                time_remaining = claim.expires_at - now
                 claim.days_until_expiry = max(0, time_remaining.days)
                 claim.is_expiring_soon = claim.days_until_expiry <= 2
             else:

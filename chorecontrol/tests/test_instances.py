@@ -11,7 +11,7 @@ This module tests the core chore instance workflow:
 
 import pytest
 from datetime import date, datetime, timedelta
-from models import db, ChoreInstance, ChoreAssignment, User, PointsHistory
+from models import db, Chore, ChoreInstance, ChoreAssignment, User, PointsHistory
 
 
 @pytest.fixture
@@ -1439,3 +1439,167 @@ def test_get_instances_due_today_includes_shared_chores(client, db_session, kid_
     data = response.get_json()
     assert data['count'] == 1
     assert data['instances'][0]['assigned_to'] is None
+
+
+# ============================================================================
+# POST /api/instances/<id>/reset - Reset approved one-time chore instances
+# ============================================================================
+
+@pytest.fixture
+def onetime_chore(db_session, parent_user):
+    """Create a one-time chore for testing reset functionality."""
+    chore = Chore(
+        name='One-time Task',
+        description='A task that can be done once, then reset',
+        points=10,
+        recurrence_type='none',
+        assignment_type='individual',
+        requires_approval=True,
+        created_by=parent_user.id,
+        is_active=True
+    )
+    db_session.add(chore)
+    db_session.commit()
+    return chore
+
+
+@pytest.fixture
+def approved_onetime_instance(db_session, onetime_chore, kid_user, parent_user):
+    """Create an approved instance for a one-time chore."""
+    assignment = ChoreAssignment(
+        chore_id=onetime_chore.id,
+        user_id=kid_user.id
+    )
+    db_session.add(assignment)
+
+    instance = ChoreInstance(
+        chore_id=onetime_chore.id,
+        due_date=None,  # Anytime chore
+        status='approved',
+        claimed_by=kid_user.id,
+        claimed_at=datetime.utcnow(),
+        approved_by=parent_user.id,
+        approved_at=datetime.utcnow(),
+        points_awarded=10
+    )
+    db_session.add(instance)
+    db_session.commit()
+    return instance
+
+
+def test_reset_instance_success(client, parent_headers, approved_onetime_instance):
+    """Test that a parent can reset an approved one-time chore instance."""
+    response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/reset',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['data']['status'] == 'assigned'
+    assert data['data']['claimed_by'] is None
+    assert data['data']['claimed_at'] is None
+    assert data['data']['approved_by'] is None
+    assert data['data']['approved_at'] is None
+    assert 'reset successfully' in data['message'].lower()
+
+
+def test_reset_instance_preserves_points_history(client, db_session, parent_headers, kid_user, approved_onetime_instance):
+    """Test that resetting an instance does not reverse the points already awarded."""
+    # Get kid's initial points (should have received 10 from the approved instance)
+    initial_points = kid_user.points
+
+    response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/reset',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 200
+
+    # Refresh kid_user from database
+    db_session.refresh(kid_user)
+
+    # Points should NOT have been deducted
+    assert kid_user.points == initial_points
+
+    # The points_awarded field on the instance should be preserved as historical record
+    data = response.get_json()
+    assert data['data']['points_awarded'] == 10
+
+
+def test_reset_instance_requires_parent(client, kid_headers, approved_onetime_instance):
+    """Test that only parents can reset chore instances."""
+    response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/reset',
+        headers=kid_headers
+    )
+
+    assert response.status_code == 403
+    data = response.get_json()
+    assert 'only parents' in data['message'].lower()
+
+
+def test_reset_instance_only_approved_status(client, parent_headers, claimed_instance):
+    """Test that only approved instances can be reset."""
+    response = client.post(
+        f'/api/instances/{claimed_instance.id}/reset',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'only approved' in data['message'].lower()
+
+
+def test_reset_instance_only_onetime_chores(client, parent_headers, approved_instance):
+    """Test that only one-time chores can be reset, not recurring ones."""
+    # approved_instance is from a recurring chore (sample_chore has recurrence_type='simple')
+    response = client.post(
+        f'/api/instances/{approved_instance.id}/reset',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'only one-time' in data['message'].lower()
+
+
+def test_reset_instance_not_found(client, parent_headers):
+    """Test reset on non-existent instance returns 404."""
+    response = client.post(
+        '/api/instances/99999/reset',
+        headers=parent_headers
+    )
+
+    assert response.status_code == 404
+
+
+def test_reset_instance_requires_auth(client, approved_onetime_instance):
+    """Test that reset endpoint requires authentication."""
+    response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/reset'
+    )
+
+    assert response.status_code == 401
+
+
+def test_reset_instance_can_be_reclaimed(client, db_session, parent_headers, kid_headers, approved_onetime_instance, kid_user):
+    """Test that after resetting, the instance can be claimed again."""
+    # Reset the instance
+    reset_response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/reset',
+        headers=parent_headers
+    )
+    assert reset_response.status_code == 200
+
+    # Now claim it again
+    claim_response = client.post(
+        f'/api/instances/{approved_onetime_instance.id}/claim',
+        headers=kid_headers,
+        json={'user_id': kid_user.id}
+    )
+
+    assert claim_response.status_code == 200
+    data = claim_response.get_json()
+    assert data['data']['status'] == 'claimed'
+    assert data['data']['claimed_by'] == kid_user.id

@@ -109,7 +109,7 @@ class TestWebhookUtility:
 class TestChoreInstanceWebhooks:
     """Tests for webhooks fired during chore instance lifecycle."""
 
-    @patch('routes.instances.fire_webhook')
+    @patch('services.instance_service.fire_webhook')
     def test_claim_fires_webhook(self, mock_webhook, client, db_session, kid_user, parent_user, sample_chore, kid_headers):
         """Test claiming a chore instance fires webhook."""
         # Create assignment and instance
@@ -140,7 +140,7 @@ class TestChoreInstanceWebhooks:
         call_args = mock_webhook.call_args
         assert call_args[0][0] == 'chore_instance_claimed'
 
-    @patch('routes.instances.fire_webhook')
+    @patch('services.instance_service.fire_webhook')
     def test_approve_fires_webhooks(self, mock_webhook, client, db_session, kid_user, parent_user, sample_chore, parent_headers):
         """Test approving a chore instance fires webhooks."""
         # Create assignment and claimed instance
@@ -175,7 +175,7 @@ class TestChoreInstanceWebhooks:
         assert 'chore_instance_approved' in call_events
         assert 'points_awarded' in call_events
 
-    @patch('routes.instances.fire_webhook')
+    @patch('services.instance_service.fire_webhook')
     def test_reject_fires_webhook(self, mock_webhook, client, db_session, kid_user, parent_user, sample_chore, parent_headers):
         """Test rejecting a chore instance fires webhook."""
         # Create assignment and claimed instance
@@ -212,7 +212,7 @@ class TestChoreInstanceWebhooks:
 class TestRewardWebhooks:
     """Tests for webhooks fired during reward lifecycle."""
 
-    @patch('routes.rewards.fire_webhook')
+    @patch('services.reward_service.fire_webhook')
     def test_claim_reward_fires_webhook(self, mock_webhook, client, db_session, kid_user, sample_reward, kid_headers):
         """Test claiming a reward fires webhook."""
         response = client.post(
@@ -225,7 +225,7 @@ class TestRewardWebhooks:
         call_args = mock_webhook.call_args
         assert call_args[0][0] == 'reward_claimed'
 
-    @patch('routes.rewards.fire_webhook')
+    @patch('services.reward_service.fire_webhook')
     def test_approve_reward_fires_webhook(self, mock_webhook, client, db_session, kid_user, parent_user, sample_reward, parent_headers):
         """Test approving a reward claim fires webhook."""
         # Create a pending reward claim
@@ -253,7 +253,7 @@ class TestRewardWebhooks:
         call_args = mock_webhook.call_args
         assert call_args[0][0] == 'reward_approved'
 
-    @patch('routes.rewards.fire_webhook')
+    @patch('services.reward_service.fire_webhook')
     def test_reject_reward_fires_webhook(self, mock_webhook, client, db_session, kid_user, parent_user, sample_reward, parent_headers):
         """Test rejecting a reward claim fires webhook with reason."""
         # Create a pending reward claim

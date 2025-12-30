@@ -14,9 +14,9 @@ import logging
 from datetime import datetime, date
 from flask import Blueprint, jsonify, request, g
 from sqlalchemy import and_, or_
-from models import db, ChoreInstance, User, Chore, ChoreAssignment
+from models import db, ChoreInstance, User
 from auth import ha_auth_required, get_current_user as auth_get_current_user
-from utils.webhooks import fire_webhook
+from services.instance_service import InstanceService, InstanceServiceError
 
 instances_bp = Blueprint('instances', __name__, url_prefix='/api/instances')
 logger = logging.getLogger(__name__)
@@ -269,95 +269,37 @@ def claim_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
-    logger.info(f"Claim request for instance {instance_id}")
-    logger.info(f"g.ha_user: {getattr(g, 'ha_user', 'NOT SET')}")
-    logger.info(f"Request headers: {dict(request.headers)}")
-
-    instance = ChoreInstance.query.get(instance_id)
-
-    if not instance:
-        logger.warning(f"Instance {instance_id} not found")
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Chore instance {instance_id} not found'
-        }), 404
-
-    # Get user_id from request body or use current authenticated user
     data = request.get_json() or {}
     user_id = data.get('user_id')
-    logger.info(f"Request data: {data}, user_id from body: {user_id}")
 
     if not user_id:
-        # Use current authenticated user
         current_user = get_current_user()
-        logger.info(f"Current user from get_current_user(): {current_user}")
         if not current_user:
-            logger.error("Could not identify current user")
             return jsonify({
                 'error': 'Unauthorized',
                 'message': 'Could not identify current user'
             }), 401
         user_id = current_user.id
-        logger.info(f"Using current user ID: {user_id}")
-
-    # Check if user can claim this instance
-    logger.info(f"Checking if user {user_id} can claim instance {instance_id} (status: {instance.status})")
-    if not instance.can_claim(user_id):
-        # Determine specific reason for failure
-        if instance.status != 'assigned':
-            logger.warning(f"Cannot claim - wrong status: {instance.status}")
-            return jsonify({
-                'error': 'Bad Request',
-                'message': f'Cannot claim chore with status "{instance.status}". Only "assigned" chores can be claimed.'
-            }), 400
-        else:
-            # Check if user is assigned
-            assignment = ChoreAssignment.query.filter_by(
-                chore_id=instance.chore_id,
-                user_id=user_id
-            ).first()
-
-            if not assignment:
-                logger.warning(f"User {user_id} not assigned to chore {instance.chore_id}")
-                return jsonify({
-                    'error': 'Forbidden',
-                    'message': 'You are not assigned to this chore'
-                }), 403
-
-    # Claim the instance
-    logger.info(f"Claiming instance {instance_id} for user {user_id}")
-    instance.status = 'claimed'
-    instance.claimed_by = user_id
-    instance.claimed_at = datetime.utcnow()
-
-    # Check if late (claimed after due_date)
-    if instance.due_date and datetime.utcnow().date() > instance.due_date:
-        instance.claimed_late = True
-    else:
-        instance.claimed_late = False
 
     try:
-        db.session.commit()
-        logger.info(f"Successfully claimed instance {instance_id}")
+        instance = InstanceService.claim(instance_id, user_id)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': 'Chore claimed successfully'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
     except Exception as e:
-        logger.error(f"Failed to claim instance {instance_id}: {str(e)}", exc_info=True)
+        logger.error(f"Failed to claim instance {instance_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'Failed to claim chore',
             'details': str(e)
         }), 500
-
-    # Fire webhook
-    try:
-        fire_webhook('chore_instance_claimed', instance)
-    except Exception as e:
-        logger.error(f"Failed to fire webhook: {str(e)}", exc_info=True)
-
-    return jsonify({
-        'data': serialize_instance(instance, include_details=True),
-        'message': 'Chore claimed successfully'
-    }), 200
 
 
 @instances_bp.route('/<int:instance_id>/approve', methods=['POST'])
@@ -379,21 +321,11 @@ def approve_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
-    instance = ChoreInstance.query.get(instance_id)
-
-    if not instance:
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Chore instance {instance_id} not found'
-        }), 404
-
-    # Get approver_id from request body or use current authenticated user
     data = request.get_json() or {}
     approver_id = data.get('approver_id')
     custom_points = data.get('points')
 
     if not approver_id:
-        # Use current authenticated user
         current_user = get_current_user()
         if not current_user:
             return jsonify({
@@ -402,27 +334,18 @@ def approve_instance(instance_id: int):
             }), 401
         approver_id = current_user.id
 
-    # Check if user can approve this instance
-    if not instance.can_approve(approver_id):
-        # Determine specific reason for failure
-        if instance.status != 'claimed':
-            return jsonify({
-                'error': 'Bad Request',
-                'message': f'Cannot approve chore with status "{instance.status}". Only "claimed" chores can be approved.'
-            }), 400
-        else:
-            # Check if user is a parent
-            user = User.query.get(approver_id)
-            if not user or user.role != 'parent':
-                return jsonify({
-                    'error': 'Forbidden',
-                    'message': 'Only parents can approve chores'
-                }), 403
-
-    # Award points using the model's method (handles everything)
     try:
-        instance.award_points(approver_id, custom_points)
-        db.session.commit()
+        instance = InstanceService.approve(instance_id, approver_id, custom_points)
+        points_awarded = instance.points_awarded or instance.chore.points
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': f'Chore approved successfully, {points_awarded} points awarded'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
     except ValueError as e:
         db.session.rollback()
         return jsonify({
@@ -430,23 +353,13 @@ def approve_instance(instance_id: int):
             'message': str(e)
         }), 400
     except Exception as e:
+        logger.error(f"Failed to approve instance {instance_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'Failed to approve chore',
             'details': str(e)
         }), 500
-
-    points_awarded = instance.points_awarded or instance.chore.points
-
-    # Fire webhooks
-    fire_webhook('chore_instance_approved', instance)
-    fire_webhook('points_awarded', instance)
-
-    return jsonify({
-        'data': serialize_instance(instance, include_details=True),
-        'message': f'Chore approved successfully, {points_awarded} points awarded'
-    }), 200
 
 
 @instances_bp.route('/<int:instance_id>/reject', methods=['POST'])
@@ -469,77 +382,38 @@ def reject_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
-    instance = ChoreInstance.query.get(instance_id)
-
-    if not instance:
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Chore instance {instance_id} not found'
-        }), 404
-
-    # Get data from request body
     data = request.get_json() or {}
-    approver_id = data.get('approver_id')
-    reason = data.get('reason')
+    rejecter_id = data.get('approver_id')
+    reason = data.get('reason', '')
 
-    if not approver_id:
-        # Use current authenticated user
+    if not rejecter_id:
         current_user = get_current_user()
         if not current_user:
             return jsonify({
                 'error': 'Unauthorized',
                 'message': 'Could not identify current user'
             }), 401
-        approver_id = current_user.id
-
-    # Validate reason is provided
-    if not reason or not reason.strip():
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'Rejection reason is required'
-        }), 400
-
-    # Check if user can reject (must be a parent and chore must be claimed)
-    if instance.status != 'claimed':
-        return jsonify({
-            'error': 'Bad Request',
-            'message': f'Cannot reject chore with status "{instance.status}". Only "claimed" chores can be rejected.'
-        }), 400
-
-    user = User.query.get(approver_id)
-    if not user or user.role != 'parent':
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Only parents can reject chores'
-        }), 403
-
-    # Reject the instance and set back to assigned (allow re-claim)
-    instance.status = 'assigned'
-    instance.rejected_by = approver_id
-    instance.rejected_at = datetime.utcnow()
-    instance.rejection_reason = reason.strip()
-
-    # Clear claim data to allow re-claim
-    instance.claimed_by = None
-    instance.claimed_at = None
+        rejecter_id = current_user.id
 
     try:
-        db.session.commit()
+        instance = InstanceService.reject(instance_id, rejecter_id, reason)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': 'Chore rejected. Status set back to "assigned" to allow re-claim.'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
     except Exception as e:
+        logger.error(f"Failed to reject instance {instance_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'Failed to reject chore',
             'details': str(e)
         }), 500
-
-    # Fire webhook
-    fire_webhook('chore_instance_rejected', instance)
-
-    return jsonify({
-        'data': serialize_instance(instance, include_details=True),
-        'message': 'Chore rejected. Status set back to "assigned" to allow re-claim.'
-    }), 200
 
 
 @instances_bp.route('/<int:instance_id>/unclaim', methods=['POST'])
@@ -560,15 +434,6 @@ def unclaim_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
-    instance = ChoreInstance.query.get(instance_id)
-
-    if not instance:
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Chore instance {instance_id} not found'
-        }), 404
-
-    # Get user_id from request body or use current authenticated user
     data = request.get_json() or {}
     user_id = data.get('user_id')
 
@@ -581,39 +446,25 @@ def unclaim_instance(instance_id: int):
             }), 401
         user_id = current_user.id
 
-    # Validate ownership
-    if instance.claimed_by != user_id:
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Not your claim'
-        }), 403
-
-    if instance.status != 'claimed':
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'Can only unclaim pending instances'
-        }), 400
-
-    # Unclaim
-    instance.status = 'assigned'
-    instance.claimed_by = None
-    instance.claimed_at = None
-    instance.claimed_late = False
-
     try:
-        db.session.commit()
+        instance = InstanceService.unclaim(instance_id, user_id)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': 'Chore unclaimed successfully'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
     except Exception as e:
+        logger.error(f"Failed to unclaim instance {instance_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'Failed to unclaim chore',
             'details': str(e)
         }), 500
-
-    return jsonify({
-        'data': serialize_instance(instance, include_details=True),
-        'message': 'Chore unclaimed successfully'
-    }), 200
 
 
 @instances_bp.route('/<int:instance_id>/reassign', methods=['POST'])
@@ -633,14 +484,6 @@ def reassign_instance(instance_id: int):
     Returns:
         JSON: {data: updated_instance, message: str}
     """
-    instance = ChoreInstance.query.get(instance_id)
-
-    if not instance:
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Chore instance {instance_id} not found'
-        }), 404
-
     data = request.get_json() or {}
     new_user_id = data.get('new_user_id')
     reassigned_by = data.get('reassigned_by')
@@ -660,52 +503,20 @@ def reassign_instance(instance_id: int):
             }), 401
         reassigned_by = current_user.id
 
-    # Validate reassigner is a parent
-    reassigner = User.query.get(reassigned_by)
-    if not reassigner or reassigner.role != 'parent':
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Only parents can reassign chores'
-        }), 403
-
-    if instance.status != 'assigned':
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'Can only reassign unclaimed instances'
-        }), 400
-
-    if instance.chore.assignment_type != 'individual':
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'Can only reassign individual chores'
-        }), 400
-
-    new_user = User.query.get(new_user_id)
-    if not new_user or new_user.role != 'kid':
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'New assignee must be a kid'
-        }), 400
-
-    # Reassign
-    instance.assigned_to = new_user_id
-
-    # Ensure ChoreAssignment exists
-    assignment = ChoreAssignment.query.filter_by(
-        chore_id=instance.chore_id,
-        user_id=new_user_id
-    ).first()
-
-    if not assignment:
-        assignment = ChoreAssignment(
-            chore_id=instance.chore_id,
-            user_id=new_user_id
-        )
-        db.session.add(assignment)
-
     try:
-        db.session.commit()
+        instance = InstanceService.reassign(instance_id, new_user_id, reassigned_by)
+        new_user = db.session.get(User, new_user_id)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': f'Chore reassigned to {new_user.username}'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
     except Exception as e:
+        logger.error(f"Failed to reassign instance {instance_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({
             'error': 'Internal Server Error',
@@ -713,7 +524,46 @@ def reassign_instance(instance_id: int):
             'details': str(e)
         }), 500
 
-    return jsonify({
-        'data': serialize_instance(instance, include_details=True),
-        'message': f'Chore reassigned to {new_user.username}'
-    }), 200
+
+@instances_bp.route('/<int:instance_id>/reset', methods=['POST'])
+@ha_auth_required
+def reset_instance(instance_id: int):
+    """Reset an approved one-time chore instance to allow re-claiming.
+
+    This is only applicable to one-time chores (recurrence_type='none').
+    Points already awarded are NOT reversed - the kid keeps them.
+
+    State transition: approved → assigned
+
+    Args:
+        instance_id: ID of the chore instance to reset
+
+    Returns:
+        JSON: {data: updated_instance, message: str}
+    """
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'Could not identify current user'
+        }), 401
+
+    try:
+        instance = InstanceService.reset(instance_id, current_user.id)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': 'Chore instance reset successfully. It can now be claimed again.'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to reset instance {instance_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to reset chore instance',
+            'details': str(e)
+        }), 500
