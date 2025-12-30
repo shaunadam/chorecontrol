@@ -106,7 +106,7 @@ class TestUIAccessControl:
 
     def test_claim_only_redirected_from_all_routes_except_today(self, client, claim_only_headers):
         """Test that claim_only users are redirected to /today from all other routes."""
-        restricted_routes = ['/', '/chores', '/users', '/rewards', '/approvals', '/calendar', '/available', '/settings']
+        restricted_routes = ['/', '/chores', '/users', '/rewards', '/approvals', '/calendar', '/settings']
 
         for route in restricted_routes:
             response = client.get(route, headers=claim_only_headers, follow_redirects=False)

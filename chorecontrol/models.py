@@ -396,16 +396,30 @@ class ChoreInstance(db.Model):
                 return False
 
         # Check assignment
-        # For individual chores
+        # For individual chores (assigned_to is set)
         if self.assigned_to is not None:
             return self.assigned_to == user_id
 
         # For shared chores
+        if self.chore.assignment_type == 'shared':
+            # Check if there are specific assignments
+            if self.chore.assignments:
+                # If assignments exist, only those kids can claim
+                assignment = ChoreAssignment.query.filter_by(
+                    chore_id=self.chore_id,
+                    user_id=user_id
+                ).first()
+                return assignment is not None
+            else:
+                # No specific assignments = ALL kids can claim
+                user = User.query.get(user_id)
+                return user is not None and user.role == 'kid'
+
+        # For individual chores without assigned_to, check ChoreAssignment
         assignment = ChoreAssignment.query.filter_by(
             chore_id=self.chore_id,
             user_id=user_id
         ).first()
-
         return assignment is not None
 
     def can_approve(self, user_id: int) -> bool:

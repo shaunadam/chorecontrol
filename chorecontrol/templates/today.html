@@ -69,12 +69,6 @@
             {{ today.strftime('%A, %B %d, %Y') }}
         </p>
     </div>
-    <div class="flex items-center gap-4">
-        <a href="{{ url_for('ui.available_chores') }}"
-           class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 font-medium px-5 py-3 rounded-xl backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 transition-all duration-200 text-lg">
-            View All Available
-        </a>
-    </div>
 </div>
 
 {% if kids_data %}
@@ -151,23 +145,114 @@
 </div>
 
 {% else %}
-<!-- Empty State -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-lg shadow-black/5 p-16 text-center">
-    <div class="text-8xl mb-6">🎉</div>
-    <h2 class="font-display text-4xl font-bold text-gray-900 dark:text-white mb-4">
-        All Done for Today!
+<!-- Empty State for Today's Chores -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-lg shadow-black/5 p-12 text-center mb-8">
+    <div class="text-6xl mb-4">✓</div>
+    <h2 class="font-display text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        No Chores Due Today
     </h2>
-    <p class="text-xl text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
-        There are no chores available to claim right now. Check back later or view all available chores.
+    <p class="text-gray-600 dark:text-gray-400">
+        All scheduled chores for today have been claimed. Check the anytime chores below!
     </p>
-    <div class="mt-8">
-        <a href="{{ url_for('ui.available_chores') }}"
-           class="inline-flex items-center gap-2 bg-green-500/90 hover:bg-green-500 text-white font-bold px-8 py-4 rounded-2xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 text-xl">
-            View All Available Chores
-        </a>
-    </div>
 </div>
 {% endif %}
+
+<!-- Anytime Chores Section -->
+<div class="mt-8">
+    <h2 class="font-display text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+        Anytime Chores
+    </h2>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">
+        These chores can be done whenever - no deadline!
+    </p>
+
+    {% if anytime_instances %}
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-white/5 dark:bg-white/5 border-b border-white/10 dark:border-white/5">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Chore Name</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Points</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Type</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Eligible</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/10 dark:divide-white/5">
+                    {% for instance in anytime_instances %}
+                    <tr class="hover:bg-white/5 dark:hover:bg-white/5 transition-colors duration-200">
+                        <td class="px-6 py-4">
+                            <div class="font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</div>
+                            {% if instance.chore.description %}
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ instance.chore.description }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30 backdrop-blur-sm">
+                                {{ instance.chore.points }} pts
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if instance.chore.assignment_type == 'shared' %}
+                                {{ status_badge('claimed', 'Shared') }}
+                            {% else %}
+                                {{ status_badge('active', 'Individual') }}
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if instance.eligible_kids %}
+                            <div class="flex flex-wrap gap-1">
+                                {% for kid in instance.eligible_kids %}
+                                    {{ status_badge('active', kid.username) }}
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                                <span class="text-gray-600 dark:text-gray-400">None</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if instance.eligible_kids %}
+                            <form class="anytime-claim-form" data-instance-id="{{ instance.id }}">
+                                <div class="flex items-center gap-2">
+                                    <select name="user_id"
+                                            class="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200 min-w-[120px]"
+                                            required>
+                                        <option value="">Select kid...</option>
+                                        {% for kid in instance.eligible_kids %}
+                                        <option value="{{ kid.id }}">{{ kid.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit"
+                                            class="inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-1.5 rounded-lg backdrop-blur-sm shadow-md shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                                        Claim
+                                    </button>
+                                </div>
+                            </form>
+                            {% else %}
+                                <span class="text-gray-600 dark:text-gray-400 text-sm">No eligible kids</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-12">
+        <div class="text-center">
+            <div class="text-6xl mb-4">✓</div>
+            <div class="font-display text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                No Anytime Chores Available
+            </div>
+            <p class="text-gray-600 dark:text-gray-400">
+                All anytime chores have been claimed.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
 
 <!-- Confirmation Modal -->
 <div id="claim-modal" class="fixed inset-0 z-[1000] hidden items-center justify-center p-4" style="display: none;">
@@ -289,6 +374,56 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeClaimModal();
     }
+});
+
+// Handle anytime chore claim form submissions
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.anytime-claim-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const instanceId = this.dataset.instanceId;
+            const userId = this.querySelector('select[name="user_id"]').value;
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            if (!userId) {
+                alert('Please select a kid to claim this chore');
+                return;
+            }
+
+            // Disable button during request
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Claiming...';
+
+            try {
+                // Use relative path to work with Home Assistant ingress
+                const response = await fetch(`{{ url_for('instances.claim_instance', instance_id=0) }}`.replace('/0/', `/${instanceId}/`), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: parseInt(userId) })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success - reload page to show updated list
+                    window.location.reload();
+                } else {
+                    // Error - show message
+                    alert(data.message || 'Failed to claim chore');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Claim';
+                }
+            } catch (error) {
+                console.error('Error claiming chore:', error);
+                alert('Failed to claim chore. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Claim';
+            }
+        });
+    });
 });
 </script>
 {% endblock %}
