@@ -110,8 +110,15 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
                                 {{ instance.display_points }} pts
                             </span>
-                            {% if instance.chore.assignment_type == 'shared' %}
+                            {% if instance.chore.allow_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                            {% elif instance.chore.assignment_type == 'shared' %}
                                 {{ status_badge('warning', 'Shared') }}
+                            {% endif %}
+                            {% if instance.chore.allow_work_together and instance.claims %}
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                ({{ instance.claims|length }} claimed)
+                            </span>
                             {% endif %}
                         </div>
                     </div>
@@ -163,8 +170,15 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30">
                                 {{ instance.display_points }} pts
                             </span>
-                            {% if instance.chore.assignment_type == 'shared' %}
+                            {% if instance.chore.allow_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                            {% elif instance.chore.assignment_type == 'shared' %}
                                 {{ status_badge('warning', 'Shared') }}
+                            {% endif %}
+                            {% if instance.chore.allow_work_together and instance.claims %}
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                ({{ instance.claims|length }} claimed)
+                            </span>
                             {% endif %}
                         </div>
                     </div>

@@ -150,6 +150,7 @@ class Chore(db.Model):
 
     # Assignment
     assignment_type = db.Column(db.String(20))  # 'individual' or 'shared'
+    allow_work_together = db.Column(db.Boolean, default=False, nullable=False)  # For shared: allow multiple kids to claim
 
     # Workflow
     requires_approval = db.Column(db.Boolean, default=True, nullable=False)
@@ -196,6 +197,7 @@ class Chore(db.Model):
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'assignment_type': self.assignment_type,
+            'allow_work_together': self.allow_work_together,
             'requires_approval': self.requires_approval,
             'auto_approve_after_hours': self.auto_approve_after_hours,
             'allow_late_claims': self.allow_late_claims,
@@ -326,6 +328,10 @@ class ChoreInstance(db.Model):
     # Points awarded (may differ from chore.points for bonuses/penalties)
     points_awarded = db.Column(db.Integer)
 
+    # Work-together support
+    claiming_closed_at = db.Column(db.DateTime, nullable=True)  # When claiming was closed (NULL = still open)
+    claiming_closed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -335,11 +341,13 @@ class ChoreInstance(db.Model):
     claimer = relationship('User', foreign_keys=[claimed_by], back_populates='claimed_instances')
     approver = relationship('User', foreign_keys=[approved_by], back_populates='approved_instances')
     rejecter = relationship('User', foreign_keys=[rejected_by], back_populates='rejected_instances')
+    claiming_closer = relationship('User', foreign_keys=[claiming_closed_by])
     points_history_entries = relationship('PointsHistory', back_populates='chore_instance')
+    claims = relationship('ChoreInstanceClaim', back_populates='instance', cascade='all, delete-orphan')
 
     # Constraints
     __table_args__ = (
-        CheckConstraint("status IN ('assigned', 'claimed', 'approved', 'rejected', 'missed')",
+        CheckConstraint("status IN ('assigned', 'claimed', 'claiming_closed', 'approved', 'rejected', 'missed')",
                        name='check_instance_status'),
         Index('idx_chore_instances_status', 'status'),
         Index('idx_chore_instances_due_date', 'due_date'),
@@ -372,10 +380,21 @@ class ChoreInstance(db.Model):
             'rejected_at': self.rejected_at.isoformat() if self.rejected_at else None,
             'rejection_reason': self.rejection_reason,
             'points_awarded': self.points_awarded,
+            'claiming_closed_at': self.claiming_closed_at.isoformat() if self.claiming_closed_at else None,
+            'claiming_closed_by': self.claiming_closed_by,
+            'is_work_together': self.is_work_together(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        # Include claims for work-together instances
+        if self.is_work_together():
+            result['claims'] = [c.to_dict() for c in self.claims]
         return result
+
+    def is_work_together(self) -> bool:
+        """Check if this is a work-together instance."""
+        return (self.chore.assignment_type == 'shared' and
+                self.chore.allow_work_together)
 
     def can_claim(self, user_id: int) -> bool:
         """
@@ -407,25 +426,28 @@ class ChoreInstance(db.Model):
             if today > latest_claim:
                 return False
 
+        # Work-together chores: check if claiming is still open and user hasn't claimed
+        if self.is_work_together():
+            if self.claiming_closed_at is not None:
+                return False
+            # Check if user already claimed
+            existing_claim = ChoreInstanceClaim.query.filter_by(
+                chore_instance_id=self.id,
+                user_id=user_id
+            ).first()
+            if existing_claim:
+                return False
+            # Check if user is eligible (assigned to the chore)
+            return self._is_user_assigned(user_id)
+
         # Check assignment
         # For individual chores (assigned_to is set)
         if self.assigned_to is not None:
             return self.assigned_to == user_id
 
-        # For shared chores
+        # For shared chores (non-work-together)
         if self.chore.assignment_type == 'shared':
-            # Check if there are specific assignments
-            if self.chore.assignments:
-                # If assignments exist, only those kids can claim
-                assignment = ChoreAssignment.query.filter_by(
-                    chore_id=self.chore_id,
-                    user_id=user_id
-                ).first()
-                return assignment is not None
-            else:
-                # No specific assignments = ALL kids can claim
-                user = User.query.get(user_id)
-                return user is not None and user.role == 'kid'
+            return self._is_user_assigned(user_id)
 
         # For individual chores without assigned_to, check ChoreAssignment
         assignment = ChoreAssignment.query.filter_by(
@@ -433,6 +455,71 @@ class ChoreInstance(db.Model):
             user_id=user_id
         ).first()
         return assignment is not None
+
+    def _is_user_assigned(self, user_id: int) -> bool:
+        """Check if user is assigned to this chore (for shared chores)."""
+        if self.chore.assignments:
+            # If assignments exist, only those kids can claim
+            assignment = ChoreAssignment.query.filter_by(
+                chore_id=self.chore_id,
+                user_id=user_id
+            ).first()
+            return assignment is not None
+        else:
+            # No specific assignments = ALL kids can claim
+            user = User.query.get(user_id)
+            return user is not None and user.role == 'kid'
+
+    def can_close_claiming(self, user_id: int) -> bool:
+        """Check if user can close claiming for this work-together instance."""
+        if not self.is_work_together():
+            return False
+        if self.claiming_closed_at is not None:
+            return False  # Already closed
+        if len(self.claims) == 0:
+            return False  # No claims to close
+        user = User.query.get(user_id)
+        return user is not None and user.role == 'parent'
+
+    def close_claiming(self, closed_by_id: int) -> None:
+        """Close claiming for this work-together instance."""
+        self.claiming_closed_at = datetime.utcnow()
+        self.claiming_closed_by = closed_by_id
+        self.status = 'claiming_closed'
+
+    def check_auto_close_claiming(self) -> bool:
+        """Auto-close claiming if all assigned kids have claimed. Returns True if closed."""
+        if not self.is_work_together() or self.claiming_closed_at is not None:
+            return False
+
+        # Get all assigned user IDs
+        if self.chore.assignments:
+            assigned_user_ids = {a.user_id for a in self.chore.assignments}
+        else:
+            # No assignments = all kids. Get all kid IDs
+            assigned_user_ids = {u.id for u in User.query.filter_by(role='kid').all()}
+
+        # Get all claimed user IDs
+        claimed_user_ids = {c.user_id for c in self.claims}
+
+        # If all assigned users have claimed, auto-close
+        if assigned_user_ids and assigned_user_ids == claimed_user_ids:
+            self.claiming_closed_at = datetime.utcnow()
+            self.claiming_closed_by = None  # System auto-closed
+            self.status = 'claiming_closed'
+            return True
+        return False
+
+    def check_all_claims_resolved(self) -> bool:
+        """Check if all claims are resolved and update instance status."""
+        if not self.is_work_together():
+            return False
+
+        unresolved = [c for c in self.claims if c.status == 'claimed']
+        if len(unresolved) == 0 and len(self.claims) > 0:
+            self.status = 'approved'
+            return True
+        return False
 
     def can_approve(self, user_id: int) -> bool:
         """
@@ -491,6 +578,109 @@ class ChoreInstance(db.Model):
                 reason=f"Completed chore: {self.chore.name}",
                 created_by_id=approver_id,
                 chore_instance_id=self.id
+            )
+
+
+class ChoreInstanceClaim(db.Model):
+    """Individual claim for work-together chores."""
+
+    __tablename__ = 'chore_instance_claims'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    chore_instance_id = db.Column(db.Integer, db.ForeignKey('chore_instances.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Claim tracking
+    claimed_at = db.Column(db.DateTime, nullable=False)
+    claimed_late = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Approval tracking (individual per claim)
+    status = db.Column(db.String(20), default='claimed', nullable=False)  # 'claimed', 'approved', 'rejected'
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_at = db.Column(db.DateTime)
+    rejected_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    rejected_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.Text)
+
+    # Points awarded to this specific claimer
+    points_awarded = db.Column(db.Integer)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    instance = relationship('ChoreInstance', back_populates='claims')
+    user = relationship('User', foreign_keys=[user_id])
+    approver = relationship('User', foreign_keys=[approved_by])
+    rejecter = relationship('User', foreign_keys=[rejected_by])
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('chore_instance_id', 'user_id', name='unique_instance_claim'),
+        CheckConstraint("status IN ('claimed', 'approved', 'rejected')", name='check_claim_status'),
+        Index('idx_instance_claims_instance', 'chore_instance_id'),
+        Index('idx_instance_claims_user', 'user_id'),
+        Index('idx_instance_claims_status', 'status'),
+    )
+
+    def __repr__(self):
+        return f'<ChoreInstanceClaim instance_id={self.chore_instance_id} user_id={self.user_id} status={self.status}>'
+
+    def to_dict(self) -> dict:
+        """Serialize to dictionary for JSON responses."""
+        return {
+            'id': self.id,
+            'chore_instance_id': self.chore_instance_id,
+            'user_id': self.user_id,
+            'user_name': self.user.username if self.user else None,
+            'claimed_at': self.claimed_at.isoformat() if self.claimed_at else None,
+            'claimed_late': self.claimed_late,
+            'status': self.status,
+            'approved_by': self.approved_by,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'rejected_by': self.rejected_by,
+            'rejected_at': self.rejected_at.isoformat() if self.rejected_at else None,
+            'rejection_reason': self.rejection_reason,
+            'points_awarded': self.points_awarded,
+        }
+
+    def can_approve(self, user_id: int) -> bool:
+        """Check if user can approve this claim."""
+        if self.status != 'claimed':
+            return False
+        # Instance must have claiming closed
+        if self.instance.claiming_closed_at is None:
+            return False
+        user = User.query.get(user_id)
+        return user is not None and user.role == 'parent'
+
+    def award_points(self, approver_id: int, points: Optional[int] = None) -> None:
+        """Award points to the claimer."""
+        if self.status != 'claimed':
+            raise ValueError("Cannot award points for non-claimed entry")
+
+        # Determine points to award
+        chore = self.instance.chore
+        if points is not None:
+            points_to_award = points
+        elif self.claimed_late and chore.late_points is not None:
+            points_to_award = chore.late_points
+        else:
+            points_to_award = chore.points
+
+        self.points_awarded = points_to_award
+        self.status = 'approved'
+        self.approved_by = approver_id
+        self.approved_at = datetime.utcnow()
+
+        # Award points to user
+        user = User.query.get(self.user_id)
+        if user:
+            user.adjust_points(
+                delta=points_to_award,
+                reason=f"Completed chore (teamwork): {chore.name}",
+                created_by_id=approver_id,
+                chore_instance_id=self.chore_instance_id
             )
 
 

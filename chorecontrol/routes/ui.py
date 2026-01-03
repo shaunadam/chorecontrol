@@ -359,10 +359,26 @@ def reward_form(id=None):
 @redirect_claim_only_to_today
 def approval_queue():
     """Show all pending approvals (chores and rewards)."""
-    # Get pending chore instances
+    # Get pending chore instances (regular claimed chores)
     pending_instances = ChoreInstance.query.filter_by(status='claimed')\
         .order_by(ChoreInstance.claimed_at.desc())\
         .all()
+
+    # Get work-together instances with closed claiming and pending claim approvals
+    work_together_pending = ChoreInstance.query\
+        .join(Chore)\
+        .filter(
+            Chore.allow_work_together == True,
+            ChoreInstance.status == 'claiming_closed'
+        )\
+        .order_by(ChoreInstance.claiming_closed_at.desc())\
+        .all()
+
+    # Filter to only those with pending claims
+    work_together_pending = [
+        i for i in work_together_pending
+        if any(c.status == 'claimed' for c in i.claims)
+    ]
 
     # Get pending reward claims
     pending_claims = RewardClaim.query.filter_by(status='pending')\
@@ -371,6 +387,7 @@ def approval_queue():
 
     return render_template('approvals/queue.html',
                          pending_instances=pending_instances,
+                         work_together_pending=work_together_pending,
                          pending_claims=pending_claims)
 
 
@@ -590,19 +607,29 @@ def today_page():
 
     def get_eligible_kids(instance):
         """Helper to determine which kids can claim an instance."""
+        # Work-together chores: exclude kids who have already claimed
+        if instance.is_work_together():
+            claimed_user_ids = {c.user_id for c in instance.claims}
+            if instance.chore.assignments:
+                return [a.user for a in instance.chore.assignments if a.user_id not in claimed_user_ids]
+            else:
+                return [k for k in kids if k.id not in claimed_user_ids]
+
+        # Regular shared chores
         if instance.chore.assignment_type == 'shared':
             if instance.chore.assignments:
                 return [a.user for a in instance.chore.assignments]
             else:
                 return kids  # No assignments = all kids
+
+        # Individual chores
+        if instance.assignee:
+            return [instance.assignee]
+        elif instance.assigned_to:
+            assignee = User.query.get(instance.assigned_to)
+            return [assignee] if assignee else []
         else:
-            if instance.assignee:
-                return [instance.assignee]
-            elif instance.assigned_to:
-                assignee = User.query.get(instance.assigned_to)
-                return [assignee] if assignee else []
-            else:
-                return [a.user for a in instance.chore.assignments]
+            return [a.user for a in instance.chore.assignments]
 
     # 1. OVERDUE (Late) - past due but within grace period
     all_past_due = ChoreInstance.query.filter(

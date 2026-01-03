@@ -106,6 +106,86 @@
     {% endif %}
 </div>
 
+<!-- Work-Together Chore Approvals -->
+{% if work_together_pending %}
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+        <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+            Work-Together Approvals
+        </h2>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 backdrop-blur-sm">
+            {{ work_together_pending|length }}
+        </span>
+    </div>
+
+    <!-- Work-Together List -->
+    <ul class="space-y-4">
+        {% for instance in work_together_pending %}
+        <li class="bg-white/10 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-xl p-4">
+            <!-- Instance Header -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="font-display text-xl font-semibold text-gray-900 dark:text-white">
+                    {{ instance.chore.name }}
+                </div>
+                {{ status_badge('info', 'Work Together') }}
+            </div>
+
+            <!-- Instance Info -->
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                {% if instance.due_date %}
+                    Due: {{ instance.due_date.strftime('%b %d, %Y') }}
+                {% else %}
+                    No due date
+                {% endif %}
+                &bull; {{ instance.chore.points }} pts each
+            </div>
+
+            <!-- Individual Claims -->
+            <div class="space-y-3">
+                {% for claim in instance.claims %}
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg
+                    {% if claim.status == 'claimed' %}bg-yellow-500/10{% elif claim.status == 'approved' %}bg-green-500/10{% else %}bg-red-500/10{% endif %}">
+                    <div>
+                        <strong class="text-gray-900 dark:text-white">{{ claim.user.username }}</strong>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            claimed {{ claim.claimed_at.strftime('%b %d at %I:%M %p') }}
+                        </span>
+                        {% if claim.claimed_late %}
+                            {{ status_badge('warning', 'Late') }}
+                        {% endif %}
+                        {% if claim.status == 'approved' %}
+                            {{ status_badge('approved', claim.points_awarded ~ ' pts') }}
+                        {% elif claim.status == 'rejected' %}
+                            {{ status_badge('rejected', 'Rejected') }}
+                        {% endif %}
+                    </div>
+                    {% if claim.status == 'claimed' %}
+                    <div class="flex gap-2">
+                        <form method="POST"
+                              action="{{ url_for('instances.approve_claim', claim_id=claim.id) }}"
+                              class="inline-block"
+                              data-json-form>
+                            <button type="submit"
+                                    class="inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-3 py-1.5 rounded-lg text-sm transition-all">
+                                ✓ Approve
+                            </button>
+                        </form>
+                        <button class="inline-flex items-center bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-medium px-3 py-1.5 rounded-lg text-sm transition-all"
+                                onclick="showRejectModal({{ claim.id }}, '{{ claim.user.username }}', 'work_together_claim')">
+                            ✗ Reject
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <!-- Pending Reward Claims -->
 <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
     <!-- Header -->
@@ -222,12 +302,17 @@
 <script>
 function showRejectModal(id, title, type) {
     document.getElementById('rejectTitle').textContent = title;
-    document.getElementById('rejectType').textContent = type === 'chore' ? 'Chore' : 'Reward Claim';
 
     if (type === 'chore') {
+        document.getElementById('rejectType').textContent = 'Chore';
         document.getElementById('rejectForm').action = "{{ url_for('instances.reject_instance', instance_id=0) }}".replace('/0/', '/' + id + '/');
         document.getElementById('reasonGroup').style.display = 'block';
+    } else if (type === 'work_together_claim') {
+        document.getElementById('rejectType').textContent = 'Claim';
+        document.getElementById('rejectForm').action = "{{ url_for('instances.reject_claim', claim_id=0) }}".replace('/0/', '/' + id + '/');
+        document.getElementById('reasonGroup').style.display = 'block';
     } else {
+        document.getElementById('rejectType').textContent = 'Reward Claim';
         document.getElementById('rejectForm').action = "{{ url_for('rewards.reject_reward_claim', claim_id=0) }}".replace('/0/', '/' + id + '/');
         document.getElementById('reasonGroup').style.display = 'none';
     }

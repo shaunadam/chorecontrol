@@ -11,9 +11,9 @@ Routes should delegate to this service and handle HTTP responses.
 
 import logging
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional
 
-from models import db, ChoreInstance, User, ChoreAssignment
+from models import db, ChoreInstance, ChoreInstanceClaim, User, ChoreAssignment
 from utils.webhooks import fire_webhook
 
 logger = logging.getLogger(__name__)
@@ -74,6 +74,10 @@ class InstanceService:
 
         logger.info(f"Claim request: instance={instance_id}, user={user_id}, status={instance.status}")
 
+        # Handle work-together chores differently
+        if instance.is_work_together():
+            return InstanceService._claim_work_together(instance, user_id)
+
         if not instance.can_claim(user_id):
             if instance.status != 'assigned':
                 raise BadRequestError(
@@ -103,6 +107,54 @@ class InstanceService:
 
         try:
             fire_webhook('chore_instance_claimed', instance)
+        except Exception as e:
+            logger.error(f"Failed to fire webhook: {e}")
+
+        return instance
+
+    @staticmethod
+    def _claim_work_together(instance: ChoreInstance, user_id: int) -> ChoreInstance:
+        """Claim a work-together chore instance.
+
+        Creates a ChoreInstanceClaim record instead of claiming the instance directly.
+        """
+        if instance.claiming_closed_at is not None:
+            raise BadRequestError('Claiming is closed for this chore')
+
+        # Check if user already claimed
+        existing = ChoreInstanceClaim.query.filter_by(
+            chore_instance_id=instance.id,
+            user_id=user_id
+        ).first()
+        if existing:
+            raise BadRequestError('You have already claimed this chore')
+
+        # Verify user is assigned
+        if not instance._is_user_assigned(user_id):
+            raise ForbiddenError('You are not assigned to this chore')
+
+        # Determine if late
+        is_late = instance.due_date and datetime.utcnow().date() > instance.due_date
+
+        # Create claim record
+        claim = ChoreInstanceClaim(
+            chore_instance_id=instance.id,
+            user_id=user_id,
+            claimed_at=datetime.utcnow(),
+            claimed_late=is_late,
+            status='claimed'
+        )
+        db.session.add(claim)
+        db.session.flush()  # Flush so claim appears in instance.claims relationship
+
+        # Check if should auto-close (all assigned kids have claimed)
+        instance.check_auto_close_claiming()
+
+        db.session.commit()
+        logger.info(f"Work-together claim created for instance {instance.id} by user {user_id}")
+
+        try:
+            fire_webhook('chore_instance_claimed', instance, {'claim': claim.to_dict()})
         except Exception as e:
             logger.error(f"Failed to fire webhook: {e}")
 
@@ -325,3 +377,146 @@ class InstanceService:
         db.session.commit()
 
         return instance
+
+    # Work-together specific methods
+
+    @staticmethod
+    def close_claiming(instance_id: int, user_id: int) -> ChoreInstance:
+        """Close claiming for a work-together instance (parent action).
+
+        Args:
+            instance_id: ID of the work-together instance
+            user_id: ID of the parent closing claiming
+
+        Returns:
+            The updated ChoreInstance
+
+        Raises:
+            NotFoundError: Instance not found
+            BadRequestError: Not a work-together chore or already closed
+            ForbiddenError: User is not a parent
+        """
+        instance = InstanceService.get_instance(instance_id)
+
+        if not instance.is_work_together():
+            raise BadRequestError('This is not a work-together chore')
+
+        if not instance.can_close_claiming(user_id):
+            if instance.claiming_closed_at:
+                raise BadRequestError('Claiming is already closed')
+            if len(instance.claims) == 0:
+                raise BadRequestError('Cannot close claiming with no claims')
+            raise ForbiddenError('Only parents can close claiming')
+
+        instance.close_claiming(user_id)
+        db.session.commit()
+
+        logger.info(f"Claiming closed for instance {instance_id} by user {user_id}")
+
+        try:
+            fire_webhook('work_together_claiming_closed', instance)
+        except Exception as e:
+            logger.error(f"Failed to fire webhook: {e}")
+
+        return instance
+
+    @staticmethod
+    def get_claim(claim_id: int) -> ChoreInstanceClaim:
+        """Get a claim by ID or raise NotFoundError."""
+        claim = db.session.get(ChoreInstanceClaim, claim_id)
+        if not claim:
+            raise NotFoundError(f'Claim {claim_id} not found')
+        return claim
+
+    @staticmethod
+    def approve_claim(claim_id: int, approver_id: int, custom_points: Optional[int] = None) -> ChoreInstanceClaim:
+        """Approve an individual claim for a work-together chore.
+
+        Args:
+            claim_id: ID of the claim to approve
+            approver_id: ID of the parent approving
+            custom_points: Optional override for points to award
+
+        Returns:
+            The updated ChoreInstanceClaim
+
+        Raises:
+            NotFoundError: Claim not found
+            BadRequestError: Cannot approve (wrong status or claiming not closed)
+            ForbiddenError: User is not a parent
+        """
+        claim = InstanceService.get_claim(claim_id)
+
+        if not claim.can_approve(approver_id):
+            if claim.status != 'claimed':
+                raise BadRequestError(f'Cannot approve claim with status "{claim.status}"')
+            if claim.instance.claiming_closed_at is None:
+                raise BadRequestError('Cannot approve until claiming is closed')
+            raise ForbiddenError('Only parents can approve claims')
+
+        claim.award_points(approver_id, custom_points)
+
+        # Check if all claims are now resolved
+        claim.instance.check_all_claims_resolved()
+
+        db.session.commit()
+
+        logger.info(f"Claim {claim_id} approved by user {approver_id}, {claim.points_awarded} points awarded")
+
+        try:
+            fire_webhook('work_together_claim_approved', claim.instance, {'claim': claim.to_dict()})
+        except Exception as e:
+            logger.error(f"Failed to fire webhook: {e}")
+
+        return claim
+
+    @staticmethod
+    def reject_claim(claim_id: int, rejecter_id: int, reason: str) -> ChoreInstanceClaim:
+        """Reject an individual claim for a work-together chore.
+
+        Args:
+            claim_id: ID of the claim to reject
+            rejecter_id: ID of the parent rejecting
+            reason: Reason for rejection (required)
+
+        Returns:
+            The updated ChoreInstanceClaim
+
+        Raises:
+            NotFoundError: Claim not found
+            BadRequestError: Cannot reject (wrong status, no reason, or claiming not closed)
+            ForbiddenError: User is not a parent
+        """
+        claim = InstanceService.get_claim(claim_id)
+
+        if not reason or not reason.strip():
+            raise BadRequestError('Rejection reason is required')
+
+        if claim.status != 'claimed':
+            raise BadRequestError(f'Cannot reject claim with status "{claim.status}"')
+
+        if claim.instance.claiming_closed_at is None:
+            raise BadRequestError('Cannot reject until claiming is closed')
+
+        user = db.session.get(User, rejecter_id)
+        if not user or user.role != 'parent':
+            raise ForbiddenError('Only parents can reject claims')
+
+        claim.status = 'rejected'
+        claim.rejected_by = rejecter_id
+        claim.rejected_at = datetime.utcnow()
+        claim.rejection_reason = reason.strip()
+
+        # Check if all claims are now resolved
+        claim.instance.check_all_claims_resolved()
+
+        db.session.commit()
+
+        logger.info(f"Claim {claim_id} rejected by user {rejecter_id}")
+
+        try:
+            fire_webhook('work_together_claim_rejected', claim.instance, {'claim': claim.to_dict()})
+        except Exception as e:
+            logger.error(f"Failed to fire webhook: {e}")
+
+        return claim

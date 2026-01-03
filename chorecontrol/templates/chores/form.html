@@ -307,6 +307,24 @@
             </div>
         </div>
 
+        <!-- Allow Work Together (only visible for shared chores) -->
+        <div id="work_together_field" class="mb-6" style="display: none;">
+            <div class="flex items-center gap-3">
+                <input type="checkbox"
+                       id="allow_work_together"
+                       name="allow_work_together"
+                       {% if chore and chore.allow_work_together %}checked{% endif %}
+                       class="w-5 h-5 rounded border-gray-300/50 dark:border-gray-600/50 text-green-500 focus:ring-2 focus:ring-green-500/50 bg-white/50 dark:bg-gray-800/50">
+                <label for="allow_work_together" class="text-gray-900 dark:text-white font-medium">
+                    Allow Work Together
+                </label>
+            </div>
+            <p class="mt-2 ml-8 text-sm text-gray-600 dark:text-gray-400">
+                When enabled, multiple kids can claim and complete this chore together.
+                Each kid receives full points when approved individually.
+            </p>
+        </div>
+
         <!-- Assign To -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -580,5 +598,25 @@ function parseCustomPattern(text) {
     console.warn('Could not parse custom pattern, defaulting to daily:', text);
     return { type: 'simple', interval: 'daily', every_n: 1 };
 }
+
+// Work Together field visibility toggle
+function updateWorkTogetherVisibility() {
+    const assignmentType = document.getElementById('assignment_type').value;
+    const workTogetherField = document.getElementById('work_together_field');
+
+    if (assignmentType === 'shared') {
+        workTogetherField.style.display = 'block';
+    } else {
+        workTogetherField.style.display = 'none';
+        // Uncheck when hiding
+        document.getElementById('allow_work_together').checked = false;
+    }
+}
+
+// Listen for assignment_type changes
+document.getElementById('assignment_type').addEventListener('change', updateWorkTogetherVisibility);
+
+// Initialize on page load
+updateWorkTogetherVisibility();
 </script>
 {% endblock %}

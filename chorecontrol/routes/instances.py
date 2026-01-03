@@ -52,9 +52,17 @@ def serialize_instance(instance: ChoreInstance, include_details: bool = False) -
         'rejected_at': instance.rejected_at.isoformat() if instance.rejected_at else None,
         'rejection_reason': instance.rejection_reason,
         'points_awarded': instance.points_awarded,
+        'claiming_closed_at': instance.claiming_closed_at.isoformat() if instance.claiming_closed_at else None,
+        'is_work_together': instance.is_work_together(),
         'created_at': instance.created_at.isoformat() if instance.created_at else None,
         'updated_at': instance.updated_at.isoformat() if instance.updated_at else None
     }
+
+    # Include claims for work-together instances
+    if instance.is_work_together():
+        data['claims'] = [c.to_dict() for c in instance.claims]
+        data['claims_count'] = len(instance.claims)
+        data['pending_claims_count'] = len([c for c in instance.claims if c.status == 'claimed'])
 
     if include_details:
         # Include chore details
@@ -565,5 +573,145 @@ def reset_instance(instance_id: int):
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'Failed to reset chore instance',
+            'details': str(e)
+        }), 500
+
+
+# Work-together endpoints
+
+@instances_bp.route('/<int:instance_id>/close-claiming', methods=['POST'])
+@ha_auth_required
+def close_claiming(instance_id: int):
+    """Close claiming for a work-together instance (parent action).
+
+    This allows parents to close claiming early when not all assigned kids
+    have claimed. After closing, the parent can approve/reject individual claims.
+
+    Args:
+        instance_id: ID of the work-together instance
+
+    Returns:
+        JSON: {data: updated_instance, message: str}
+    """
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'Could not identify current user'
+        }), 401
+
+    try:
+        instance = InstanceService.close_claiming(instance_id, current_user.id)
+        return jsonify({
+            'data': serialize_instance(instance, include_details=True),
+            'message': 'Claiming closed successfully. You can now approve individual claims.'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to close claiming for instance {instance_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to close claiming',
+            'details': str(e)
+        }), 500
+
+
+@instances_bp.route('/claims/<int:claim_id>/approve', methods=['POST'])
+@ha_auth_required
+def approve_claim(claim_id: int):
+    """Approve an individual claim for a work-together chore.
+
+    Each kid's claim is approved separately, and each receives full points.
+
+    Request body:
+        {
+            "points": int (optional, uses chore default points if not provided)
+        }
+
+    Args:
+        claim_id: ID of the claim to approve
+
+    Returns:
+        JSON: {data: claim_details, message: str}
+    """
+    data = request.get_json() or {}
+    custom_points = data.get('points')
+
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'Could not identify current user'
+        }), 401
+
+    try:
+        claim = InstanceService.approve_claim(claim_id, current_user.id, custom_points)
+        return jsonify({
+            'data': claim.to_dict(),
+            'message': f'Claim approved, {claim.points_awarded} points awarded to {claim.user.username}'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to approve claim {claim_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to approve claim',
+            'details': str(e)
+        }), 500
+
+
+@instances_bp.route('/claims/<int:claim_id>/reject', methods=['POST'])
+@ha_auth_required
+def reject_claim(claim_id: int):
+    """Reject an individual claim for a work-together chore.
+
+    Request body:
+        {
+            "reason": str (required - why the claim was rejected)
+        }
+
+    Args:
+        claim_id: ID of the claim to reject
+
+    Returns:
+        JSON: {data: claim_details, message: str}
+    """
+    data = request.get_json() or {}
+    reason = data.get('reason', '')
+
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'Could not identify current user'
+        }), 401
+
+    try:
+        claim = InstanceService.reject_claim(claim_id, current_user.id, reason)
+        return jsonify({
+            'data': claim.to_dict(),
+            'message': f'Claim from {claim.user.username} rejected'
+        }), 200
+    except InstanceServiceError as e:
+        return jsonify({
+            'error': e.__class__.__name__.replace('Error', ' Error'),
+            'message': e.message
+        }), e.status_code
+    except Exception as e:
+        logger.error(f"Failed to reject claim {claim_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Failed to reject claim',
             'details': str(e)
         }), 500

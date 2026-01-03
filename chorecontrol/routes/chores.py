@@ -50,6 +50,7 @@ def serialize_chore(chore, include_assignments=True, include_counts=False):
         'start_date': chore.start_date.isoformat() if chore.start_date else None,
         'end_date': chore.end_date.isoformat() if chore.end_date else None,
         'assignment_type': chore.assignment_type,
+        'allow_work_together': chore.allow_work_together,
         'requires_approval': chore.requires_approval,
         'auto_approve_after_hours': chore.auto_approve_after_hours,
         'allow_late_claims': chore.allow_late_claims,
@@ -250,6 +251,7 @@ def create_chore():
             start_date=datetime.fromisoformat(data['start_date']).date() if data.get('start_date') else None,
             end_date=datetime.fromisoformat(data['end_date']).date() if data.get('end_date') else None,
             assignment_type=data.get('assignment_type'),
+            allow_work_together=data.get('allow_work_together', False),
             requires_approval=data.get('requires_approval', True),
             auto_approve_after_hours=data.get('auto_approve_after_hours'),
             allow_late_claims=data.get('allow_late_claims', False),
@@ -410,6 +412,10 @@ def update_chore(chore_id):
             if data['assignment_type'] not in ['individual', 'shared', None]:
                 return error_response("assignment_type must be 'individual' or 'shared'")
             chore.assignment_type = data['assignment_type']
+
+        # Update allow_work_together (only valid for shared chores)
+        if 'allow_work_together' in data:
+            chore.allow_work_together = bool(data['allow_work_together'])
 
         # Update workflow fields
         if 'requires_approval' in data:
