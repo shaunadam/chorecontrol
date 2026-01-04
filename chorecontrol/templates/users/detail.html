@@ -5,19 +5,19 @@
 
 {% block content %}
 <!-- Back Button -->
-<div class="mb-6">
+<div class="mb-4">
     <a href="{{ url_for('ui.users_list') }}"
-       class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+       class="touch-btn inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 text-base">
         ← Back to Users
     </a>
 </div>
 
 <!-- User Profile Card -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 pb-4 border-b border-white/10 dark:border-white/5">
         <div>
-            <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
+            <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {{ user.username }}
             </h1>
             <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold uppercase
@@ -28,11 +28,11 @@
         </div>
         <div class="flex gap-2">
             <button onclick="showEditUserModal()"
-                    class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                    class="touch-btn inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 text-base">
                 Edit
             </button>
             <button onclick="showDeleteUserModal()"
-                    class="inline-flex items-center bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                    class="touch-btn inline-flex items-center bg-red-500/90 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm shadow-lg shadow-red-500/20 border border-red-400/30 transition-all duration-200 text-base">
                 Delete
             </button>
         </div>
@@ -100,8 +100,8 @@
 
 {% if user.role == 'kid' %}
 <!-- Points History -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
-    <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
+    <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-3 border-b border-white/10 dark:border-white/5">
         Points History
     </h2>
 
@@ -182,8 +182,8 @@
 </div>
 
 <!-- Assigned Chores -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
-    <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white mb-6 pb-6 border-b border-white/10 dark:border-white/5">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4">
+    <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-3 border-b border-white/10 dark:border-white/5">
         Assigned Chores
     </h2>
 

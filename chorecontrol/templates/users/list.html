@@ -4,21 +4,21 @@
 {% block title %}Users - ChoreControl{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="mb-8">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+<!-- Page Header - Compact -->
+<div class="mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white">
             Users
         </h1>
         <button onclick="showAddUserModal()"
-                class="inline-flex items-center justify-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-6 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100">
+                class="touch-btn inline-flex items-center justify-center bg-green-500/90 hover:bg-green-500 text-white font-semibold px-5 py-2.5 rounded-xl backdrop-blur-sm shadow-lg shadow-green-500/20 border border-green-400/30 transition-all duration-200 text-base">
             <span class="text-xl mr-2">+</span> Add User
         </button>
     </div>
 </div>
 
 <!-- Filter by Role -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-6">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-4">
     <form method="GET">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Filter by Role
@@ -35,18 +35,18 @@
 
 <!-- Users List -->
 {% if users %}
-    <div class="space-y-4">
+    <div class="space-y-3">
         {% for user in users %}
-        <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 transition-all duration-300 hover:bg-white/15 hover:shadow-xl">
+        <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 transition-all duration-300 hover:bg-white/15">
             <!-- User Header -->
-            <div class="flex items-start justify-between mb-4">
+            <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
                     <a href="{{ url_for('ui.user_detail', id=user.id) }}"
-                       class="font-display text-2xl font-semibold text-gray-900 dark:text-white hover:text-green-500 dark:hover:text-green-400 transition-colors duration-200">
+                       class="font-display text-xl font-semibold text-gray-900 dark:text-white hover:text-green-500 dark:hover:text-green-400 transition-colors duration-200">
                         {{ user.username }}
                     </a>
                 </div>
-                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold uppercase
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold uppercase
                              {% if user.role == 'parent' %}bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30{% elif user.role == 'kid' %}bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30{% else %}bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30{% endif %}
                              backdrop-blur-sm">
                     {{ user.role }}
@@ -54,7 +54,7 @@
             </div>
 
             <!-- User Details -->
-            <div class="space-y-2 text-sm mb-4">
+            <div class="space-y-2 text-sm mb-3">
                 <div class="text-gray-700 dark:text-gray-300">
                     <strong>Home Assistant ID:</strong> {{ user.ha_user_id }}
                 </div>
@@ -78,23 +78,23 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex flex-wrap gap-3 pt-4 border-t border-white/10 dark:border-white/5">
+            <div class="flex flex-wrap gap-2 pt-3 border-t border-white/10 dark:border-white/5">
                 <a href="{{ url_for('ui.user_detail', id=user.id) }}"
-                   class="inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm shadow-md shadow-green-500/20 border border-green-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                   class="touch-btn inline-flex items-center bg-green-500/90 hover:bg-green-500 text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm shadow-md shadow-green-500/20 border border-green-400/30 transition-all duration-200 text-base">
                     View Details
                 </a>
                 {% if user.role == 'kid' %}
                 <button onclick="showPointsAdjustModal({{ user.id }}, '{{ user.username }}', {{ user.points }})"
-                        class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                        class="touch-btn inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 text-base">
                     Adjust Points
                 </button>
                 {% endif %}
                 <button onclick="showEditUserModal({{ user.id }}, '{{ user.username }}', '{{ user.role }}')"
-                        class="inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                        class="touch-btn inline-flex items-center bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-gray-900 dark:text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm border border-white/30 dark:border-white/20 transition-all duration-200 text-base">
                     Edit
                 </button>
                 <button onclick="showDeleteUserModal({{ user.id }}, '{{ user.username }}')"
-                        class="inline-flex items-center bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg backdrop-blur-sm shadow-md shadow-red-500/20 border border-red-400/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                        class="touch-btn inline-flex items-center bg-red-500/90 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-lg backdrop-blur-sm shadow-md shadow-red-500/20 border border-red-400/30 transition-all duration-200 text-base">
                     Delete
                 </button>
             </div>

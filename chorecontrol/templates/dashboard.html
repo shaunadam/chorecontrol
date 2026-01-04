@@ -4,64 +4,64 @@
 {% block title %}Dashboard - ChoreControl{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="mb-8">
-    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+<!-- Page Header - Compact -->
+<div class="mb-4">
+    <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-1">
       Dashboard
     </h1>
-    <p class="text-lg text-gray-600 dark:text-gray-400">
+    <p class="text-base text-gray-600 dark:text-gray-400">
       Welcome back, <span class="font-semibold text-green-600 dark:text-green-400">{{ current_user.username }}</span>!
     </p>
 </div>
 
 <!-- Stats Grid -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <!-- Stat Card 1: Pending Approvals -->
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer" onclick="window.location.href='{{ url_for('ui.approval_queue') }}'">
-      <div class="text-4xl md:text-5xl font-display font-bold text-green-600 dark:text-green-400 mb-2">
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/15 cursor-pointer" onclick="window.location.href='{{ url_for('ui.approval_queue') }}'">
+      <div class="text-3xl md:text-4xl font-display font-bold text-green-600 dark:text-green-400 mb-1">
         {{ stats.pending_approvals }}
       </div>
-      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+      <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
         Pending Approvals
       </div>
     </div>
 
     <!-- Stat Card 2: Reward Claims -->
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
-      <div class="text-4xl md:text-5xl font-display font-bold text-purple-600 dark:text-purple-400 mb-2">
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/15">
+      <div class="text-3xl md:text-4xl font-display font-bold text-purple-600 dark:text-purple-400 mb-1">
         {{ stats.pending_rewards }}
       </div>
-      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+      <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
         Reward Claims
       </div>
     </div>
 
     <!-- Stat Card 3: Completed Today -->
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
-      <div class="text-4xl md:text-5xl font-display font-bold text-blue-600 dark:text-blue-400 mb-2">
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/15">
+      <div class="text-3xl md:text-4xl font-display font-bold text-blue-600 dark:text-blue-400 mb-1">
         {{ stats.today_completed }}
       </div>
-      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+      <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
         Completed Today
       </div>
     </div>
 
     <!-- Stat Card 4: Active Chores -->
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl p-6 text-center transition-all duration-300 hover:bg-white/15 hover:scale-105 hover:shadow-xl">
-      <div class="text-4xl md:text-5xl font-display font-bold text-gray-900 dark:text-white mb-2">
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/15">
+      <div class="text-3xl md:text-4xl font-display font-bold text-gray-900 dark:text-white mb-1">
         {{ stats.active_chores }}
       </div>
-      <div class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+      <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
         Active Chores
       </div>
     </div>
 </div>
 
 <!-- Pending Approvals Card -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
     <!-- Card Header -->
-    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
-      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
         Pending Approvals
       </h2>
       {{ btn_sm('View All', href=url_for('ui.approval_queue'), variant='primary') }}
@@ -122,9 +122,9 @@
 </div>
 
 <!-- Kids' Points Card -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
-    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
-      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
+    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
         Kids' Points
       </h2>
       {{ btn_sm('Manage', href=url_for('ui.users_list')) }}
@@ -157,9 +157,9 @@
 </div>
 
 <!-- Recent Activity Card -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
-    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300/20 dark:border-gray-600/20">
-      <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4">
+    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-300/20 dark:border-gray-600/20">
+      <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
         Recent Activity
       </h2>
     </div>

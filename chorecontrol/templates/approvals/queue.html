@@ -4,24 +4,24 @@
 {% block title %}Approval Queue - ChoreControl{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="mb-8">
-    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+<!-- Page Header - Compact -->
+<div class="mb-4">
+    <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-1">
         Approval Queue
     </h1>
-    <p class="text-gray-600 dark:text-gray-400">
+    <p class="text-base text-gray-600 dark:text-gray-400">
         Review and approve pending chores and reward claims
     </p>
 </div>
 
 <!-- Pending Chore Instances -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6 pb-6 border-b border-white/10 dark:border-white/5">
-        <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10 dark:border-white/5">
+        <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
             Pending Chore Approvals
         </h2>
-        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 backdrop-blur-sm">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 backdrop-blur-sm">
             {{ pending_instances|length if pending_instances else 0 }}
         </span>
     </div>
@@ -108,13 +108,13 @@
 
 <!-- Work-Together Chore Approvals -->
 {% if work_together_pending %}
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6 mb-8">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6 pb-6 border-b border-white/10 dark:border-white/5">
-        <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10 dark:border-white/5">
+        <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
             Work-Together Approvals
         </h2>
-        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 backdrop-blur-sm">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 backdrop-blur-sm">
             {{ work_together_pending|length }}
         </span>
     </div>
@@ -187,13 +187,13 @@
 {% endif %}
 
 <!-- Pending Reward Claims -->
-<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 p-6">
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6 pb-6 border-b border-white/10 dark:border-white/5">
-        <h2 class="font-display text-2xl font-semibold text-gray-900 dark:text-white">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10 dark:border-white/5">
+        <h2 class="font-display text-xl font-semibold text-gray-900 dark:text-white">
             Pending Reward Claims
         </h2>
-        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 backdrop-blur-sm">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 backdrop-blur-sm">
             {{ pending_claims|length if pending_claims else 0 }}
         </span>
     </div>
