@@ -268,7 +268,7 @@ async function submitJsonForm(form, options = {}) {
     // Fields that should be integers
     const intFields = ['user_id', 'points_delta', 'approver_id', 'points', 'late_points', 'auto_approve_delay_hours', 'points_cost', 'cooldown_days', 'max_claims_total', 'max_claims_per_kid'];
     // Fields that are booleans (checkboxes)
-    const boolFields = ['is_active', 'requires_approval'];
+    const boolFields = ['is_active', 'requires_approval', 'allow_work_together'];
     // Fields that are JSON objects (stored as stringified JSON in hidden fields)
     const jsonFields = ['recurrence_pattern'];
 
@@ -455,7 +455,14 @@ document.addEventListener('DOMContentLoaded', function() {
 function openMobileMenu() {
     const menu = document.getElementById('mobile-overflow-menu');
     if (menu) {
+        menu.classList.remove('hidden');
         menu.classList.add('active');
+        // Force reflow before adding class to trigger animation
+        void menu.offsetWidth;
+        const drawer = menu.querySelector('.mobile-drawer');
+        if (drawer) {
+            drawer.style.transform = 'translateY(0)';
+        }
     }
 }
 
@@ -468,6 +475,7 @@ function closeMobileMenu() {
         }
         setTimeout(() => {
             menu.classList.remove('active');
+            menu.classList.add('hidden');
         }, 300);
     }
 }

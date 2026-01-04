@@ -90,6 +90,7 @@ def dashboard():
     kids = User.query.filter_by(role='kid').order_by(User.username).all()
 
     # Get recent activity (approved, rejected, or missed in last 7 days)
+    # Exclude missed unassigned "anytime" chores (due_date=None) as they're not truly missed
     week_ago = datetime.utcnow() - timedelta(days=7)
     recent_activity = ChoreInstance.query.filter(
         and_(
@@ -98,6 +99,17 @@ def dashboard():
                 ChoreInstance.approved_at >= week_ago,
                 ChoreInstance.rejected_at >= week_ago,
                 ChoreInstance.updated_at >= week_ago
+            ),
+            # Exclude missed unassigned anytime chores
+            or_(
+                ChoreInstance.status != 'missed',
+                and_(
+                    ChoreInstance.status == 'missed',
+                    or_(
+                        ChoreInstance.due_date.isnot(None),  # Has a due date
+                        ChoreInstance.assigned_to.isnot(None)  # Has an assignment
+                    )
+                )
             )
         )
     ).order_by(ChoreInstance.updated_at.desc()).limit(10).all()
