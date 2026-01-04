@@ -5,9 +5,9 @@ description: Home Assistant chore management system with kids, parents, points, 
 url: https://github.com/shaunadam/chorecontrol
 arch:
   - amd64
-  - aarch64
-  - armv7
-  - armhf
+  # - aarch64
+  # - armv7
+  # - armhf
 startup: application
 boot: auto
 init: false

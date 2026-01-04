@@ -61,12 +61,12 @@
 {% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="mb-8">
-    <h1 class="font-display text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+<!-- Page Header - Compact -->
+<div class="mb-3">
+    <h1 class="font-display text-2xl font-bold text-gray-900 dark:text-white">
         Today's Chores
     </h1>
-    <p class="mt-2 text-xl text-gray-600 dark:text-gray-400">
+    <p class="text-sm text-gray-600 dark:text-gray-400">
         {{ today.strftime('%A, %B %d, %Y') }}
     </p>
 </div>
@@ -85,23 +85,23 @@
 {% else %}
 
 <!-- Kid Sections -->
-<div class="space-y-4">
+<div class="space-y-2">
     {% for kid_data in kids_data %}
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden">
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg overflow-hidden">
         <!-- Kid Header -->
-        <div class="accordion-header p-4 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-transparent" onclick="toggleAccordion(this)">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">👤</span>
+        <div class="accordion-header p-2 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-transparent" onclick="toggleAccordion(this)">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">👤</span>
                 <div>
-                    <h2 class="font-display text-xl font-bold text-gray-900 dark:text-white">
+                    <h2 class="font-display text-base font-bold text-gray-900 dark:text-white">
                         {{ kid_data.kid.username }}
                     </h2>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">
-                        {{ kid_data.total_count }} chore{{ 's' if kid_data.total_count != 1 else '' }} available
+                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                        {{ kid_data.total_count }} chore{{ 's' if kid_data.total_count != 1 else '' }}
                     </p>
                 </div>
             </div>
-            <svg class="accordion-icon {% if kid_data.should_expand %}rotated{% endif %} w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="accordion-icon {% if kid_data.should_expand %}rotated{% endif %} w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
         </div>
@@ -112,165 +112,117 @@
 
                 {# Late Chores #}
                 {% for chore_data in kid_data.chores.late %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ chore_data.instance.chore.name }}
-                        </h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {# Time Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-late">
-                                Late ({{ chore_data.days_overdue }} day{{ 's' if chore_data.days_overdue != 1 else '' }})
+                <div class="p-2 flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ chore_data.instance.chore.name }}
+                            </h3>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold badge-late whitespace-nowrap">
+                                Late ({{ chore_data.days_overdue }}d)
                             </span>
-
-                            {# Points Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
-                                {{ chore_data.display_points }} pts
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 whitespace-nowrap">
+                                {{ chore_data.display_points }}pts
                             </span>
-
-                            {# Assignment Type Badge #}
                             {% if chore_data.is_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                                {% if chore_data.claims_count > 0 %}
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    ({{ chore_data.claims_count }} claimed)
-                                </span>
-                                {% endif %}
+                                {{ status_badge('info', 'WT' if chore_data.claims_count == 0 else 'WT(' + chore_data.claims_count|string + ')') }}
                             {% elif chore_data.is_shared %}
                                 {{ status_badge('warning', 'Shared') }}
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button"
-                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
-                                class="touch-btn bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
+                    <button type="button"
+                            onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                            class="bg-red-500/90 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded-lg transition-all text-sm whitespace-nowrap">
+                        Claim
+                    </button>
                 </div>
                 {% endfor %}
 
                 {# Today Chores #}
                 {% for chore_data in kid_data.chores.today %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ chore_data.instance.chore.name }}
-                        </h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {# Time Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-today">
+                <div class="p-2 flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ chore_data.instance.chore.name }}
+                            </h3>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold badge-today whitespace-nowrap">
                                 Today
                             </span>
-
-                            {# Points Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30">
-                                {{ chore_data.display_points }} pts
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30 whitespace-nowrap">
+                                {{ chore_data.display_points }}pts
                             </span>
-
-                            {# Assignment Type Badge #}
                             {% if chore_data.is_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                                {% if chore_data.claims_count > 0 %}
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    ({{ chore_data.claims_count }} claimed)
-                                </span>
-                                {% endif %}
+                                {{ status_badge('info', 'WT' if chore_data.claims_count == 0 else 'WT(' + chore_data.claims_count|string + ')') }}
                             {% elif chore_data.is_shared %}
                                 {{ status_badge('warning', 'Shared') }}
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button"
-                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
-                                class="touch-btn bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
+                    <button type="button"
+                            onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                            class="bg-green-500/90 hover:bg-green-500 text-white font-medium px-3 py-1.5 rounded-lg transition-all text-sm whitespace-nowrap">
+                        Claim
+                    </button>
                 </div>
                 {% endfor %}
 
                 {# Early Chores #}
                 {% for chore_data in kid_data.chores.early %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ chore_data.instance.chore.name }}
-                        </h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {# Time Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-early">
-                                Early (due in {{ chore_data.days_until_due }} day{{ 's' if chore_data.days_until_due != 1 else '' }})
+                <div class="p-2 flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ chore_data.instance.chore.name }}
+                            </h3>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold badge-early whitespace-nowrap">
+                                +{{ chore_data.days_until_due }}d
                             </span>
-
-                            {# Points Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                                {{ chore_data.display_points }} pts
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 whitespace-nowrap">
+                                {{ chore_data.display_points }}pts
                             </span>
-
-                            {# Assignment Type Badge #}
                             {% if chore_data.is_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                                {% if chore_data.claims_count > 0 %}
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    ({{ chore_data.claims_count }} claimed)
-                                </span>
-                                {% endif %}
+                                {{ status_badge('info', 'WT' if chore_data.claims_count == 0 else 'WT(' + chore_data.claims_count|string + ')') }}
                             {% elif chore_data.is_shared %}
                                 {{ status_badge('warning', 'Shared') }}
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button"
-                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
-                                class="touch-btn bg-blue-500/90 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
+                    <button type="button"
+                            onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                            class="bg-blue-500/90 hover:bg-blue-500 text-white font-medium px-3 py-1.5 rounded-lg transition-all text-sm whitespace-nowrap">
+                        Claim
+                    </button>
                 </div>
                 {% endfor %}
 
                 {# Anytime Chores #}
                 {% for chore_data in kid_data.chores.anytime %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ chore_data.instance.chore.name }}
-                        </h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {# Time Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-anytime">
+                <div class="p-2 flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ chore_data.instance.chore.name }}
+                            </h3>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold badge-anytime whitespace-nowrap">
                                 Anytime
                             </span>
-
-                            {# Points Badge #}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30">
-                                {{ chore_data.display_points }} pts
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30 whitespace-nowrap">
+                                {{ chore_data.display_points }}pts
                             </span>
-
-                            {# Assignment Type Badge #}
                             {% if chore_data.is_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                                {% if chore_data.claims_count > 0 %}
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    ({{ chore_data.claims_count }} claimed)
-                                </span>
-                                {% endif %}
+                                {{ status_badge('info', 'WT' if chore_data.claims_count == 0 else 'WT(' + chore_data.claims_count|string + ')') }}
                             {% elif chore_data.is_shared %}
                                 {{ status_badge('warning', 'Shared') }}
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button"
-                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
-                                class="touch-btn bg-gray-500/90 hover:bg-gray-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
+                    <button type="button"
+                            onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                            class="bg-gray-500/90 hover:bg-gray-500 text-white font-medium px-3 py-1.5 rounded-lg transition-all text-sm whitespace-nowrap">
+                        Claim
+                    </button>
                 </div>
                 {% endfor %}
 
