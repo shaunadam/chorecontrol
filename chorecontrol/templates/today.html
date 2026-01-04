@@ -20,7 +20,7 @@
         transition: max-height 0.3s ease-out;
     }
     .accordion-content.expanded {
-        max-height: 2000px;
+        max-height: 3000px;
         transition: max-height 0.5s ease-in;
     }
     .accordion-icon {
@@ -30,16 +30,27 @@
         transform: rotate(180deg);
     }
 
-    /* Section colors */
-    .section-late { border-left: 4px solid #ef4444; }
-    .section-today { border-left: 4px solid #22c55e; }
-    .section-early { border-left: 4px solid #3b82f6; }
-    .section-anytime { border-left: 4px solid #6b7280; }
-
-    .header-late { background: linear-gradient(to right, rgba(239, 68, 68, 0.2), transparent); }
-    .header-today { background: linear-gradient(to right, rgba(34, 197, 94, 0.2), transparent); }
-    .header-early { background: linear-gradient(to right, rgba(59, 130, 246, 0.2), transparent); }
-    .header-anytime { background: linear-gradient(to right, rgba(107, 114, 128, 0.2), transparent); }
+    /* Badge colors for time categories */
+    .badge-late {
+        background: rgba(239, 68, 68, 0.2);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-today {
+        background: rgba(34, 197, 94, 0.2);
+        color: #16a34a;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .badge-early {
+        background: rgba(59, 130, 246, 0.2);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .badge-anytime {
+        background: rgba(107, 114, 128, 0.2);
+        color: #4b5563;
+        border: 1px solid rgba(107, 114, 128, 0.3);
+    }
 
     /* Touch-friendly buttons */
     .touch-btn {
@@ -60,9 +71,7 @@
     </p>
 </div>
 
-{% set total_available = late_instances|length + today_instances|length + early_instances|length + anytime_instances|length %}
-
-{% if total_available == 0 %}
+{% if not kids_data %}
 <!-- Empty State -->
 <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-lg p-12 text-center">
     <div class="text-6xl mb-4">&#10003;</div>
@@ -75,239 +84,200 @@
 </div>
 {% else %}
 
-<!-- Chore Sections -->
+<!-- Kid Sections -->
 <div class="space-y-4">
-
-    <!-- LATE/OVERDUE Section -->
-    {% if late_instances %}
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden section-late">
-        <div class="accordion-header header-late p-4 flex items-center justify-between" onclick="toggleAccordion(this)">
+    {% for kid_data in kids_data %}
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden">
+        <!-- Kid Header -->
+        <div class="accordion-header p-4 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-transparent" onclick="toggleAccordion(this)">
             <div class="flex items-center gap-3">
-                <span class="text-2xl">&#9888;</span>
+                <span class="text-2xl">👤</span>
                 <div>
-                    <h2 class="font-display text-xl font-bold text-red-700 dark:text-red-300">
-                        Overdue Chores
-                    </h2>
-                    <p class="text-sm text-red-600 dark:text-red-400">
-                        {{ late_instances|length }} chore{{ 's' if late_instances|length != 1 else '' }} past due - claim now for reduced points
-                    </p>
-                </div>
-            </div>
-            <svg class="accordion-icon w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-        </div>
-        <div class="accordion-content">
-            <div class="divide-y divide-white/10 dark:divide-white/5">
-                {% for instance in late_instances %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <span class="text-sm text-red-600 dark:text-red-400 font-medium">
-                                {{ instance.days_overdue }} day{{ 's' if instance.days_overdue != 1 else '' }} overdue
-                            </span>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
-                                {{ instance.display_points }} pts
-                            </span>
-                            {% if instance.chore.allow_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                            {% elif instance.chore.assignment_type == 'shared' %}
-                                {{ status_badge('warning', 'Shared') }}
-                            {% endif %}
-                            {% if instance.chore.allow_work_together and instance.claims %}
-                            <span class="text-xs text-gray-500 dark:text-gray-400">
-                                ({{ instance.claims|length }} claimed)
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select class="claim-select bg-white/50 dark:bg-gray-800/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg px-3 py-2 text-sm" data-instance-id="{{ instance.id }}">
-                            <option value="">Select kid...</option>
-                            {% for kid in instance.eligible_kids %}
-                            <option value="{{ kid.id }}">{{ kid.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" onclick="claimChore({{ instance.id }}, this)" class="touch-btn bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- DUE TODAY Section -->
-    {% if today_instances %}
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden section-today">
-        <div class="accordion-header header-today p-4 flex items-center justify-between" onclick="toggleAccordion(this)">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">&#9733;</span>
-                <div>
-                    <h2 class="font-display text-xl font-bold text-green-700 dark:text-green-300">
-                        Due Today
-                    </h2>
-                    <p class="text-sm text-green-600 dark:text-green-400">
-                        {{ today_instances|length }} chore{{ 's' if today_instances|length != 1 else '' }} to complete today
-                    </p>
-                </div>
-            </div>
-            <svg class="accordion-icon rotated w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-        </div>
-        <div class="accordion-content expanded">
-            <div class="divide-y divide-white/10 dark:divide-white/5">
-                {% for instance in today_instances %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {{ status_badge('active', 'Today') }}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30">
-                                {{ instance.display_points }} pts
-                            </span>
-                            {% if instance.chore.allow_work_together %}
-                                {{ status_badge('info', 'Work Together') }}
-                            {% elif instance.chore.assignment_type == 'shared' %}
-                                {{ status_badge('warning', 'Shared') }}
-                            {% endif %}
-                            {% if instance.chore.allow_work_together and instance.claims %}
-                            <span class="text-xs text-gray-500 dark:text-gray-400">
-                                ({{ instance.claims|length }} claimed)
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select class="claim-select bg-white/50 dark:bg-gray-800/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg px-3 py-2 text-sm" data-instance-id="{{ instance.id }}">
-                            <option value="">Select kid...</option>
-                            {% for kid in instance.eligible_kids %}
-                            <option value="{{ kid.id }}">{{ kid.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" onclick="claimChore({{ instance.id }}, this)" class="touch-btn bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- EARLY CLAIMABLE Section -->
-    {% if early_instances %}
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden section-early">
-        <div class="accordion-header header-early p-4 flex items-center justify-between" onclick="toggleAccordion(this)">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">&#128337;</span>
-                <div>
-                    <h2 class="font-display text-xl font-bold text-blue-700 dark:text-blue-300">
-                        Available Early
-                    </h2>
-                    <p class="text-sm text-blue-600 dark:text-blue-400">
-                        {{ early_instances|length }} chore{{ 's' if early_instances|length != 1 else '' }} can be completed ahead of schedule
-                    </p>
-                </div>
-            </div>
-            <svg class="accordion-icon w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-        </div>
-        <div class="accordion-content">
-            <div class="divide-y divide-white/10 dark:divide-white/5">
-                {% for instance in early_instances %}
-                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</h3>
-                        <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <span class="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                Due in {{ instance.days_until_due }} day{{ 's' if instance.days_until_due != 1 else '' }}
-                            </span>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                                {{ instance.display_points }} pts
-                            </span>
-                            {% if instance.chore.assignment_type == 'shared' %}
-                                {{ status_badge('warning', 'Shared') }}
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select class="claim-select bg-white/50 dark:bg-gray-800/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg px-3 py-2 text-sm" data-instance-id="{{ instance.id }}">
-                            <option value="">Select kid...</option>
-                            {% for kid in instance.eligible_kids %}
-                            <option value="{{ kid.id }}">{{ kid.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" onclick="claimChore({{ instance.id }}, this)" class="touch-btn bg-blue-500/90 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
-                            Claim
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ANYTIME Section -->
-    {% if anytime_instances %}
-    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg overflow-hidden section-anytime">
-        <div class="accordion-header header-anytime p-4 flex items-center justify-between" onclick="toggleAccordion(this)">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">&#8734;</span>
-                <div>
-                    <h2 class="font-display text-xl font-bold text-gray-700 dark:text-gray-300">
-                        Do Anytime
+                    <h2 class="font-display text-xl font-bold text-gray-900 dark:text-white">
+                        {{ kid_data.kid.username }}
                     </h2>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                        {{ anytime_instances|length }} chore{{ 's' if anytime_instances|length != 1 else '' }} with no deadline
+                        {{ kid_data.total_count }} chore{{ 's' if kid_data.total_count != 1 else '' }} available
                     </p>
                 </div>
             </div>
-            <svg class="accordion-icon rotated w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="accordion-icon {% if kid_data.should_expand %}rotated{% endif %} w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
         </div>
-        <div class="accordion-content expanded">
+
+        <!-- Kid's Chores -->
+        <div class="accordion-content {% if kid_data.should_expand %}expanded{% endif %}">
             <div class="divide-y divide-white/10 dark:divide-white/5">
-                {% for instance in anytime_instances %}
+
+                {# Late Chores #}
+                {% for chore_data in kid_data.chores.late %}
                 <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ instance.chore.name }}</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ chore_data.instance.chore.name }}
+                        </h3>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                            {{ status_badge('claimed', 'Anytime') }}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30">
-                                {{ instance.display_points }} pts
+                            {# Time Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-late">
+                                Late ({{ chore_data.days_overdue }} day{{ 's' if chore_data.days_overdue != 1 else '' }})
                             </span>
-                            {% if instance.chore.assignment_type == 'shared' %}
+
+                            {# Points Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
+                                {{ chore_data.display_points }} pts
+                            </span>
+
+                            {# Assignment Type Badge #}
+                            {% if chore_data.is_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                                {% if chore_data.claims_count > 0 %}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    ({{ chore_data.claims_count }} claimed)
+                                </span>
+                                {% endif %}
+                            {% elif chore_data.is_shared %}
                                 {{ status_badge('warning', 'Shared') }}
                             {% endif %}
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <select class="claim-select bg-white/50 dark:bg-gray-800/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg px-3 py-2 text-sm" data-instance-id="{{ instance.id }}">
-                            <option value="">Select kid...</option>
-                            {% for kid in instance.eligible_kids %}
-                            <option value="{{ kid.id }}">{{ kid.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" onclick="claimChore({{ instance.id }}, this)" class="touch-btn bg-gray-500/90 hover:bg-gray-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
+                        <button type="button"
+                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                                class="touch-btn bg-red-500/90 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
                             Claim
                         </button>
                     </div>
                 </div>
                 {% endfor %}
+
+                {# Today Chores #}
+                {% for chore_data in kid_data.chores.today %}
+                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ chore_data.instance.chore.name }}
+                        </h3>
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            {# Time Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-today">
+                                Today
+                            </span>
+
+                            {# Points Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30">
+                                {{ chore_data.display_points }} pts
+                            </span>
+
+                            {# Assignment Type Badge #}
+                            {% if chore_data.is_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                                {% if chore_data.claims_count > 0 %}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    ({{ chore_data.claims_count }} claimed)
+                                </span>
+                                {% endif %}
+                            {% elif chore_data.is_shared %}
+                                {{ status_badge('warning', 'Shared') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                                class="touch-btn bg-green-500/90 hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
+                            Claim
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {# Early Chores #}
+                {% for chore_data in kid_data.chores.early %}
+                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ chore_data.instance.chore.name }}
+                        </h3>
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            {# Time Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-early">
+                                Early (due in {{ chore_data.days_until_due }} day{{ 's' if chore_data.days_until_due != 1 else '' }})
+                            </span>
+
+                            {# Points Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                                {{ chore_data.display_points }} pts
+                            </span>
+
+                            {# Assignment Type Badge #}
+                            {% if chore_data.is_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                                {% if chore_data.claims_count > 0 %}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    ({{ chore_data.claims_count }} claimed)
+                                </span>
+                                {% endif %}
+                            {% elif chore_data.is_shared %}
+                                {{ status_badge('warning', 'Shared') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                                class="touch-btn bg-blue-500/90 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
+                            Claim
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {# Anytime Chores #}
+                {% for chore_data in kid_data.chores.anytime %}
+                <div class="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ chore_data.instance.chore.name }}
+                        </h3>
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            {# Time Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold badge-anytime">
+                                Anytime
+                            </span>
+
+                            {# Points Badge #}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-700 dark:text-gray-300 border border-gray-500/30">
+                                {{ chore_data.display_points }} pts
+                            </span>
+
+                            {# Assignment Type Badge #}
+                            {% if chore_data.is_work_together %}
+                                {{ status_badge('info', 'Work Together') }}
+                                {% if chore_data.claims_count > 0 %}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    ({{ chore_data.claims_count }} claimed)
+                                </span>
+                                {% endif %}
+                            {% elif chore_data.is_shared %}
+                                {{ status_badge('warning', 'Shared') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                onclick="claimChoreForKid({{ chore_data.instance.id }}, {{ kid_data.kid.id }}, this)"
+                                class="touch-btn bg-gray-500/90 hover:bg-gray-500 text-white font-medium px-4 py-2 rounded-lg transition-all">
+                            Claim
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+
             </div>
         </div>
     </div>
-    {% endif %}
-
+    {% endfor %}
 </div>
 {% endif %}
 
@@ -323,15 +293,7 @@ function toggleAccordion(header) {
     icon.classList.toggle('rotated');
 }
 
-async function claimChore(instanceId, button) {
-    const select = document.querySelector(`select[data-instance-id="${instanceId}"]`);
-    const userId = select.value;
-
-    if (!userId) {
-        alert('Please select a kid to claim this chore');
-        return;
-    }
-
+async function claimChoreForKid(instanceId, kidId, button) {
     button.disabled = true;
     const originalText = button.textContent;
     button.textContent = 'Claiming...';
@@ -340,12 +302,13 @@ async function claimChore(instanceId, button) {
         const response = await fetch(`{{ url_for('instances.claim_instance', instance_id=0) }}`.replace('/0/', `/${instanceId}/`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: parseInt(userId) })
+            body: JSON.stringify({ user_id: parseInt(kidId) })
         });
 
         const data = await response.json();
 
         if (response.ok) {
+            // Reload page to refresh the chore list
             window.location.reload();
         } else {
             alert(data.message || 'Failed to claim chore');

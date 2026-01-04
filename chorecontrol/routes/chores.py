@@ -19,6 +19,30 @@ def get_current_user():
     return auth_get_current_user()
 
 
+def _parse_bool(value):
+    """Parse a boolean value from various input types.
+
+    Handles:
+    - Python booleans: True, False
+    - Checkbox strings: 'on', 'off', 'true', 'false', '1', '0'
+    - Integers: 1 (True), 0 (False)
+    - None/missing: False
+
+    Args:
+        value: The value to parse
+
+    Returns:
+        bool: Parsed boolean value
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None or value == '':
+        return False
+    if isinstance(value, str):
+        return value.lower() in ('on', 'true', '1', 'yes')
+    return bool(value)
+
+
 def error_response(message, status_code=400, details=None):
     """Generate consistent error response."""
     response = {
@@ -251,8 +275,8 @@ def create_chore():
             start_date=datetime.fromisoformat(data['start_date']).date() if data.get('start_date') else None,
             end_date=datetime.fromisoformat(data['end_date']).date() if data.get('end_date') else None,
             assignment_type=data.get('assignment_type'),
-            allow_work_together=data.get('allow_work_together', False),
-            requires_approval=data.get('requires_approval', True),
+            allow_work_together=_parse_bool(data.get('allow_work_together', False)),
+            requires_approval=_parse_bool(data.get('requires_approval', True)),
             auto_approve_after_hours=data.get('auto_approve_after_hours'),
             allow_late_claims=data.get('allow_late_claims', False),
             late_points=data.get('late_points'),
@@ -415,11 +439,11 @@ def update_chore(chore_id):
 
         # Update allow_work_together (only valid for shared chores)
         if 'allow_work_together' in data:
-            chore.allow_work_together = bool(data['allow_work_together'])
+            chore.allow_work_together = _parse_bool(data['allow_work_together'])
 
         # Update workflow fields
         if 'requires_approval' in data:
-            chore.requires_approval = data['requires_approval']
+            chore.requires_approval = _parse_bool(data['requires_approval'])
 
         if 'auto_approve_after_hours' in data:
             chore.auto_approve_after_hours = data['auto_approve_after_hours']

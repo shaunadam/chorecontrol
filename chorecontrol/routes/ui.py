@@ -609,7 +609,7 @@ def settings():
 @ui_bp.route('/today')
 @ha_auth_required
 def today_page():
-    """Today's chores dashboard - shows chores in 4 sections: late, today, early, anytime."""
+    """Today's chores dashboard - organized by kid."""
     from datetime import timedelta
 
     today = date.today()
@@ -643,69 +643,113 @@ def today_page():
         else:
             return [a.user for a in instance.chore.assignments]
 
-    # 1. OVERDUE (Late) - past due but within grace period
-    all_past_due = ChoreInstance.query.join(Chore).filter(
+    def categorize_instance(instance):
+        """Returns tuple: (category, additional_data).
+
+        Categories: 'late', 'today', 'early', 'anytime', None
+        None means the instance is not claimable at this time.
+        """
+        if instance.due_date is None:
+            return ('anytime', {
+                'display_points': instance.chore.points
+            })
+
+        if instance.due_date < today:
+            # Check if within grace period
+            grace_deadline = instance.due_date + timedelta(days=instance.chore.grace_period_days)
+            if today <= grace_deadline:
+                days_overdue = (today - instance.due_date).days
+                display_points = instance.chore.late_points if instance.chore.late_points is not None else instance.chore.points
+                return ('late', {
+                    'days_overdue': days_overdue,
+                    'display_points': display_points
+                })
+            else:
+                # Outside grace period - don't show
+                return (None, {})
+
+        elif instance.due_date == today:
+            return ('today', {
+                'display_points': instance.chore.points
+            })
+
+        else:  # future date
+            # Check if within early claim window
+            earliest_claim = instance.due_date - timedelta(days=instance.chore.early_claim_days)
+            if today >= earliest_claim:
+                days_until_due = (instance.due_date - today).days
+                return ('early', {
+                    'days_until_due': days_until_due,
+                    'display_points': instance.chore.points
+                })
+            else:
+                # Not yet claimable
+                return (None, {})
+
+    # Get all assigned, active instances
+    all_instances = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date < today,
-        ChoreInstance.due_date.isnot(None),
         Chore.is_active == True  # noqa: E712
-    ).order_by(ChoreInstance.due_date.asc()).all()
+    ).all()
 
-    late_instances = []
-    for instance in all_past_due:
-        grace_deadline = instance.due_date + timedelta(days=instance.chore.grace_period_days)
-        if today <= grace_deadline:
-            instance.days_overdue = (today - instance.due_date).days
-            instance.eligible_kids = get_eligible_kids(instance)
-            # Late claims get late_points if set
-            instance.display_points = instance.chore.late_points if instance.chore.late_points is not None else instance.chore.points
-            late_instances.append(instance)
+    # Build kid-based data structure
+    kids_data = []
+    for kid in kids:
+        kid_chores = {
+            'late': [],
+            'today': [],
+            'early': [],
+            'anytime': []
+        }
+        has_chores = False
 
-    # 2. DUE TODAY
-    today_instances = ChoreInstance.query.join(Chore).filter(
-        ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date == today,
-        Chore.is_active == True  # noqa: E712
-    ).order_by(ChoreInstance.created_at.desc()).all()
+        for instance in all_instances:
+            eligible_kids = get_eligible_kids(instance)
 
-    for instance in today_instances:
-        instance.eligible_kids = get_eligible_kids(instance)
-        instance.display_points = instance.chore.points
+            if kid not in eligible_kids:
+                continue
 
-    # 3. EARLY CLAIMABLE - future due date but within early_claim_days window
-    all_future = ChoreInstance.query.join(Chore).filter(
-        ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date > today,
-        ChoreInstance.due_date.isnot(None),
-        Chore.is_active == True  # noqa: E712
-    ).order_by(ChoreInstance.due_date.asc()).all()
+            # Categorize the instance
+            category, extra_data = categorize_instance(instance)
 
-    early_instances = []
-    for instance in all_future:
-        earliest_claim = instance.due_date - timedelta(days=instance.chore.early_claim_days)
-        if today >= earliest_claim:
-            instance.days_until_due = (instance.due_date - today).days
-            instance.eligible_kids = get_eligible_kids(instance)
-            instance.display_points = instance.chore.points  # Full points for early
-            early_instances.append(instance)
+            if category is None:
+                continue  # Skip instances outside windows
 
-    # 4. ANYTIME (no due date)
-    anytime_instances = ChoreInstance.query.join(Chore).filter(
-        ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date.is_(None),
-        Chore.is_active == True  # noqa: E712
-    ).order_by(ChoreInstance.created_at.desc()).all()
+            # Build chore data for this kid
+            chore_data = {
+                'instance': instance,
+                'category': category,
+                'display_points': extra_data.get('display_points', instance.chore.points),
+                'is_shared': instance.chore.assignment_type == 'shared',
+                'is_work_together': instance.is_work_together(),
+                'claims_count': len(instance.claims) if instance.is_work_together() else 0,
+                'eligible_kids': eligible_kids  # For potential future use
+            }
 
-    for instance in anytime_instances:
-        instance.eligible_kids = get_eligible_kids(instance)
-        instance.display_points = instance.chore.points
+            # Add category-specific fields
+            if category == 'late':
+                chore_data['days_overdue'] = extra_data['days_overdue']
+            elif category == 'early':
+                chore_data['days_until_due'] = extra_data['days_until_due']
+
+            kid_chores[category].append(chore_data)
+            has_chores = True
+
+        # Only include kids who have at least one chore
+        if has_chores:
+            # Determine if this kid's section should be expanded by default
+            # Expand if they have any late or today chores
+            should_expand = len(kid_chores['late']) > 0 or len(kid_chores['today']) > 0
+
+            kids_data.append({
+                'kid': kid,
+                'chores': kid_chores,
+                'total_count': sum(len(chores) for chores in kid_chores.values()),
+                'should_expand': should_expand
+            })
 
     return render_template('today.html',
-                         late_instances=late_instances,
-                         today_instances=today_instances,
-                         early_instances=early_instances,
-                         anytime_instances=anytime_instances,
-                         kids=kids,
+                         kids_data=kids_data,
                          today=today)
 
 
