@@ -65,6 +65,7 @@ def check_auto_approvals():
             except Exception as e:
                 logger.error(f"Error auto-approving instance {instance.id}: {e}")
                 db.session.rollback()
+                continue  # Explicitly continue to next instance after rollback
 
         if approved_count > 0:
             logger.info(f"Auto-approved {approved_count} instances")

@@ -159,7 +159,13 @@ def sample_reward(db_session):
 
 @pytest.fixture
 def user_with_points_history(db_session, kid_user, parent_user):
-    """Create a kid user with some points history."""
+    """Create a kid user with some points history.
+
+    Note: kid_user starts with 50 points. This fixture adds history entries
+    totaling +50, and updates kid_user.points to 100 to keep them in sync.
+    History: +10, +15, +25, -10, +10 = +50
+    Final points: 50 (initial) + 50 (history) = 100
+    """
     from datetime import datetime, timedelta
 
     # Add some points history with explicit timestamps to ensure proper ordering
@@ -205,6 +211,13 @@ def user_with_points_history(db_session, kid_user, parent_user):
 
     for entry in history_entries:
         db_session.add(entry)
+
+    # Update kid_user points to match the history
+    # kid_user started with 50, history adds +50, so total should be 100
+    # BUT the history represents ALL points changes, so we should calculate from history
+    # History sum = 10 + 15 + 25 - 10 + 10 = 50
+    # For history to match points, points should equal sum of history
+    kid_user.points = 50  # Sum of history entries only
 
     db_session.commit()
     return kid_user

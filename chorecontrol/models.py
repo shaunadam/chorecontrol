@@ -123,11 +123,12 @@ class User(db.Model):
             reward_claim_id=reward_claim_id
         )
         db.session.add(history)
+        db.session.flush()  # Flush so history is visible to the query
 
         # Verify balance after transaction (log discrepancies but don't fail)
         # Note: Full verification done after commit in calling code
         # This is a quick sanity check during the transaction
-        calculated = self.calculate_current_points() + delta  # Add delta since history not committed yet
+        calculated = self.calculate_current_points()
         if self.points != calculated:
             logger.warning(f"Points mismatch detected for user {self.id}: stored={self.points}, calculated={calculated}")
 
@@ -467,7 +468,7 @@ class ChoreInstance(db.Model):
             return assignment is not None
         else:
             # No specific assignments = ALL kids can claim
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             return user is not None and user.role == 'kid'
 
     def can_close_claiming(self, user_id: int) -> bool:
@@ -478,7 +479,7 @@ class ChoreInstance(db.Model):
             return False  # Already closed
         if len(self.claims) == 0:
             return False  # No claims to close
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         return user is not None and user.role == 'parent'
 
     def close_claiming(self, closed_by_id: int) -> None:
@@ -511,13 +512,23 @@ class ChoreInstance(db.Model):
         return False
 
     def check_all_claims_resolved(self) -> bool:
-        """Check if all claims are resolved and update instance status."""
+        """Check if all claims are resolved and update instance status.
+
+        Sets status to 'approved' if at least one claim was approved,
+        or 'rejected' if all claims were rejected.
+        """
         if not self.is_work_together():
             return False
 
         unresolved = [c for c in self.claims if c.status == 'claimed']
         if len(unresolved) == 0 and len(self.claims) > 0:
-            self.status = 'approved'
+            # All claims resolved - check if any were approved
+            approved_claims = [c for c in self.claims if c.status == 'approved']
+            if len(approved_claims) > 0:
+                self.status = 'approved'
+            else:
+                # All claims were rejected
+                self.status = 'rejected'
             return True
         return False
 
@@ -535,7 +546,7 @@ class ChoreInstance(db.Model):
             return False
 
         # Check if user is a parent
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         return user is not None and user.role == 'parent'
 
     def award_points(self, approver_id: int, points: Optional[int] = None) -> None:
@@ -571,7 +582,7 @@ class ChoreInstance(db.Model):
         self.approved_at = datetime.utcnow()
 
         # Award points to user
-        claimer = User.query.get(self.claimed_by)
+        claimer = db.session.get(User, self.claimed_by)
         if claimer:
             claimer.adjust_points(
                 delta=points_to_award,
@@ -651,7 +662,7 @@ class ChoreInstanceClaim(db.Model):
         # Instance must have claiming closed
         if self.instance.claiming_closed_at is None:
             return False
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         return user is not None and user.role == 'parent'
 
     def award_points(self, approver_id: int, points: Optional[int] = None) -> None:
@@ -674,7 +685,7 @@ class ChoreInstanceClaim(db.Model):
         self.approved_at = datetime.utcnow()
 
         # Award points to user
-        user = User.query.get(self.user_id)
+        user = db.session.get(User, self.user_id)
         if user:
             user.adjust_points(
                 delta=points_to_award,
@@ -739,11 +750,11 @@ class Reward(db.Model):
         if not self.is_active:
             return False, "Reward is not active"
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return False, "User not found"
 
-        if user.role != 'kid':
+        if user.role not in ('kid', 'claim_only'):
             return False, "Only kids can claim rewards"
 
         if user.points < self.points_cost:

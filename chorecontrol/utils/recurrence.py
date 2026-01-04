@@ -133,7 +133,8 @@ def generate_due_dates(pattern: dict, start_date: date, end_date: date) -> List[
 
         # Calculate next date
         next_date = calculate_next_due_date(pattern, current)
-        if next_date is None or next_date > end_date:
+        # Guard against infinite loop: next_date must advance beyond current
+        if next_date is None or next_date > end_date or next_date <= current:
             break
         current = next_date
 
@@ -143,6 +144,14 @@ def generate_due_dates(pattern: dict, start_date: date, end_date: date) -> List[
 def matches_pattern(pattern: dict, check_date: date) -> bool:
     """
     Check if a given date matches the recurrence pattern.
+
+    For 'simple' patterns (daily/weekly/monthly intervals), this always returns True
+    because the date progression is entirely controlled by calculate_next_due_date().
+    The generate_due_dates function uses calculate_next_due_date to jump between valid
+    dates, so every date it lands on is valid by definition.
+
+    For 'complex', 'weekly', and 'monthly' patterns with specific days, this function
+    checks if the date falls on one of the specified days.
 
     Args:
         pattern: Recurrence pattern dict
@@ -154,15 +163,11 @@ def matches_pattern(pattern: dict, check_date: date) -> bool:
     pattern_type = pattern.get('type')
 
     # Handle 'simple' pattern type
+    # For simple patterns, calculate_next_due_date controls the progression,
+    # so every date we land on is valid. We always return True here because
+    # generate_due_dates only calls matches_pattern on dates produced by
+    # calculate_next_due_date.
     if pattern_type == 'simple':
-        interval = pattern.get('interval', 'daily')
-        if interval == 'daily':
-            return True
-        elif interval == 'weekly':
-            # Weekly patterns match once per week - use start_date if available
-            return True  # Simplified - actual matching handled by generate logic
-        elif interval == 'monthly':
-            return True  # Simplified - actual matching handled by generate logic
         return True
 
     # Handle 'complex' pattern type

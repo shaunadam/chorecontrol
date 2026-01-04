@@ -134,7 +134,7 @@ class RewardService:
         return claim
 
     @staticmethod
-    def unclaim_reward(claim_id: int, user_id: int) -> tuple[RewardClaim, int]:
+    def unclaim_reward(claim_id: int, user_id: int) -> tuple[dict, int]:
         """Unclaim a pending reward and refund points.
 
         Args:
@@ -142,7 +142,7 @@ class RewardService:
             user_id: ID of the user unclaiming
 
         Returns:
-            Tuple of (claim, points_refunded)
+            Tuple of (claim_data dict, points_refunded)
 
         Raises:
             NotFoundError: Claim not found
@@ -165,6 +165,9 @@ class RewardService:
         reward = claim.reward
         points_refunded = claim.points_spent
 
+        # Capture claim data before deletion for return value
+        claim_data = claim.to_dict()
+
         # Refund points to the claimer (not necessarily the current user)
         claimer = db.session.get(User, claim.user_id)
         claimer.adjust_points(
@@ -177,7 +180,7 @@ class RewardService:
         db.session.delete(claim)
         db.session.commit()
 
-        return claim, points_refunded
+        return claim_data, points_refunded
 
     @staticmethod
     def approve_claim(claim_id: int, approver_id: int) -> RewardClaim:
