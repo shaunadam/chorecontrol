@@ -571,11 +571,51 @@ def delete_chore(chore_id):
 
         return jsonify({
             'message': f'Chore {chore_id} deactivated successfully'
-        }), 204
+        }), 200
 
     except Exception as e:
         db.session.rollback()
         return error_response(f"Failed to delete chore: {str(e)}", 500)
+
+
+@chores_bp.route('/<int:chore_id>/permanent', methods=['DELETE'])
+@ha_auth_required
+def permanently_delete_chore(chore_id):
+    """
+    DELETE /api/chores/{id}/permanent - Permanently delete a chore and all its data.
+
+    This performs a hard delete, removing:
+    - The chore record
+    - All associated chore instances
+    - All chore assignments
+
+    Use with caution - this cannot be undone.
+    """
+    try:
+        chore = Chore.query.get(chore_id)
+
+        if not chore:
+            return error_response(f"Chore {chore_id} not found", 404)
+
+        chore_name = chore.name
+
+        # Delete all associated instances first
+        ChoreInstance.query.filter_by(chore_id=chore_id).delete()
+
+        # Delete all assignments
+        ChoreAssignment.query.filter_by(chore_id=chore_id).delete()
+
+        # Delete the chore itself
+        db.session.delete(chore)
+        db.session.commit()
+
+        return jsonify({
+            'message': f'Chore "{chore_name}" permanently deleted'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Failed to permanently delete chore: {str(e)}", 500)
 
 
 @chores_bp.route('/<int:chore_id>/instances', methods=['GET'])

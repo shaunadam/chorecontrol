@@ -644,10 +644,11 @@ def today_page():
             return [a.user for a in instance.chore.assignments]
 
     # 1. OVERDUE (Late) - past due but within grace period
-    all_past_due = ChoreInstance.query.filter(
+    all_past_due = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
         ChoreInstance.due_date < today,
-        ChoreInstance.due_date.isnot(None)
+        ChoreInstance.due_date.isnot(None),
+        Chore.is_active == True  # noqa: E712
     ).order_by(ChoreInstance.due_date.asc()).all()
 
     late_instances = []
@@ -661,9 +662,10 @@ def today_page():
             late_instances.append(instance)
 
     # 2. DUE TODAY
-    today_instances = ChoreInstance.query.filter(
+    today_instances = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date == today
+        ChoreInstance.due_date == today,
+        Chore.is_active == True  # noqa: E712
     ).order_by(ChoreInstance.created_at.desc()).all()
 
     for instance in today_instances:
@@ -671,10 +673,11 @@ def today_page():
         instance.display_points = instance.chore.points
 
     # 3. EARLY CLAIMABLE - future due date but within early_claim_days window
-    all_future = ChoreInstance.query.filter(
+    all_future = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
         ChoreInstance.due_date > today,
-        ChoreInstance.due_date.isnot(None)
+        ChoreInstance.due_date.isnot(None),
+        Chore.is_active == True  # noqa: E712
     ).order_by(ChoreInstance.due_date.asc()).all()
 
     early_instances = []
@@ -687,9 +690,10 @@ def today_page():
             early_instances.append(instance)
 
     # 4. ANYTIME (no due date)
-    anytime_instances = ChoreInstance.query.filter(
+    anytime_instances = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
-        ChoreInstance.due_date.is_(None)
+        ChoreInstance.due_date.is_(None),
+        Chore.is_active == True  # noqa: E712
     ).order_by(ChoreInstance.created_at.desc()).all()
 
     for instance in anytime_instances:

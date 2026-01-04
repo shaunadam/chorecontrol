@@ -148,11 +148,22 @@
                       data-method="DELETE"
                       onsubmit="return confirm('Are you sure you want to deactivate this chore?');">
                     <button type="submit"
-                            class="inline-flex items-center bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-red-500/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                            class="inline-flex items-center bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-700 dark:text-yellow-300 font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-yellow-500/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
                         Deactivate
                     </button>
                 </form>
                 {% endif %}
+                <form method="POST"
+                      action="{{ url_for('chores.permanently_delete_chore', chore_id=chore.id) }}"
+                      class="inline-block"
+                      data-json-form
+                      data-method="DELETE"
+                      onsubmit="return confirm('PERMANENTLY DELETE this chore? This will remove all instances and history. This cannot be undone!');">
+                    <button type="submit"
+                            class="inline-flex items-center bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-medium px-4 py-2 rounded-lg backdrop-blur-sm border border-red-500/30 transition-all duration-200 hover:scale-105 active:scale-100 text-sm">
+                        Delete
+                    </button>
+                </form>
             </div>
         </div>
         {% endfor %}
