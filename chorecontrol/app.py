@@ -89,16 +89,34 @@ def create_app(config_name=None):
     # Create default admin user on first run
     with app.app_context():
         from auth import create_default_admin, get_or_create_api_token
+        from models import User
+        logger = logging.getLogger(__name__)
+
         admin = create_default_admin()
         if admin:
-            import logging
-            logging.getLogger(__name__).info(f"Created default admin user: {admin.username}")
+            logger.info(f"Created default admin user: {admin.username}")
+
+        # Ensure system user exists for background jobs (auto-approval, etc.)
+        try:
+            system_user = User.query.filter_by(ha_user_id='system').first()
+            if not system_user:
+                system_user = User(
+                    ha_user_id='system',
+                    username='System',
+                    role='system',
+                    points=0
+                )
+                db.session.add(system_user)
+                db.session.commit()
+                logger.info("Created system user for background jobs")
+        except Exception:
+            # Table may not exist yet (first run before migrations)
+            db.session.rollback()
 
         # Initialize API token for Home Assistant integration
         api_token = get_or_create_api_token()
-        import logging
-        logging.getLogger(__name__).info(f"API Token for Home Assistant Integration: {api_token}")
-        logging.getLogger(__name__).info("Configure this token in the ChoreControl integration settings")
+        logger.info(f"API Token for Home Assistant Integration: {api_token}")
+        logger.info("Configure this token in the ChoreControl integration settings")
 
     return app
 
