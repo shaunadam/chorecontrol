@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Optional
 
 from models import db, ChoreInstance, ChoreInstanceClaim, User, ChoreAssignment
+from utils.timezone import local_today
 from utils.webhooks import fire_webhook
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ class InstanceService:
         instance.claimed_by = user_id
         instance.claimed_at = datetime.utcnow()
 
-        if instance.due_date and datetime.utcnow().date() > instance.due_date:
+        if instance.due_date and local_today() > instance.due_date:
             instance.claimed_late = True
         else:
             instance.claimed_late = False
@@ -134,7 +135,7 @@ class InstanceService:
             raise ForbiddenError('You are not assigned to this chore')
 
         # Determine if late
-        is_late = instance.due_date and datetime.utcnow().date() > instance.due_date
+        is_late = instance.due_date and local_today() > instance.due_date
 
         # Create claim record
         claim = ChoreInstanceClaim(

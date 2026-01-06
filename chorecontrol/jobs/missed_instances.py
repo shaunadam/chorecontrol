@@ -5,6 +5,8 @@ Missed instance marker job.
 from datetime import date, datetime, timedelta
 import logging
 
+from utils.timezone import local_today, local_now
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,8 +29,8 @@ def mark_missed_instances():
     from models import db, ChoreInstance, Chore
 
     try:
-        today = date.today()
-        now = datetime.utcnow()
+        today = local_today()
+        now = local_now()
         marked_count = 0
 
         # Find overdue assigned instances with dated due dates

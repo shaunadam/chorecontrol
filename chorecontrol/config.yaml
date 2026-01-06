@@ -1,5 +1,5 @@
 name: ChoreControl
-version: "0.3.3k"
+version: "0.3.3l"
 slug: chorecontrol
 description: Home Assistant chore management system with kids, parents, points, and rewards
 url: https://github.com/shaunadam/chorecontrol
@@ -26,7 +26,7 @@ ports_description:
 map:
   - data:rw
 options:
-  timezone: UTC
+  timezone: America/Denver
   debug: false
 schema:
   timezone: str

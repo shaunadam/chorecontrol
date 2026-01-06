@@ -11,6 +11,7 @@ import logging
 from sqlalchemy import or_
 from models import db, Chore, ChoreInstance, ChoreAssignment
 from utils.recurrence import generate_due_dates
+from utils.timezone import local_today
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def calculate_lookahead_end_date() -> date:
     - Jan 31 → Mar 31
     - Feb 1 → Apr 30
     """
-    today = date.today()
+    today = local_today()
     target_month = today + relativedelta(months=2)
     last_day = calendar.monthrange(target_month.year, target_month.month)[1]
 
@@ -70,7 +71,7 @@ def generate_instances_for_chore(chore: Chore, start_date: date = None, end_date
         return []
 
     if start_date is None:
-        start_date = date.today()
+        start_date = local_today()
 
     if end_date is None:
         end_date = calculate_lookahead_end_date()
@@ -142,7 +143,7 @@ def delete_future_instances(chore: Chore) -> int:
     Returns:
         Number of instances deleted
     """
-    today = date.today()
+    today = local_today()
 
     deleted = ChoreInstance.query.filter(
         ChoreInstance.chore_id == chore.id,

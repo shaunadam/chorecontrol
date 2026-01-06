@@ -12,6 +12,8 @@ from sqlalchemy import CheckConstraint, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from utils.timezone import local_today
+
 db = SQLAlchemy()
 
 
@@ -223,7 +225,7 @@ class Chore(db.Model):
             bool: True if chore is due on the given date
         """
         if check_date is None:
-            check_date = date.today()
+            check_date = local_today()
 
         if not self.is_active:
             return False
@@ -254,7 +256,7 @@ class Chore(db.Model):
             return None
 
         if after_date is None:
-            after_date = date.today()
+            after_date = local_today()
 
         if self.end_date and after_date > self.end_date:
             return None
@@ -413,7 +415,7 @@ class ChoreInstance(db.Model):
 
         # Check if claimable based on due_date with early/late windows
         if self.due_date is not None:
-            today = date.today()
+            today = local_today()
 
             # Calculate claiming window
             earliest_claim = self.due_date - timedelta(days=self.chore.early_claim_days)

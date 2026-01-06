@@ -17,6 +17,7 @@ from sqlalchemy import and_, or_
 from models import db, ChoreInstance, User
 from auth import ha_auth_required, get_current_user as auth_get_current_user
 from services.instance_service import InstanceService, InstanceServiceError
+from utils.timezone import local_today
 
 instances_bp = Blueprint('instances', __name__, url_prefix='/api/instances')
 logger = logging.getLogger(__name__)
@@ -227,7 +228,7 @@ def get_instances_due_today():
     Returns:
         JSON: {date: str, count: int, instances: [...]}
     """
-    today = date.today()
+    today = local_today()
 
     query = ChoreInstance.query.filter(
         or_(

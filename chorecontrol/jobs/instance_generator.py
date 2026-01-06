@@ -5,6 +5,8 @@ Daily instance generation job.
 from datetime import date
 import logging
 
+from utils.timezone import local_today
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ def generate_daily_instances():
     try:
         active_chores = Chore.query.filter_by(is_active=True).all()
 
-        today = date.today()
+        today = local_today()
         end_date = calculate_lookahead_end_date()
 
         total_instances = 0

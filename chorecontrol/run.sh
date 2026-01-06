@@ -1,9 +1,18 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-# Set default environment variables
-TZ="${TZ:-UTC}"
-DEBUG="${DEBUG:-false}"
+# Read configuration from Home Assistant addon options
+if bashio::config.exists 'timezone'; then
+    TZ="$(bashio::config 'timezone')"
+else
+    TZ="America/Denver"
+fi
+
+if bashio::config.exists 'debug'; then
+    DEBUG="$(bashio::config 'debug')"
+else
+    DEBUG="false"
+fi
 
 # Export environment variables
 export TZ="${TZ}"

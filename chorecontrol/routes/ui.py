@@ -6,6 +6,7 @@ from datetime import datetime, date, timedelta
 from functools import wraps
 from auth import ha_auth_required
 from models import db, User, Chore, ChoreInstance, Reward, RewardClaim, PointsHistory, ChoreAssignment
+from utils.timezone import local_today, local_now
 
 ui_bp = Blueprint('ui', __name__)
 
@@ -65,7 +66,7 @@ def dashboard():
     pending_approvals = ChoreInstance.query.filter_by(status='claimed').count()
     pending_rewards = RewardClaim.query.filter_by(status='pending').count()
 
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(local_today(), datetime.min.time())
     today_completed = ChoreInstance.query.filter(
         ChoreInstance.status == 'approved',
         ChoreInstance.approved_at >= today_start
@@ -612,7 +613,7 @@ def today_page():
     """Today's chores dashboard - organized by kid."""
     from datetime import timedelta
 
-    today = date.today()
+    today = local_today()
 
     # Get all kids
     kids = User.query.filter_by(role='kid').order_by(User.username).all()

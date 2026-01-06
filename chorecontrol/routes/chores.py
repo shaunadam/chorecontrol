@@ -9,6 +9,7 @@ from models import db, Chore, ChoreAssignment, ChoreInstance, User
 from schemas import validate_recurrence_pattern
 from auth import ha_auth_required, get_current_user as auth_get_current_user
 from utils.instance_generator import generate_instances_for_chore, regenerate_instances_for_chore
+from utils.timezone import local_today
 from utils.webhooks import fire_webhook
 
 chores_bp = Blueprint('chores', __name__, url_prefix='/api/chores')
@@ -322,7 +323,7 @@ def create_chore():
         db.session.commit()
 
         # Generate instances for the chore
-        today = date.today()
+        today = local_today()
         instances = generate_instances_for_chore(chore)
 
         # Fire webhooks for instances due today
@@ -547,7 +548,7 @@ def update_chore(chore_id):
 
         # Regenerate instances if pattern changed
         if pattern_changed:
-            today = date.today()
+            today = local_today()
             instances = regenerate_instances_for_chore(chore)
 
             # Fire webhooks for new instances due today
