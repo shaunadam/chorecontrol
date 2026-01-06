@@ -22,15 +22,16 @@ def get_current_user():
 def redirect_claim_only_to_today(f):
     """Decorator to redirect claim_only users to /today page.
 
-    claim_only users should only access the Today and My Rewards pages. If they try
-    to access any other route, redirect them to /today automatically.
+    claim_only users should only access the Today, My Rewards, and History pages.
+    If they try to access any other route, redirect them to /today automatically.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         user = get_current_user()
         if user and user.role == 'claim_only':
-            # Already on today page, my rewards page, or logout - allow
-            if request.endpoint in ('ui.today_page', 'ui.my_rewards', 'auth.logout'):
+            # Allowed pages for claim_only users
+            allowed_endpoints = ('ui.today_page', 'ui.my_rewards', 'ui.history_page', 'auth.logout')
+            if request.endpoint in allowed_endpoints:
                 return f(*args, **kwargs)
             # Trying to access other pages - redirect to today
             return redirect(url_for('ui.today_page'))
@@ -752,6 +753,43 @@ def today_page():
     return render_template('today.html',
                          kids_data=kids_data,
                          today=today)
+
+
+@ui_bp.route('/history')
+@ha_auth_required
+def history_page():
+    """History page - shows all transactions for all kids in columns."""
+    # Get all kids
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    # Build history data for each kid
+    kids_data = []
+    for kid in kids:
+        # Get all points history for this kid, ordered by most recent first
+        history_entries = PointsHistory.query.filter_by(user_id=kid.id)\
+            .order_by(PointsHistory.created_at.desc())\
+            .limit(50)\
+            .all()
+
+        # Calculate running balance for each entry
+        # Start with current balance and work backwards
+        running_balance = kid.points
+        entries_with_balance = []
+        for entry in history_entries:
+            entries_with_balance.append({
+                'entry': entry,
+                'balance_after': running_balance
+            })
+            # Subtract this entry's delta to get the balance before it
+            running_balance -= entry.points_delta
+
+        kids_data.append({
+            'kid': kid,
+            'history': entries_with_balance,
+            'current_points': kid.points
+        })
+
+    return render_template('history.html', kids_data=kids_data)
 
 
 @ui_bp.route('/my-rewards')

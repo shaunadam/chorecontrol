@@ -107,11 +107,7 @@
             Recurrence
         </h3>
         <p class="text-gray-900 dark:text-white">
-            {% if chore.recurrence_pattern %}
-                {{ chore.recurrence_pattern }}
-            {% else %}
-                One-time chore
-            {% endif %}
+            {{ chore.recurrence_pattern|format_schedule }}
         </p>
     </div>
 

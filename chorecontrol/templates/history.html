@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% from "_components/macros.html" import status_badge, empty_state, points_badge %}
+
+{% block title %}History - ChoreControl{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Accordion styles - optimized for grid layout */
+    .accordion-header {
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.2s ease;
+    }
+    .accordion-header:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        flex: 1;
+    }
+    .accordion-content.expanded {
+        max-height: none;
+        overflow-y: auto;
+        transition: max-height 0.5s ease-in;
+    }
+    .accordion-icon {
+        transition: transform 0.3s ease;
+    }
+    .accordion-icon.rotated {
+        transform: rotate(180deg);
+    }
+
+    /* Grid layout optimizations */
+    @media (min-width: 768px) {
+        .accordion-content.expanded {
+            max-height: calc(100vh - 250px);
+        }
+    }
+
+    /* Transaction type colors */
+    .tx-earned {
+        background: rgba(34, 197, 94, 0.15);
+        border-left: 3px solid #22c55e;
+    }
+    .tx-spent {
+        background: rgba(239, 68, 68, 0.15);
+        border-left: 3px solid #ef4444;
+    }
+    .tx-adjustment {
+        background: rgba(59, 130, 246, 0.15);
+        border-left: 3px solid #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header - Compact -->
+<div class="mb-4">
+    <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white">
+        Transaction History
+    </h1>
+    <p class="text-base text-gray-600 dark:text-gray-400">
+        All points earned and spent
+    </p>
+</div>
+
+{% if not kids_data %}
+<!-- Empty State -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-3xl shadow-lg p-12 text-center">
+    <div class="text-6xl mb-4">📜</div>
+    <h2 class="font-display text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        No History Yet
+    </h2>
+    <p class="text-gray-600 dark:text-gray-400">
+        Transactions will appear here once kids start earning and spending points.
+    </p>
+</div>
+{% else %}
+
+<!-- Kid Sections - Responsive Grid that fills available space -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    {% for kid_data in kids_data %}
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col">
+        <!-- Kid Header -->
+        <div class="accordion-header p-3 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-transparent cursor-pointer" onclick="toggleAccordion(this)">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <span class="text-2xl">👤</span>
+                <div class="min-w-0 flex-1">
+                    <h2 class="font-display text-lg font-bold text-gray-900 dark:text-white truncate">
+                        {{ kid_data.kid.username }}
+                    </h2>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        {{ kid_data.current_points }} points
+                    </p>
+                </div>
+            </div>
+            <svg class="accordion-icon rotated w-6 h-6 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </div>
+
+        <!-- Kid's History -->
+        <div class="accordion-content expanded">
+            <div class="divide-y divide-white/10 dark:divide-white/5">
+                {% if kid_data.history %}
+                    {% for item in kid_data.history %}
+                    {% set entry = item.entry %}
+                    <div class="p-3 {% if entry.points_delta > 0 %}tx-earned{% elif entry.points_delta < 0 %}tx-spent{% else %}tx-adjustment{% endif %}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <!-- Reason/Description -->
+                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    {{ entry.reason }}
+                                </p>
+                                <!-- Timestamp -->
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {{ entry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                </p>
+                                <!-- Related item (chore or reward) -->
+                                {% if entry.chore_instance and entry.chore_instance.chore %}
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Chore: {{ entry.chore_instance.chore.name }}
+                                </p>
+                                {% elif entry.reward_claim and entry.reward_claim.reward %}
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Reward: {{ entry.reward_claim.reward.name }}
+                                </p>
+                                {% endif %}
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <!-- Points Delta -->
+                                <span class="text-sm font-bold {% if entry.points_delta > 0 %}text-green-600 dark:text-green-400{% elif entry.points_delta < 0 %}text-red-600 dark:text-red-400{% else %}text-gray-600 dark:text-gray-400{% endif %}">
+                                    {% if entry.points_delta > 0 %}+{% endif %}{{ entry.points_delta }}
+                                </span>
+                                <!-- Balance After -->
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    bal: {{ item.balance_after }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="p-6 text-center text-gray-500 dark:text-gray-400">
+                    <p class="text-sm">No transactions yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAccordion(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.accordion-icon');
+
+    content.classList.toggle('expanded');
+    icon.classList.toggle('rotated');
+}
+</script>
+{% endblock %}

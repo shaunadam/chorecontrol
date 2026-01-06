@@ -134,7 +134,7 @@
             <!-- Desktop/Tablet Navigation (≥1024px) -->
             <nav class="hidden lg:flex relative gap-0.5 lg:gap-2 overflow-x-auto pb-2 -mb-px scrollbar-hide nav-scroll-container" role="navigation" aria-label="Main navigation">
                 {% if current_user and current_user.role == 'claim_only' %}
-                {# claim_only users see Today and My Rewards tabs (matches kid user pattern) #}
+                {# claim_only users see Today, My Rewards, and History tabs #}
                 <a href="{{ url_for('ui.today_page') }}" aria-label="Today" class="nav-item group flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-t-xl text-sm font-medium whitespace-nowrap transition-all duration-200 {% if request.endpoint == 'ui.today_page' %}bg-white/40 dark:bg-white/10 border-b-2 border-green-500 text-green-600 dark:text-green-400{% else %}text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/5{% endif %}">
                   <span class="text-2xl md:text-xl" aria-hidden="true">☀️</span>
                   <span class="text-xs sm:text-sm hidden md:inline">Today</span>
@@ -142,6 +142,10 @@
                 <a href="{{ url_for('ui.my_rewards') }}" aria-label="My Rewards" class="nav-item group flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-t-xl text-sm font-medium whitespace-nowrap transition-all duration-200 {% if request.endpoint == 'ui.my_rewards' %}bg-white/40 dark:bg-white/10 border-b-2 border-green-500 text-green-600 dark:text-green-400{% else %}text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/5{% endif %}">
                   <span class="text-2xl md:text-xl" aria-hidden="true">🎁</span>
                   <span class="text-xs sm:text-sm hidden md:inline">My Rewards</span>
+                </a>
+                <a href="{{ url_for('ui.history_page') }}" aria-label="History" class="nav-item group flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-t-xl text-sm font-medium whitespace-nowrap transition-all duration-200 {% if request.endpoint == 'ui.history_page' %}bg-white/40 dark:bg-white/10 border-b-2 border-green-500 text-green-600 dark:text-green-400{% else %}text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/5{% endif %}">
+                  <span class="text-2xl md:text-xl" aria-hidden="true">📜</span>
+                  <span class="text-xs sm:text-sm hidden md:inline">History</span>
                 </a>
                 {% elif current_user and current_user.role == 'kid' %}
                 {# Kid users see Today and My Rewards tabs #}
@@ -209,7 +213,7 @@
 
             <!-- Mobile Bottom Navigation (<1024px) -->
             {% if current_user and current_user.role == 'claim_only' %}
-            {# claim_only users: 2 tabs (no More button needed) #}
+            {# claim_only users: 3 tabs #}
             <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-700/50 shadow-2xl pb-safe">
               <div class="flex justify-around items-center px-2 py-2">
                 <a href="{{ url_for('ui.today_page') }}" class="mobile-nav-item {% if request.endpoint == 'ui.today_page' %}active{% endif %}">
@@ -219,6 +223,10 @@
                 <a href="{{ url_for('ui.my_rewards') }}" class="mobile-nav-item {% if request.endpoint == 'ui.my_rewards' %}active{% endif %}">
                   <span class="text-2xl">🎁</span>
                   <span class="text-xs">Rewards</span>
+                </a>
+                <a href="{{ url_for('ui.history_page') }}" class="mobile-nav-item {% if request.endpoint == 'ui.history_page' %}active{% endif %}">
+                  <span class="text-2xl">📜</span>
+                  <span class="text-xs">History</span>
                 </a>
               </div>
             </nav>

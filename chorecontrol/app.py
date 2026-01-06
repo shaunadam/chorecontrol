@@ -82,6 +82,9 @@ def create_app(config_name=None):
     # Register routes
     register_routes(app)
 
+    # Register template filters
+    register_template_filters(app)
+
     # Initialize background scheduler
     from scheduler import init_scheduler
     init_scheduler(app)
@@ -274,6 +277,72 @@ def register_routes(app):
             })
 
     # Note: Rewards and Points endpoints are now handled by blueprints
+
+
+def register_template_filters(app):
+    """Register custom Jinja2 template filters."""
+
+    @app.template_filter('format_schedule')
+    def format_schedule_filter(pattern):
+        """Format a recurrence pattern as a human-readable string.
+
+        Args:
+            pattern: Recurrence pattern dict or None
+
+        Returns:
+            Human-readable description of the schedule
+        """
+        if not pattern:
+            return "One-time"
+
+        if not isinstance(pattern, dict):
+            return "One-time"
+
+        pattern_type = pattern.get('type')
+
+        if pattern_type == 'simple':
+            interval = pattern.get('interval', 'daily')
+            every_n = pattern.get('every_n', 1)
+
+            if interval == 'daily':
+                if every_n == 1:
+                    return "Daily"
+                else:
+                    return f"Every {every_n} days"
+            elif interval == 'weekly':
+                if every_n == 1:
+                    return "Weekly"
+                elif every_n == 2:
+                    return "Biweekly"
+                else:
+                    return f"Every {every_n} weeks"
+            elif interval == 'monthly':
+                if every_n == 1:
+                    return "Monthly"
+                else:
+                    return f"Every {every_n} months"
+
+        elif pattern_type == 'complex':
+            days_of_week = pattern.get('days_of_week', [])
+            days_of_month = pattern.get('days_of_month', [])
+
+            if days_of_week:
+                day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                day_str = ', '.join(day_names[d] for d in sorted(days_of_week) if 0 <= d <= 6)
+                if day_str:
+                    return f"Weekly on {day_str}"
+
+            if days_of_month:
+                # Format as ordinals
+                def ordinal(n):
+                    s = ['th', 'st', 'nd', 'rd']
+                    v = n % 100
+                    return str(n) + (s[(v - 20) % 10] if v > 13 else s[v] if v < 4 else s[0])
+
+                days_str = ', '.join(ordinal(d) for d in sorted(days_of_month))
+                return f"Monthly on the {days_str}"
+
+        return "Custom schedule"
 
 
 # Create application instance for development server

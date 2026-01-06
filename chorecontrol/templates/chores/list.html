@@ -97,11 +97,7 @@
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Recurrence:</span>
                     <span class="text-sm text-gray-900 dark:text-white font-medium">
-                        {% if chore.recurrence_pattern %}
-                            {{ chore.recurrence_pattern }}
-                        {% else %}
-                            One-time
-                        {% endif %}
+                        {{ chore.recurrence_pattern|format_schedule }}
                     </span>
                 </div>
 

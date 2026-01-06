@@ -147,7 +147,8 @@
                     onchange="updateRecurrenceFields()">
                 <option value="none">One-time (no recurrence)</option>
                 <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
+                <option value="weekly">Weekly (pick days)</option>
+                <option value="biweekly">Biweekly (every 2 weeks)</option>
                 <option value="monthly">Monthly</option>
                 <option value="custom">Custom Pattern</option>
             </select>
@@ -406,8 +407,8 @@
 <script>
 // Parse existing recurrence pattern if editing
 {% if chore and chore.recurrence_pattern %}
-const existingPattern = "{{ chore.recurrence_pattern }}";
-parseExistingPattern(existingPattern);
+const existingPattern = {{ chore.recurrence_pattern|tojson }};
+initializeFromPattern(existingPattern);
 {% else %}
 // Initialize field visibility on page load
 updateRecurrenceFields();
@@ -420,6 +421,7 @@ function updateRecurrenceFields() {
     const startDateField = document.getElementById('start_date_field');
     const startDateLabel = startDateField.querySelector('.block');
     const startDateHelp = startDateField.querySelector('.mt-2');
+    const startDateInput = document.getElementById('start_date');
     const recurrenceTypeValue = document.getElementById('recurrence_type_value');
     const expiresField = document.getElementById('expires_after_field');
 
@@ -430,7 +432,7 @@ function updateRecurrenceFields() {
     let backendType = 'none';
     if (type === 'none') {
         backendType = 'none';
-    } else if (type === 'custom') {
+    } else if (type === 'custom' || type === 'weekly' || type === 'monthly') {
         backendType = 'complex';
     } else {
         backendType = 'simple';
@@ -443,14 +445,27 @@ function updateRecurrenceFields() {
         // Update label for one-time chores
         startDateLabel.textContent = 'Due Date';
         startDateHelp.innerHTML = 'Leave empty to create an "anytime" chore with no due date that can be claimed whenever.';
+        startDateInput.required = false;
         // Show expires field for potential anytime chores
         updateExpiresFieldVisibility();
+    } else if (type === 'biweekly') {
+        // Biweekly has no extra options, just uses start date
+        fieldsDiv.style.display = 'none';
+        startDateLabel.textContent = 'Start Date *';
+        startDateHelp.innerHTML = 'The first occurrence. Schedule will repeat every 2 weeks from this date.';
+        startDateInput.required = true;
+        expiresField.style.display = 'none';
     } else {
         fieldsDiv.style.display = 'block';
-        document.getElementById(type + '_options').style.display = 'block';
+        // Show appropriate option panel (weekly, monthly, daily, or custom)
+        const optionsDiv = document.getElementById(type + '_options');
+        if (optionsDiv) {
+            optionsDiv.style.display = 'block';
+        }
         // Update label for recurring chores
-        startDateLabel.textContent = 'Start Date';
+        startDateLabel.textContent = 'Start Date *';
         startDateHelp.innerHTML = 'When this recurring schedule should start generating instances.';
+        startDateInput.required = true;
         // Hide expires field for recurring chores
         expiresField.style.display = 'none';
     }
@@ -472,32 +487,66 @@ function updateExpiresFieldVisibility() {
 // Listen for start date changes to update expires field visibility
 document.getElementById('start_date').addEventListener('change', updateExpiresFieldVisibility);
 
-function parseExistingPattern(pattern) {
-    const lower = pattern.toLowerCase();
+// Initialize form from existing JSON pattern object
+function initializeFromPattern(pattern) {
+    if (!pattern || typeof pattern !== 'object') {
+        updateRecurrenceFields();
+        return;
+    }
 
-    if (lower.includes('daily') || lower.includes('every day')) {
-        document.getElementById('recurrence_type').value = 'daily';
-        const match = lower.match(/every (\d+) day/);
-        if (match) {
-            document.getElementById('daily_interval').value = match[1];
-        }
-    } else if (lower.includes('weekly') || lower.includes('monday') || lower.includes('tuesday')) {
-        document.getElementById('recurrence_type').value = 'weekly';
-        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-        days.forEach(day => {
-            if (lower.includes(day)) {
-                document.getElementById(day).checked = true;
+    const patternType = pattern.type;
+
+    if (patternType === 'simple') {
+        const interval = pattern.interval;
+        const everyN = pattern.every_n || 1;
+
+        if (interval === 'daily') {
+            document.getElementById('recurrence_type').value = 'daily';
+            document.getElementById('daily_interval').value = everyN;
+        } else if (interval === 'weekly') {
+            // Simple weekly with interval (biweekly etc) - show as custom
+            document.getElementById('recurrence_type').value = 'custom';
+            if (everyN === 1) {
+                document.getElementById('custom_pattern').value = 'weekly';
+            } else {
+                document.getElementById('custom_pattern').value = `every ${everyN} weeks`;
             }
-        });
-    } else if (lower.includes('monthly') || lower.includes('day ')) {
-        document.getElementById('recurrence_type').value = 'monthly';
-        const match = lower.match(/day (\d+)/);
-        if (match) {
-            document.getElementById('monthly_day').value = match[1];
+        } else if (interval === 'monthly') {
+            // Simple monthly with interval - show as custom
+            document.getElementById('recurrence_type').value = 'custom';
+            if (everyN === 1) {
+                document.getElementById('custom_pattern').value = 'monthly';
+            } else {
+                document.getElementById('custom_pattern').value = `every ${everyN} months`;
+            }
         }
-    } else {
-        document.getElementById('recurrence_type').value = 'custom';
-        document.getElementById('custom_pattern').value = pattern;
+    } else if (patternType === 'complex') {
+        if (pattern.days_of_week && pattern.days_of_week.length > 0) {
+            // Weekly with specific days
+            document.getElementById('recurrence_type').value = 'weekly';
+            const dayIds = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+            pattern.days_of_week.forEach(dayIndex => {
+                if (dayIndex >= 0 && dayIndex <= 6) {
+                    document.getElementById(dayIds[dayIndex]).checked = true;
+                }
+            });
+        } else if (pattern.days_of_month && pattern.days_of_month.length > 0) {
+            // Monthly with specific days
+            if (pattern.days_of_month.length === 1) {
+                document.getElementById('recurrence_type').value = 'monthly';
+                document.getElementById('monthly_day').value = pattern.days_of_month[0];
+            } else {
+                // Multiple days - show as custom
+                document.getElementById('recurrence_type').value = 'custom';
+                const ordinal = n => {
+                    const s = ['th', 'st', 'nd', 'rd'];
+                    const v = n % 100;
+                    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+                };
+                document.getElementById('custom_pattern').value =
+                    'on the ' + pattern.days_of_month.map(ordinal).join(' and ');
+            }
+        }
     }
 
     updateRecurrenceFields();
@@ -526,6 +575,13 @@ document.querySelector('form').addEventListener('submit', function(e) {
                 days_of_week: selected
             };
         }
+    } else if (type === 'biweekly') {
+        // Biweekly = simple weekly with every_n = 2
+        pattern = {
+            type: 'simple',
+            interval: 'weekly',
+            every_n: 2
+        };
     } else if (type === 'monthly') {
         const day = parseInt(document.getElementById('monthly_day').value, 10);
         if (day) {
