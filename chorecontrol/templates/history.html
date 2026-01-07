@@ -116,7 +116,7 @@
                                 </p>
                                 <!-- Timestamp -->
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {{ entry.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                    {{ (entry.created_at|to_local_time).strftime('%b %d, %Y at %I:%M %p') }}
                                 </p>
                                 <!-- Related item (chore or reward) -->
                                 {% if entry.chore_instance and entry.chore_instance.chore %}

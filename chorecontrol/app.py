@@ -282,6 +282,30 @@ def register_routes(app):
 def register_template_filters(app):
     """Register custom Jinja2 template filters."""
 
+    @app.template_filter('to_local_time')
+    def to_local_time_filter(dt):
+        """Convert a UTC datetime to the configured local timezone.
+
+        Args:
+            dt: datetime object (assumed to be UTC)
+
+        Returns:
+            datetime object converted to local timezone
+        """
+        if dt is None:
+            return None
+
+        from utils.timezone import get_timezone
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        # If datetime is naive, assume it's UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+
+        # Convert to local timezone
+        return dt.astimezone(get_timezone())
+
     @app.template_filter('format_schedule')
     def format_schedule_filter(pattern):
         """Format a recurrence pattern as a human-readable string.
