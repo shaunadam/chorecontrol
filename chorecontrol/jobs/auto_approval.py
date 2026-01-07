@@ -44,7 +44,10 @@ def check_auto_approvals():
 
                 hours_since_claim = (datetime.utcnow() - instance.claimed_at).total_seconds() / 3600
 
-                if hours_since_claim >= instance.chore.auto_approve_after_hours:
+                # Convert to float to handle string/int inconsistencies
+                auto_approve_hours = float(instance.chore.auto_approve_after_hours)
+
+                if hours_since_claim >= auto_approve_hours:
                     # Auto-approve
                     instance.award_points(approver_id=system_user.id)
                     db.session.commit()

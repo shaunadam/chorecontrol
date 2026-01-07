@@ -44,6 +44,34 @@ def _parse_bool(value):
     return bool(value)
 
 
+def _parse_int(value, allow_none=True):
+    """Parse an integer value from various input types.
+
+    Handles:
+    - Integers: returned as-is
+    - Strings: converted to int
+    - None/empty string: returns None if allow_none, otherwise 0
+    - Float: converted to int
+
+    Args:
+        value: The value to parse
+        allow_none: Whether to allow None as a return value
+
+    Returns:
+        int or None: Parsed integer value
+
+    Raises:
+        ValueError: If value cannot be converted to int
+    """
+    if value is None or value == '':
+        return None if allow_none else 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (str, float)):
+        return int(value)
+    raise ValueError(f"Cannot convert {type(value).__name__} to int")
+
+
 def error_response(message, status_code=400, details=None):
     """Generate consistent error response."""
     response = {
@@ -271,7 +299,7 @@ def create_chore():
         chore = Chore(
             name=data['name'],
             description=data.get('description'),
-            points=data['points'],
+            points=_parse_int(data['points'], allow_none=False),
             recurrence_type=data.get('recurrence_type'),
             recurrence_pattern=data.get('recurrence_pattern'),
             start_date=datetime.fromisoformat(data['start_date']).date() if data.get('start_date') else None,
@@ -280,12 +308,12 @@ def create_chore():
             allow_work_together=_parse_bool(data.get('allow_work_together', False)),
             extra=_parse_bool(data.get('extra', False)),
             requires_approval=_parse_bool(data.get('requires_approval', True)),
-            auto_approve_after_hours=data.get('auto_approve_after_hours'),
+            auto_approve_after_hours=_parse_int(data.get('auto_approve_after_hours')),
             allow_late_claims=data.get('allow_late_claims', False),
-            late_points=data.get('late_points'),
-            early_claim_days=data.get('early_claim_days', 0),
-            grace_period_days=data.get('grace_period_days', 0),
-            expires_after_days=data.get('expires_after_days'),
+            late_points=_parse_int(data.get('late_points')),
+            early_claim_days=_parse_int(data.get('early_claim_days', 0), allow_none=False),
+            grace_period_days=_parse_int(data.get('grace_period_days', 0), allow_none=False),
+            expires_after_days=_parse_int(data.get('expires_after_days')),
             created_by=current_user.id if current_user else None
         )
 
@@ -404,7 +432,7 @@ def update_chore(chore_id):
             chore.description = data['description']
 
         if 'points' in data:
-            chore.points = data['points']
+            chore.points = _parse_int(data['points'], allow_none=False)
 
         # Update recurrence_type
         if 'recurrence_type' in data:
@@ -453,58 +481,46 @@ def update_chore(chore_id):
             chore.requires_approval = _parse_bool(data['requires_approval'])
 
         if 'auto_approve_after_hours' in data:
-            chore.auto_approve_after_hours = data['auto_approve_after_hours']
+            chore.auto_approve_after_hours = _parse_int(data['auto_approve_after_hours'])
 
         if 'allow_late_claims' in data:
             chore.allow_late_claims = data['allow_late_claims']
 
         if 'late_points' in data:
-            if data['late_points'] is not None and data['late_points'] != '':
-                try:
-                    data['late_points'] = int(data['late_points'])
-                    if data['late_points'] < 0:
-                        return error_response('late_points must be non-negative')
-                except (ValueError, TypeError):
-                    return error_response('late_points must be a valid integer')
-                chore.late_points = data['late_points']
-            else:
-                chore.late_points = None
+            try:
+                parsed_value = _parse_int(data['late_points'])
+                if parsed_value is not None and parsed_value < 0:
+                    return error_response('late_points must be non-negative')
+                chore.late_points = parsed_value
+            except (ValueError, TypeError):
+                return error_response('late_points must be a valid integer')
 
         if 'early_claim_days' in data:
-            if data['early_claim_days'] is not None and data['early_claim_days'] != '':
-                try:
-                    data['early_claim_days'] = int(data['early_claim_days'])
-                    if data['early_claim_days'] < 0:
-                        return error_response('early_claim_days must be non-negative')
-                except (ValueError, TypeError):
-                    return error_response('early_claim_days must be a valid integer')
-                chore.early_claim_days = data['early_claim_days']
-            else:
-                chore.early_claim_days = 0
+            try:
+                parsed_value = _parse_int(data['early_claim_days'], allow_none=False)
+                if parsed_value < 0:
+                    return error_response('early_claim_days must be non-negative')
+                chore.early_claim_days = parsed_value
+            except (ValueError, TypeError):
+                return error_response('early_claim_days must be a valid integer')
 
         if 'grace_period_days' in data:
-            if data['grace_period_days'] is not None and data['grace_period_days'] != '':
-                try:
-                    data['grace_period_days'] = int(data['grace_period_days'])
-                    if data['grace_period_days'] < 0:
-                        return error_response('grace_period_days must be non-negative')
-                except (ValueError, TypeError):
-                    return error_response('grace_period_days must be a valid integer')
-                chore.grace_period_days = data['grace_period_days']
-            else:
-                chore.grace_period_days = 0
+            try:
+                parsed_value = _parse_int(data['grace_period_days'], allow_none=False)
+                if parsed_value < 0:
+                    return error_response('grace_period_days must be non-negative')
+                chore.grace_period_days = parsed_value
+            except (ValueError, TypeError):
+                return error_response('grace_period_days must be a valid integer')
 
         if 'expires_after_days' in data:
-            if data['expires_after_days'] is not None and data['expires_after_days'] != '':
-                try:
-                    data['expires_after_days'] = int(data['expires_after_days'])
-                    if data['expires_after_days'] < 1:
-                        return error_response('expires_after_days must be at least 1')
-                except (ValueError, TypeError):
-                    return error_response('expires_after_days must be a valid integer')
-                chore.expires_after_days = data['expires_after_days']
-            else:
-                chore.expires_after_days = None
+            try:
+                parsed_value = _parse_int(data['expires_after_days'])
+                if parsed_value is not None and parsed_value < 1:
+                    return error_response('expires_after_days must be at least 1')
+                chore.expires_after_days = parsed_value
+            except (ValueError, TypeError):
+                return error_response('expires_after_days must be a valid integer')
 
         if 'is_active' in data:
             chore.is_active = data['is_active']
