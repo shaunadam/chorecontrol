@@ -30,7 +30,7 @@ def redirect_claim_only_to_today(f):
         user = get_current_user()
         if user and user.role == 'claim_only':
             # Allowed pages for claim_only users
-            allowed_endpoints = ('ui.today_page', 'ui.my_rewards', 'ui.history_page', 'auth.logout')
+            allowed_endpoints = ('ui.today_page', 'ui.extra_page', 'ui.my_rewards', 'ui.history_page', 'auth.logout')
             if request.endpoint in allowed_endpoints:
                 return f(*args, **kwargs)
             # Trying to access other pages - redirect to today
@@ -688,10 +688,11 @@ def today_page():
                 # Not yet claimable
                 return (None, {})
 
-    # Get all assigned, active instances
+    # Get all assigned, active instances (excluding extra chores)
     all_instances = ChoreInstance.query.join(Chore).filter(
         ChoreInstance.status == 'assigned',
-        Chore.is_active == True  # noqa: E712
+        Chore.is_active == True,  # noqa: E712
+        Chore.extra == False  # noqa: E712
     ).all()
 
     # Build kid-based data structure
@@ -790,6 +791,154 @@ def history_page():
         })
 
     return render_template('history.html', kids_data=kids_data)
+
+
+@ui_bp.route('/extra')
+@ha_auth_required
+def extra_page():
+    """Extra chores page - shows chores marked as extra=True."""
+    from datetime import timedelta
+
+    today = local_today()
+
+    # Get all users (kids and/or claim_only users)
+    users = User.query.filter(User.role.in_(['kid', 'claim_only'])).order_by(User.username).all()
+
+    def get_eligible_users(instance):
+        """Helper to determine which users can claim an instance."""
+        # Work-together chores: exclude users who have already claimed
+        if instance.is_work_together():
+            claimed_user_ids = {c.user_id for c in instance.claims}
+            if instance.chore.assignments:
+                return [a.user for a in instance.chore.assignments if a.user_id not in claimed_user_ids]
+            else:
+                return [u for u in users if u.id not in claimed_user_ids]
+
+        # Regular shared chores
+        if instance.chore.assignment_type == 'shared':
+            if instance.chore.assignments:
+                return [a.user for a in instance.chore.assignments]
+            else:
+                return users  # No assignments = all users
+
+        # Individual chores
+        if instance.assignee:
+            return [instance.assignee]
+        elif instance.assigned_to:
+            assignee = User.query.get(instance.assigned_to)
+            return [assignee] if assignee else []
+        else:
+            return [a.user for a in instance.chore.assignments]
+
+    def categorize_instance(instance):
+        """Returns tuple: (category, additional_data).
+
+        Categories: 'late', 'today', 'early', 'anytime', None
+        None means the instance is not claimable at this time.
+        """
+        if instance.due_date is None:
+            return ('anytime', {
+                'display_points': instance.chore.points
+            })
+
+        if instance.due_date < today:
+            # Check if within grace period
+            grace_deadline = instance.due_date + timedelta(days=instance.chore.grace_period_days)
+            if today <= grace_deadline:
+                days_overdue = (today - instance.due_date).days
+                display_points = instance.chore.late_points if instance.chore.late_points is not None else instance.chore.points
+                return ('late', {
+                    'days_overdue': days_overdue,
+                    'display_points': display_points
+                })
+            else:
+                # Outside grace period - don't show
+                return (None, {})
+
+        elif instance.due_date == today:
+            return ('today', {
+                'display_points': instance.chore.points
+            })
+
+        else:  # future date
+            # Check if within early claim window
+            earliest_claim = instance.due_date - timedelta(days=instance.chore.early_claim_days)
+            if today >= earliest_claim:
+                days_until_due = (instance.due_date - today).days
+                return ('early', {
+                    'days_until_due': days_until_due,
+                    'display_points': instance.chore.points
+                })
+            else:
+                # Not yet claimable
+                return (None, {})
+
+    # Get all assigned, active EXTRA instances
+    all_instances = ChoreInstance.query.join(Chore).filter(
+        ChoreInstance.status == 'assigned',
+        Chore.is_active == True,  # noqa: E712
+        Chore.extra == True  # noqa: E712
+    ).all()
+
+    # Build user-based data structure
+    users_data = []
+    for user in users:
+        user_chores = {
+            'late': [],
+            'today': [],
+            'early': [],
+            'anytime': []
+        }
+        has_chores = False
+
+        for instance in all_instances:
+            eligible_users = get_eligible_users(instance)
+
+            if user not in eligible_users:
+                continue
+
+            # Categorize the instance
+            category, extra_data = categorize_instance(instance)
+
+            if category is None:
+                continue  # Skip instances outside windows
+
+            # Build chore data for this user
+            chore_data = {
+                'instance': instance,
+                'category': category,
+                'display_points': extra_data.get('display_points', instance.chore.points),
+                'is_shared': instance.chore.assignment_type == 'shared',
+                'is_work_together': instance.is_work_together(),
+                'claims_count': len(instance.claims) if instance.is_work_together() else 0,
+                'eligible_users': eligible_users
+            }
+
+            # Add category-specific fields
+            if category == 'late':
+                chore_data['days_overdue'] = extra_data['days_overdue']
+            elif category == 'early':
+                chore_data['days_until_due'] = extra_data['days_until_due']
+
+            user_chores[category].append(chore_data)
+            has_chores = True
+
+        # Only include users who have at least one chore
+        if has_chores:
+            # Determine if this user's section should be expanded by default
+            # Expand if they have any late or today chores
+            should_expand = len(user_chores['late']) > 0 or len(user_chores['today']) > 0
+
+            users_data.append({
+                'user': user,
+                'chores': user_chores,
+                'total_count': sum(len(chores) for chores in user_chores.values()),
+                'should_expand': should_expand
+            })
+
+    return render_template('extra.html',
+                         users_data=users_data,
+                         today=today)
 
 
 @ui_bp.route('/my-rewards')

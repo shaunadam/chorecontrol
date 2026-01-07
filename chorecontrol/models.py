@@ -154,6 +154,7 @@ class Chore(db.Model):
     # Assignment
     assignment_type = db.Column(db.String(20))  # 'individual' or 'shared'
     allow_work_together = db.Column(db.Boolean, default=False, nullable=False)  # For shared: allow multiple kids to claim
+    extra = db.Column(db.Boolean, default=False, nullable=False)  # Show on extra page instead of today page
 
     # Workflow
     requires_approval = db.Column(db.Boolean, default=True, nullable=False)
@@ -201,6 +202,7 @@ class Chore(db.Model):
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'assignment_type': self.assignment_type,
             'allow_work_together': self.allow_work_together,
+            'extra': self.extra,
             'requires_approval': self.requires_approval,
             'auto_approve_after_hours': self.auto_approve_after_hours,
             'allow_late_claims': self.allow_late_claims,
