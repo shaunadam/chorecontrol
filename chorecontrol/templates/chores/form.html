@@ -521,11 +521,16 @@ function initializeFromPattern(pattern) {
             document.getElementById('recurrence_type').value = 'daily';
             document.getElementById('daily_interval').value = everyN;
         } else if (interval === 'weekly') {
-            // Simple weekly with interval (biweekly etc) - show as custom
-            document.getElementById('recurrence_type').value = 'custom';
-            if (everyN === 1) {
+            // Special case: biweekly (every 2 weeks)
+            if (everyN === 2) {
+                document.getElementById('recurrence_type').value = 'biweekly';
+            } else if (everyN === 1) {
+                // Simple weekly - show as custom
+                document.getElementById('recurrence_type').value = 'custom';
                 document.getElementById('custom_pattern').value = 'weekly';
             } else {
+                // Other intervals (every 3 weeks, etc) - show as custom
+                document.getElementById('recurrence_type').value = 'custom';
                 document.getElementById('custom_pattern').value = `every ${everyN} weeks`;
             }
         } else if (interval === 'monthly') {

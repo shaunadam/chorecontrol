@@ -434,18 +434,18 @@ def update_chore(chore_id):
         if 'points' in data:
             chore.points = _parse_int(data['points'], allow_none=False)
 
-        # Update recurrence_type
-        if 'recurrence_type' in data:
-            if data['recurrence_type'] not in ['none', 'simple', 'complex', None]:
-                return error_response("recurrence_type must be 'none', 'simple', or 'complex'")
-            chore.recurrence_type = data['recurrence_type']
-
-        # Check if recurrence pattern is changing
+        # Check if recurrence pattern is changing (BEFORE updating the values)
         pattern_changed = False
         if 'recurrence_type' in data and data['recurrence_type'] != chore.recurrence_type:
             pattern_changed = True
         if 'recurrence_pattern' in data and data['recurrence_pattern'] != chore.recurrence_pattern:
             pattern_changed = True
+
+        # Update recurrence_type
+        if 'recurrence_type' in data:
+            if data['recurrence_type'] not in ['none', 'simple', 'complex', None]:
+                return error_response("recurrence_type must be 'none', 'simple', or 'complex'")
+            chore.recurrence_type = data['recurrence_type']
 
         # Update recurrence_pattern with validation
         if 'recurrence_pattern' in data:

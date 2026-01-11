@@ -404,6 +404,62 @@ class TestUpdateChore:
         assert data['data']['recurrence_pattern']['interval'] == 'daily'
         assert data['data']['recurrence_pattern']['every_n'] == 2
 
+    def test_update_chore_pattern_regenerates_instances(self, client, parent_headers, parent_user):
+        """Test that changing recurrence pattern regenerates instances."""
+        # Create a weekly chore
+        chore_data = {
+            'name': 'Weekly Test Chore',
+            'points': 10,
+            'recurrence_type': 'simple',
+            'recurrence_pattern': {
+                'type': 'simple',
+                'interval': 'weekly',
+                'every_n': 1
+            },
+            'start_date': date.today().isoformat(),
+            'assignment_type': 'shared',
+            'requires_approval': True
+        }
+        response = client.post('/api/chores',
+                              json=chore_data,
+                              headers=parent_headers)
+        assert response.status_code == 201
+        chore_id = response.get_json()['data']['id']
+
+        # Get initial instance count
+        initial_instances = ChoreInstance.query.filter_by(chore_id=chore_id).all()
+        initial_count = len(initial_instances)
+        assert initial_count > 0, "Should have created instances"
+
+        # Change to biweekly (every 2 weeks)
+        update_data = {
+            'recurrence_pattern': {
+                'type': 'simple',
+                'interval': 'weekly',
+                'every_n': 2
+            }
+        }
+        response = client.put(f'/api/chores/{chore_id}',
+                             json=update_data,
+                             headers=parent_headers)
+        assert response.status_code == 200
+
+        # Get new instance count
+        new_instances = ChoreInstance.query.filter_by(chore_id=chore_id).all()
+        new_count = len(new_instances)
+
+        # Biweekly should have fewer instances than weekly
+        assert new_count < initial_count, "Biweekly should have fewer instances than weekly"
+        assert new_count > 0, "Should still have some instances"
+
+        # Verify instances have correct due dates (every 2 weeks from start)
+        if len(new_instances) >= 2:
+            sorted_instances = sorted(new_instances, key=lambda x: x.due_date)
+            first_due = sorted_instances[0].due_date
+            second_due = sorted_instances[1].due_date
+            days_diff = (second_due - first_due).days
+            assert days_diff == 14, f"Expected 14 days between instances, got {days_diff}"
+
     def test_update_chore_invalid_recurrence_pattern(self, client, parent_headers, sample_chore):
         """Test updating with invalid recurrence pattern."""
         update_data = {
