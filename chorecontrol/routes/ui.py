@@ -243,10 +243,20 @@ def chore_form(id=None):
 @redirect_claim_only_to_today
 def calendar():
     """Calendar view showing chore instances."""
-    # Get all instances with due dates for calendar
-    instances_with_dates = ChoreInstance.query.filter(
-        ChoreInstance.due_date.isnot(None)
-    ).all()
+    # Get filter parameters
+    kid_id = request.args.get('kid_id', type=int)
+
+    # Get all kids for the dropdown
+    kids = User.query.filter_by(role='kid').order_by(User.username).all()
+
+    # Build query for instances with due dates
+    query = ChoreInstance.query.filter(ChoreInstance.due_date.isnot(None))
+
+    # Filter by kid if selected
+    if kid_id:
+        query = query.filter(ChoreInstance.assignee_id == kid_id)
+
+    instances_with_dates = query.all()
 
     # Format instances for FullCalendar
     calendar_events = []
@@ -281,10 +291,14 @@ def calendar():
             }
         })
 
-    # Get instances without due dates for data table
-    instances_without_dates = ChoreInstance.query.filter(
-        ChoreInstance.due_date.is_(None)
-    ).order_by(ChoreInstance.created_at.desc()).all()
+    # Build query for instances without due dates
+    query_without_dates = ChoreInstance.query.filter(ChoreInstance.due_date.is_(None))
+
+    # Filter by kid if selected
+    if kid_id:
+        query_without_dates = query_without_dates.filter(ChoreInstance.assignee_id == kid_id)
+
+    instances_without_dates = query_without_dates.order_by(ChoreInstance.created_at.desc()).all()
 
     # Add eligible kids to instances without dates for shared chores
     for instance in instances_without_dates:
@@ -300,7 +314,9 @@ def calendar():
 
     return render_template('calendar.html',
                          calendar_events=calendar_events,
-                         instances_without_dates=instances_without_dates)
+                         instances_without_dates=instances_without_dates,
+                         kids=kids,
+                         selected_kid_id=kid_id)
 
 
 @ui_bp.route('/rewards')
@@ -606,6 +622,13 @@ def settings():
     api_token = get_or_create_api_token()
 
     return render_template('settings.html', api_token=api_token)
+
+
+@ui_bp.route('/diagnostic')
+@ha_auth_required
+def diagnostic():
+    """Browser diagnostic page for troubleshooting rendering issues."""
+    return render_template('diagnostic.html')
 
 
 @ui_bp.route('/today')

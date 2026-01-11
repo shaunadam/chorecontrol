@@ -11,6 +11,21 @@
     </h1>
 </div>
 
+<!-- Filter Dropdown -->
+<div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-4">
+    <div class="flex items-center gap-3">
+        <label for="kid-filter" class="text-sm font-semibold text-gray-900 dark:text-white">Filter by Kid:</label>
+        <select id="kid-filter" class="px-4 py-2 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="">All Kids</option>
+            {% for kid in kids %}
+                <option value="{{ kid.id }}" {% if selected_kid_id == kid.id %}selected{% endif %}>
+                    {{ kid.username }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
 <!-- Status Legend -->
 <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg shadow-black/5 p-4 mb-4">
     <div class="flex flex-wrap gap-3 items-center text-sm">
@@ -136,6 +151,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     calendar.render();
+
+    // Handle kid filter dropdown change
+    var kidFilter = document.getElementById('kid-filter');
+    kidFilter.addEventListener('change', function() {
+        var kidId = this.value;
+        var url = new URL(window.location.href);
+        if (kidId) {
+            url.searchParams.set('kid_id', kidId);
+        } else {
+            url.searchParams.delete('kid_id');
+        }
+        window.location.href = url.toString();
+    });
 });
 </script>
 {% endblock %}

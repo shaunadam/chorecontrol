@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Browser Diagnostics - ChoreControl{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="font-display text-3xl font-bold text-gray-900 dark:text-white mb-6">
+        Browser Diagnostics
+    </h1>
+
+    <!-- Browser Info -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="font-display text-xl font-bold mb-4">Browser Information</h2>
+        <div class="space-y-2 font-mono text-sm">
+            <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+            <p><strong>Platform:</strong> <span id="platform"></span></p>
+            <p><strong>Screen Resolution:</strong> <span id="screenRes"></span></p>
+            <p><strong>Device Pixel Ratio:</strong> <span id="dpr"></span></p>
+            <p><strong>Color Depth:</strong> <span id="colorDepth"></span></p>
+        </div>
+    </div>
+
+    <!-- CSS Feature Detection -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="font-display text-xl font-bold mb-4">CSS Feature Support</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex items-center gap-2">
+                <span id="backdrop-filter-support" class="w-4 h-4 rounded-full"></span>
+                <span>Backdrop Filter (blur)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="gradient-support" class="w-4 h-4 rounded-full"></span>
+                <span>CSS Gradients</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="rgba-support" class="w-4 h-4 rounded-full"></span>
+                <span>RGBA Colors</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="transform-support" class="w-4 h-4 rounded-full"></span>
+                <span>CSS Transforms</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="gpu-support" class="w-4 h-4 rounded-full"></span>
+                <span>Hardware Acceleration</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Rendering Test -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="font-display text-xl font-bold mb-4">Emoji Rendering Test</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            If you see colorful emoji below, emoji rendering is working. If you see black/white symbols or boxes, emoji fonts are missing.
+        </p>
+        <div class="grid grid-cols-4 md:grid-cols-8 gap-4 text-center">
+            <div>
+                <span class="text-3xl">👤</span>
+                <p class="text-xs mt-1">Person</p>
+            </div>
+            <div>
+                <span class="text-3xl">☀️</span>
+                <p class="text-xs mt-1">Sun</p>
+            </div>
+            <div>
+                <span class="text-3xl">📊</span>
+                <p class="text-xs mt-1">Chart</p>
+            </div>
+            <div>
+                <span class="text-3xl">📋</span>
+                <p class="text-xs mt-1">Clipboard</p>
+            </div>
+            <div>
+                <span class="text-3xl">🎁</span>
+                <p class="text-xs mt-1">Gift</p>
+            </div>
+            <div>
+                <span class="text-3xl">✓</span>
+                <p class="text-xs mt-1">Check</p>
+            </div>
+            <div>
+                <span class="text-3xl">📅</span>
+                <p class="text-xs mt-1">Calendar</p>
+            </div>
+            <div>
+                <span class="text-3xl">⭐</span>
+                <p class="text-xs mt-1">Star</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visual Effects Test -->
+    <div class="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="font-display text-xl font-bold mb-4">Visual Effects Test</h2>
+
+        <!-- Gradient Test -->
+        <div class="mb-4">
+            <h3 class="font-semibold mb-2">Gradient Background</h3>
+            <div class="h-20 rounded-lg bg-gradient-to-r from-purple-500/10 to-transparent border border-gray-300 dark:border-gray-600">
+                <p class="p-4">If you see a gradient from purple (left) to transparent (right), gradients work.</p>
+            </div>
+        </div>
+
+        <!-- Backdrop Blur Test -->
+        <div class="mb-4">
+            <h3 class="font-semibold mb-2">Backdrop Blur</h3>
+            <div class="relative h-32 rounded-lg overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="backdrop-blur-md bg-white/20 p-4 rounded-lg border border-white/30">
+                        <p class="text-white font-semibold">If this text is on a blurred background, backdrop-blur works.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RGBA Opacity Test -->
+        <div class="mb-4">
+            <h3 class="font-semibold mb-2">RGBA Opacity</h3>
+            <div class="relative h-20 rounded-lg bg-gray-800">
+                <div class="absolute inset-0 bg-white/10 flex items-center justify-center">
+                    <p class="text-white">Semi-transparent white overlay (bg-white/10)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/30 rounded-xl p-6">
+        <h2 class="font-display text-xl font-bold mb-4">Recommendations for Raspberry Pi</h2>
+        <div class="space-y-3 text-sm">
+            <div>
+                <strong>For missing emoji:</strong>
+                <code class="block mt-1 p-2 bg-gray-800 text-white rounded">
+                    sudo apt-get update && sudo apt-get install fonts-noto-color-emoji
+                </code>
+            </div>
+            <div>
+                <strong>For better browser performance:</strong>
+                <ul class="list-disc list-inside mt-1 space-y-1 text-gray-700 dark:text-gray-300">
+                    <li>Use Chromium instead of Firefox (better hardware acceleration)</li>
+                    <li>Enable GPU acceleration in browser flags: <code>chrome://flags</code></li>
+                    <li>Consider using a lightweight browser like Midori for very old Pi models</li>
+                </ul>
+            </div>
+            <div>
+                <strong>Hardware acceleration check:</strong>
+                <p class="mt-1">Ensure your browser is using GPU acceleration by checking <code>chrome://gpu</code> (Chromium) or <code>about:support</code> (Firefox)</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Populate browser info
+document.getElementById('userAgent').textContent = navigator.userAgent;
+document.getElementById('platform').textContent = navigator.platform;
+document.getElementById('screenRes').textContent = `${screen.width}x${screen.height}`;
+document.getElementById('dpr').textContent = window.devicePixelRatio || 1;
+document.getElementById('colorDepth').textContent = `${screen.colorDepth}-bit`;
+
+// Feature detection
+function checkSupport(feature, testFn) {
+    const supported = testFn();
+    const el = document.getElementById(feature + '-support');
+    if (supported) {
+        el.classList.add('bg-green-500');
+        el.title = 'Supported';
+    } else {
+        el.classList.add('bg-red-500');
+        el.title = 'Not Supported';
+    }
+}
+
+// Backdrop filter
+checkSupport('backdrop-filter', () => {
+    return CSS.supports('backdrop-filter', 'blur(10px)') ||
+           CSS.supports('-webkit-backdrop-filter', 'blur(10px)');
+});
+
+// Gradients
+checkSupport('gradient', () => {
+    return CSS.supports('background', 'linear-gradient(red, blue)');
+});
+
+// RGBA
+checkSupport('rgba', () => {
+    return CSS.supports('color', 'rgba(0, 0, 0, 0.5)');
+});
+
+// Transforms
+checkSupport('transform', () => {
+    return CSS.supports('transform', 'translateZ(0)');
+});
+
+// GPU/Hardware acceleration (approximation)
+checkSupport('gpu', () => {
+    // This is an approximation - if transforms work, GPU is likely available
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    return !!gl;
+});
+</script>
+{% endblock %}
